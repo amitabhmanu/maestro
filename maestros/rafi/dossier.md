@@ -62,6 +62,7 @@ The 25,000–28,000 figures Rafi himself gave (BBC 1977; Guinness 1984) are not 
 
 | Source | Coverage | Authority | Lineage | Access | Structure | Publishable |
 | --- | --- | --- | --- | --- | --- | --- |
+| [HFGK Online](https://hindi-movies-songs.com/hfgk/) | 6,361 films, 47,129 songs, 1931–1985; censor data for 11,329 films to 2010 | Register (online edition) | hfgk | Crawlable; no terms published, ask site master first. V1.0 retired, V2.0 at hamraaz.org | Structured | Facts yes |
 | Hindi Film Geet Kosh (5 vols.) | All Hindi film songs 1931–1980 | Register | hfgk | Print, order from Kanpur | Structured (print) | Facts yes |
 | Geet Gata Chal (Bhatti) | Hindi and other songs | Independent listing | bhatti | Print | Structured (print) | Facts yes |
 | hindigeetmala | Songs, films, credits | Secondary | hfgk (likely) | Crawlable (check robots.txt) | Semi | Facts yes |
@@ -74,7 +75,7 @@ The 25,000–28,000 figures Rafi himself gave (BBC 1977; Guinness 1984) are not 
 
 ## Registers
 
-- Tier A: Hindi Film Geet Kosh (ground truth); Geet Gata Chal as an independent check.
+- Tier A: HFGK Online (ground truth, covers to 1985 so includes posthumous releases); print HFGK and Geet Gata Chal as checks.
 - Tier B: Geet Gata Chal partly; no complete register known for non-film songs.
 - Tier C: none; report only.
 
@@ -89,5 +90,7 @@ The 25,000–28,000 figures Rafi himself gave (BBC 1977; Guinness 1984) are not 
 
 ## Open questions
 
-- Is a copy of HFGK available to digitise, and which volumes?
+- Permission from the HFGK Online site master for bulk crawling, or an export of Rafi's songs.
+- Which fields HFGK Online gives per song, and how V2.0 at hamraaz.org differs.
+- Register for Tier B (non-Hindi film and non-film songs).
 - What does the 7,405 count include?

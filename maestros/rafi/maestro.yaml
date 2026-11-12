@@ -25,10 +25,22 @@ tiers:
   B: {label: "Non-Hindi film songs and non-film songs", target_missing: 0.05}
   C: {label: "Unreleased or shelved films, chorus, radio and live recordings", target_missing: report_only}
 registers:
-  - name: Hindi Film Geet Kosh (vols. 1-5, 1931-1980)
+  - name: HFGK Online (Hindi Film Geet Kosh database, films and songs 1931-1985)
+    tiers: [A]
+    access: crawlable
+    role: ground_truth
+    url: https://hindi-movies-songs.com/hfgk/
+    _why:
+      reason: >-
+        Online edition of the Hamraaz register: 6,361 films and 47,129 songs 1931-1985, so it also covers
+        Rafi's posthumous releases. Database V1.0 is retired; V2.0 is said to be at hamraaz.org.
+        No terms of use published; ask the site master before bulk crawling.
+      confidence: 0.8
+      evidence: [https://hindi-movies-songs.com/hfgk/]
+  - name: Hindi Film Geet Kosh (print, vols. 1-5, 1931-1980)
     tiers: [A]
     access: print
-    role: ground_truth
+    role: independent_check
     url: https://giitaayan.com/satish/12.html
   - name: Geet Gata Chal (Waheed Riasat Bhatti)
     tiers: [A, B]
@@ -38,6 +50,7 @@ sources:
   - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api}
   - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api}
   - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable, url: https://en.wikipedia.org/wiki/List_of_songs_recorded_by_Mohammed_Rafi}
+  - {id: hfgk_online, kind: structured, lineage: hfgk, reliability: 0.95, access: crawlable, url: "https://hindi-movies-songs.com/hfgk/"}
   - {id: hindigeetmala, kind: semi, lineage: hfgk, reliability: 0.85, access: crawlable}
   - {id: atulsongaday, kind: prose, lineage: atul, reliability: 0.75, access: crawlable, url: https://atulsongaday.me}
   - {id: songsofyore, kind: prose, lineage: songsofyore, reliability: 0.75, access: crawlable, url: https://www.songsofyore.com}
@@ -78,5 +91,7 @@ budget:
   model_spend_usd: null
   review_hours_per_week: null
 open_questions:
-  - Is a copy of HFGK available to digitise, and which volumes?
+  - Permission from the HFGK Online site master for bulk crawling, or an export of Rafi's songs.
+  - Which fields HFGK Online gives per song (singers per song, record numbers) and how V2.0 at hamraaz.org differs.
+  - Register for Tier B (non-Hindi film and non-film songs), which HFGK does not cover.
   - What does the 7,405-song research count include?
