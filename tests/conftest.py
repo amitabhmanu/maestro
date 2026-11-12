@@ -46,7 +46,7 @@ def pg_server():
         # initdb refuses to run as root; run the cluster as an unprivileged user.
         shutil.chown(tmp, user="nobody")
         run_as = ["runuser", "-u", "nobody", "--"]
-    subprocess.run([*run_as, str(bindir / "initdb"), "-D", str(data), "-A", "trust", "-U", "postgres"],
+    subprocess.run([*run_as, str(bindir / "initdb"), "-D", str(data), "-A", "trust", "-U", "postgres", "-E", "UTF8", "--locale=C"],
                    check=True, capture_output=True, env=env)
     subprocess.run([*run_as, str(bindir / "pg_ctl"), "-D", str(data), "-l", str(tmp / "log"), "-w",
                     "-o", f"-p {port} -k {tmp} -c listen_addresses=127.0.0.1", "start"],
@@ -73,7 +73,7 @@ def store_for(pg_server):
         dbname = f"t_{len(made)}_{os.getpid()}_{slug.replace('-', '_')}"
         with psycopg.connect(pg_server, autocommit=True) as admin:
             admin.execute(f'DROP DATABASE IF EXISTS "{dbname}"')
-            admin.execute(f'CREATE DATABASE "{dbname}"')
+            admin.execute(f'CREATE DATABASE "{dbname}" ENCODING \'UTF8\' TEMPLATE template0')
         dsn = pg_server.rsplit("/", 1)[0] + f"/{dbname}"
         store = Store.connect(dsn, pack or load_pack(ROOT / "maestros" / slug))
         store.migrate()
