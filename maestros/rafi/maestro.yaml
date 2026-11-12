@@ -46,15 +46,21 @@ lexicon:
   container_aliases: lexicon/film_aliases.tsv
   people_aliases: lexicon/people.tsv
 collaborators:
-  composers: [Naushad, O. P. Nayyar, Shankar-Jaikishan, S. D. Burman, Madan Mohan, Laxmikant-Pyarelal]
+  composers: [Laxmikant-Pyarelal, Shankar-Jaikishan, O. P. Nayyar, Kalyanji-Anandji, Naushad, S. D. Burman, Ravi, Madan Mohan]
   co_singers: [Lata Mangeshkar, Asha Bhosle, Geeta Dutt, Shamshad Begum]
 verification:
   method: voice
   references: gold/voice_refs/
   confusables: [Anwar, Shabbir Kumar, Mahendra Kapoor, Sonu Nigam (tribute covers)]
 checksums:
-  - {scope: "years 1944-1950", total: 341, breakdown: {solo: 132, duet: 169, three_or_more: 40}, source: atulsongaday}
-  - {scope: "composer Naushad", total: 149, breakdown: {solo: 81}, source: "to confirm"}
+  - {scope: "years 1944-1950", total: 341, breakdown: {solo: 132, duet: 169, three_or_more: 40}, source: "https://atulsongaday.me/2014/08/20/zahe-kismat-teri-mehfil-se-jo-paighaam-aaya-hai/"}
+  - {scope: "composer Naushad", total: 149, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
+  - {scope: "composer Laxmikant-Pyarelal", total: 388, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
+  - {scope: "composer Shankar-Jaikishan", total: 341, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
+  - {scope: "composer O. P. Nayyar", total: 197, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
+  - {scope: "Hindi film songs (Shahid Rafi and Sujata Dev, 2015)", total: 4425, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
+  - {scope: "non-Hindi film songs (Shahid Rafi and Sujata Dev, 2015)", total: 310, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
+  - {scope: "non-film songs (Shahid Rafi and Sujata Dev, 2015)", total: 328, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
 taxonomies:
   style: raga
 popularity_signals:
@@ -74,4 +80,4 @@ budget:
 open_questions:
   - Confirm Wikidata, MusicBrainz and VIAF IDs.
   - Is a copy of HFGK available to digitise, and which volumes?
-  - Source for the Naushad subtotal (149 songs, 81 solo).
+  - What does the 7,405-song research count include?

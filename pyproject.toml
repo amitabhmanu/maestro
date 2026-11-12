@@ -18,6 +18,7 @@ dev = ["pytest>=8"]
 [project.scripts]
 maestro-mcp = "maestro.mcp_server:main"
 maestro-validate = "maestro.cli:validate_main"
+maestro-identify = "maestro.profiler.identify:main"
 
 [build-system]
 requires = ["hatchling>=1.25"]

@@ -43,10 +43,16 @@ sources:
   - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api}
   - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable}
   - {id: praguefrank, kind: semi, lineage: ruppli, reliability: 0.85, access: crawlable, url: https://countrydiscography.blogspot.com}
+collaborators:
+  managers: [Colonel Tom Parker, Joe Csida, Jerry Purcell]
 verification:
   method: voice
   references: gold/voice_refs/
   confusables: []
+checksums:
+  - {scope: "Billboard country chart entries", total: 147, source: "https://en.wikipedia.org/wiki/Eddy_Arnold"}
+  - {scope: "unreleased songs (Freda)", total: 104, source: "https://buecher.de/artikel/buch/eddy-arnold-discography-1944-1996/25562320"}
+  - {scope: "recordings 1951-1955 (Bear Family)", total: 166, breakdown: {previously_unissued: 44}, source: "https://www.bear-family.com/arnold-eddy-there-s-been-a-change-7-cd-deluxe-box-set.html"}
 taxonomies:
   style: country_subgenre
 popularity_signals:
@@ -67,4 +73,4 @@ open_questions:
   - Confirm Wikidata, MusicBrainz and VIAF IDs.
   - Does Praguefrank's country discography cover Eddy Arnold's sessions?
   - Should his film and TV appearances be in Tier C or out of scope?
-  - Which soundalikes or misattributions are known?
+  - "Chart No. 1 count: prose says 19, singles tables show 26 A-sides. Reconcile from chart data."
