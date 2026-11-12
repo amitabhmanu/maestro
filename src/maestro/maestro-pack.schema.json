@@ -131,6 +131,7 @@
           "lineage": {"type": "string", "description": "Sources that copy each other share a lineage; capture-recapture groups by it."},
           "reliability": {"type": "number", "minimum": 0, "maximum": 1},
           "access": {"$ref": "#/$defs/access"},
+          "distinct_ids": {"type": "boolean", "description": "false when two of the source's ids can name one unit (MusicBrainz keeps a recording per release version); the resolver may then merge them. Default true."},
           "api_rps": {"type": "number", "exclusiveMinimum": 0, "description": "For access: api, the API's request limit per second. The fetcher skips robots.txt for an API host and keeps to this rate."},
           "url": {"type": "string"},
           "extractor": {"type": "string"},

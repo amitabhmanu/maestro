@@ -126,3 +126,38 @@ def test_title_similarity():
     assert title_similarity("pyar", "pyar kiya to darna kya") == 0.0
     assert title_similarity("tan rang lo ji", "tan ranglo ji aaj man ranglo") == 1.0
     assert title_similarity("jadugar qatil", "jaadoogar kaatil haazir hai meraa dil") == 1.0
+    # A lead-in before the song proper, on either side.
+    assert title_similarity("do din ki zindagi hai is par na phool pyaare",
+                            "duniya chala chali ka mela do din ki zindagi hai") > 0.95
+    assert title_similarity("ae dil hai mushkil", "ae dil mujhe bata de") < 0.8
+
+
+def test_a_tie_goes_to_review(store_for):
+    s = store_for("rafi")
+    f1 = film(s, "hfgk_online", "600", "Barsat", 1949)
+    f2 = film(s, "atulsongaday", "film:Barsat|1949", "Barsat", 1949)
+    a = song(s, "hfgk_online", "601", "Hawa Mein Udta Jaye Mora Lal Dupatta Malmal Ka (Happy)", f1)
+    b = song(s, "hfgk_online", "602", "Hawa Mein Udta Jaye Mora Lal Dupatta Malmal Ka (Sad)", f1)
+    c = song(s, "atulsongaday", "x", "Hawa mein udta jaaye mora laal dupatta", f2, rafi=False)
+    stats = resolve(s).as_dict()
+    assert "unit" not in stats["merged"]
+    assert {tuple(sorted(i["subject_ids"])) for i in open_reviews(s, kind="unit_near_title")} == {
+        tuple(sorted((a, c))), tuple(sorted((b, c)))}
+
+
+def test_versions_from_a_loose_source_join_one_song(store_for):
+    # MusicBrainz (distinct_ids: false) keeps one recording per release version.
+    s = store_for("rafi")
+    f1 = film(s, "hfgk_online", "700", "Kohinoor", 1960)
+    f2 = film(s, "musicbrainz", "release-group:k", "Kohinoor", 1960)
+    h = song(s, "hfgk_online", "701", "Madhuban Mein Radhika Nache Re, Giridhar Ki Muraliya Baje Re", f1)
+    song(s, "musicbrainz", "r1", "Madhuban Men Radhika Nache Re", f2)
+    song(s, "musicbrainz", "r2", "Madhuban Men Radhika Nache Re (Revival)", f2)
+    resolve(s)
+    from maestro.resolve import Groups
+
+    g = Groups(s)
+    ids = [r["entity_id"] for r in s.query_graph(
+        "SELECT entity_id FROM claim WHERE source_id = 'musicbrainz' AND field = 'xref'")]
+    assert {g.find(i) for i in ids if i != f2} == {h}
+    assert s.coverage_report()["tiers"]["A"]["observed"] == 1

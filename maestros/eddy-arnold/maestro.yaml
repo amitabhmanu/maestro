@@ -48,7 +48,7 @@ registers:
       evidence: [https://adp.library.ucsb.edu/names/100566]
 sources:
   - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api}
-  - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api, api_rps: 1, url: "https://musicbrainz.org/ws/2/"}
+  - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api, api_rps: 1, distinct_ids: false, url: "https://musicbrainz.org/ws/2/"}
   - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api}
   - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable}
   - {id: praguefrank, kind: semi, lineage: ruppli, reliability: 0.85, access: unavailable, url: https://countrydiscography.blogspot.com}

@@ -65,7 +65,7 @@ registers:
     url: https://en.wikipedia.org/wiki/List_of_songs_recorded_by_Mohammed_Rafi
 sources:
   - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api}
-  - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api, api_rps: 1, url: "https://musicbrainz.org/ws/2/"}
+  - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api, api_rps: 1, distinct_ids: false, url: "https://musicbrainz.org/ws/2/"}
   - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable, url: https://en.wikipedia.org/wiki/List_of_songs_recorded_by_Mohammed_Rafi}
   - {id: hfgk_online, kind: structured, lineage: hfgk, reliability: 0.95, access: crawlable, url: "https://hindi-movies-songs.com/hfgk/"}
   - {id: hindigeetmala, kind: semi, lineage: hfgk, reliability: 0.85, access: crawlable}
