@@ -34,7 +34,6 @@ Unit: a song. Container: a film. Songs belong to films, and the Hindi Film Geet 
 | Hindi film songs | 4,425 | Shahid Rafi and Sujata Dev (2015), via [Wikipedia](https://en.wikipedia.org/wiki/Mohammed_Rafi) |
 | Non-Hindi film songs | 310 | same |
 | Non-film songs | 328 | same |
-| All songs found by researchers | 7,405 | Manorama Online (2015), via Wikipedia |
 | Hindi film songs to 1980 (Hamraz register) | ~4,525 | [mohdrafi.com](https://mohdrafi.com/meri-awaaz-suno/setting-the-records-straight.html/comment-page-1) |
 | 1944–1950 | 341 (132 solo, 169 duet, 40 with 3+ singers) | [Atul's Song A Day](https://atulsongaday.me/2014/08/20/zahe-kismat-teri-mehfil-se-jo-paighaam-aaya-hai/) |
 | Composer Laxmikant–Pyarelal | 388 | [Wikipedia](https://en.wikipedia.org/wiki/Mohammed_Rafi) |
@@ -43,7 +42,7 @@ Unit: a song. Container: a film. Songs belong to films, and the Hindi Film Geet 
 | Composer Kalyanji–Anandji | ~170 | same |
 | Composer Naushad | 149 | same |
 
-The 25,000–28,000 figures Rafi himself gave (BBC 1977; Guinness 1984) are not credible and are not checksums. The 7,405 figure likely counts something broader than released Hindi film songs; reconcile in the dry run.
+The 25,000–28,000 figures Rafi himself gave (BBC 1977; Guinness 1984) are not credible and are not checksums.
 
 ## Collaborators
 
@@ -93,4 +92,3 @@ The 25,000–28,000 figures Rafi himself gave (BBC 1977; Guinness 1984) are not 
 - Permission from the HFGK Online site master for bulk crawling, or an export of Rafi's songs.
 - Which fields HFGK Online gives per song, and how V2.0 at hamraaz.org differs.
 - Register for Tier B (non-Hindi film and non-film songs).
-- What does the 7,405 count include?
