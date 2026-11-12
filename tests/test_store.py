@@ -102,3 +102,21 @@ def test_crawl_queue_dedupes_and_enforces_budget(store_for):
     s.enqueue_crawl("https://example.org/b", "hgm", "spine")
     with pytest.raises(StoreError, match="budget"):
         s.enqueue_crawl("https://example.org/c", "hgm", "gap", gap_id="x")
+
+
+def test_non_utf8_database_is_refused(pg_server):
+    import psycopg
+
+    from conftest import ROOT
+    from maestro.pack import load_pack
+    from maestro.store import Store
+
+    with psycopg.connect(pg_server, autocommit=True) as admin:
+        admin.execute('DROP DATABASE IF EXISTS "t_ascii"')
+        admin.execute("CREATE DATABASE \"t_ascii\" ENCODING 'SQL_ASCII' TEMPLATE template0")
+    try:
+        with pytest.raises(StoreError, match="UTF8"):
+            Store.connect(pg_server.rsplit("/", 1)[0] + "/t_ascii", load_pack(ROOT / "maestros" / "rafi"))
+    finally:
+        with psycopg.connect(pg_server, autocommit=True) as admin:
+            admin.execute('DROP DATABASE IF EXISTS "t_ascii"')
