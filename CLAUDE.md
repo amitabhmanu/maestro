@@ -30,5 +30,6 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 - Validate packs: `uv run maestro-validate`
 - Identity lookup: `uv run maestro-identify "<name>"` (needs access to wikidata.org)
 - Crawl: `uv run maestro-crawl --pack maestros/rafi --dsn ... --seed <url> --extractor hamraaz --purpose spine [--opt years=1944-1950] [--max-jobs N]`
+- Import a saved page (sites whose robots.txt forbids crawling): `uv run maestro-import --pack maestros/rafi --dsn ... --extractor mohdrafi --url <page url> --opt tier=B <file.html>`
 - Tests: `uv run pytest` (starts a throwaway Postgres if `pg_ctl` is installed; otherwise set `MAESTRO_TEST_DSN`)
 - Local database: `docker compose up -d`, then `MAESTRO_PACK=maestros/rafi` and `MAESTRO_DSN=...` for the MCP server.

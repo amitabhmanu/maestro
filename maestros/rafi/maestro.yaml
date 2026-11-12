@@ -75,6 +75,7 @@ sources:
   - {id: hfgk_online, kind: structured, lineage: hfgk, reliability: 0.95, access: crawlable, url: "https://hindi-movies-songs.com/hfgk/"}
   - {id: hindigeetmala, kind: semi, lineage: hfgk, reliability: 0.85, access: crawlable}
   - {id: atulsongaday, kind: prose, lineage: atul, reliability: 0.75, access: crawlable, url: https://atulsongaday.me}
+  - {id: mohdrafi, kind: semi, lineage: mohdrafi, reliability: 0.7, access: unavailable, url: "http://www.mohdrafi.com/database/listtracks.php"}
   - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api, url: https://www.discogs.com}
   - {id: songsofyore, kind: prose, lineage: songsofyore, reliability: 0.75, access: crawlable, url: https://www.songsofyore.com}
 lexicon:

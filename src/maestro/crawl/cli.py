@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 
 from maestro.crawl.fetcher import Fetcher
-from maestro.crawl.runner import run_jobs
+from maestro.crawl.runner import import_page, run_jobs
 from maestro.pack import load_pack
 from maestro.store import Store
 
@@ -49,6 +49,30 @@ def main(argv: list[str] | None = None) -> int:
     options = dict(o.split("=", 1) for o in args.opt)
     stats = run_jobs(store, fetcher, max_jobs=args.max_jobs, options=options)
     print(json.dumps({"run": stats.as_dict(), "coverage": store.coverage_report()}, indent=2, default=str))
+    store.close()
+    return 0
+
+
+def import_main(argv: list[str] | None = None) -> int:
+    """`maestro-import`: run an extractor over pages saved by hand (sites whose robots.txt forbids crawling)."""
+    p = argparse.ArgumentParser(description=import_main.__doc__)
+    p.add_argument("--pack", required=True, help="maestro folder, e.g. maestros/rafi")
+    p.add_argument("--dsn", default=os.environ.get("MAESTRO_DSN"), help="Postgres DSN (default $MAESTRO_DSN)")
+    p.add_argument("--extractor", required=True)
+    p.add_argument("--url", required=True, help="the URL the page was saved from")
+    p.add_argument("--opt", action="append", default=[], help="extractor option key=value (repeatable)")
+    p.add_argument("--cache-dir", default=None, help="raw page cache (default data/<slug>/raw)")
+    p.add_argument("file", type=Path)
+    args = p.parse_args(argv)
+    if not args.dsn:
+        p.error("--dsn or MAESTRO_DSN is required")
+    pack = load_pack(args.pack)
+    store = Store.connect(args.dsn, pack)
+    store.migrate()
+    store.sync_sources()
+    cache = Path(args.cache_dir or Path("data") / pack.slug / "raw")
+    raw_id = import_page(store, args.extractor, args.url, args.file, cache, dict(o.split("=", 1) for o in args.opt))
+    print(json.dumps({"raw_page_id": raw_id, "coverage": store.coverage_report()}, indent=2, default=str))
     store.close()
     return 0
 
