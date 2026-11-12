@@ -1,0 +1,77 @@
+# DRAFT pack: values are proposals from the design discussion, to be confirmed by the profiler.
+version: 1
+status: draft
+identity:
+  name: Mohammed Rafi
+  slug: rafi
+  ids: {wikidata: null, musicbrainz: null, viaf: null}
+  variants: [Mohd. Rafi, Md. Rafi, Mohammad Rafi, محمد رفیع, मोहम्मद रफ़ी]
+  namesakes: []
+  active: [1941, 1980]
+roles:
+  primary: singer
+  in_scope: [singer]
+  out_of_scope: [actor]
+canon_model:
+  unit: song
+  version_levels: [work, recording, release]
+  container: film
+  container_has_full_listing: true
+  _why:
+    reason: Film songs belong to films, and HFGK lists every song of every film, so films are the checkable unit.
+    confidence: 0.9
+tiers:
+  A: {label: "Hindi film songs from released films", target_missing: 0.01}
+  B: {label: "Non-Hindi film songs and non-film songs", target_missing: 0.05}
+  C: {label: "Unreleased or shelved films, chorus, radio and live recordings", target_missing: report_only}
+registers:
+  - name: Hindi Film Geet Kosh (vols. 1-5, 1931-1980)
+    tiers: [A]
+    access: print
+    role: ground_truth
+    url: https://giitaayan.com/satish/12.html
+  - name: Geet Gata Chal (Waheed Riasat Bhatti)
+    tiers: [A, B]
+    access: print
+    role: independent_check
+sources:
+  - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api}
+  - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api}
+  - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable, url: https://en.wikipedia.org/wiki/List_of_songs_recorded_by_Mohammed_Rafi}
+  - {id: hindigeetmala, kind: semi, lineage: hfgk, reliability: 0.85, access: crawlable}
+  - {id: atulsongaday, kind: prose, lineage: atul, reliability: 0.75, access: crawlable, url: https://atulsongaday.me}
+  - {id: songsofyore, kind: prose, lineage: songsofyore, reliability: 0.75, access: crawlable, url: https://www.songsofyore.com}
+lexicon:
+  transliteration: lexicon/translit.tsv
+  container_aliases: lexicon/film_aliases.tsv
+  people_aliases: lexicon/people.tsv
+collaborators:
+  composers: [Naushad, O. P. Nayyar, Shankar-Jaikishan, S. D. Burman, Madan Mohan, Laxmikant-Pyarelal]
+  co_singers: [Lata Mangeshkar, Asha Bhosle, Geeta Dutt, Shamshad Begum]
+verification:
+  method: voice
+  references: gold/voice_refs/
+  confusables: [Anwar, Shabbir Kumar, Mahendra Kapoor, Sonu Nigam (tribute covers)]
+checksums:
+  - {scope: "years 1944-1950", total: 341, breakdown: {solo: 132, duet: 169, three_or_more: 40}, source: atulsongaday}
+  - {scope: "composer Naushad", total: 149, breakdown: {solo: 81}, source: "to confirm"}
+taxonomies:
+  style: raga
+popularity_signals:
+  contemporary: [binaca_geetmala, filmfare]
+  enduring: [youtube, lastfm, jiosaavn]
+  penetration: [covers, reality_shows]
+  esteem: [songsofyore, atulsongaday]
+legal:
+  purpose: personal_then_foss
+  lyrics: first_line_only
+  audio: derived_features_only
+budget:
+  crawl_requests_per_round: 5000
+  per_domain_rps: 0.5
+  model_spend_usd: null
+  review_hours_per_week: null
+open_questions:
+  - Confirm Wikidata, MusicBrainz and VIAF IDs.
+  - Is a copy of HFGK available to digitise, and which volumes?
+  - Source for the Naushad subtotal (149 songs, 81 solo).

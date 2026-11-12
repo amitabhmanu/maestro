@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "maestro": {
+      "command": "uv",
+      "args": ["run", "maestro-mcp"],
+      "env": {
+        "MAESTRO_PACK": "${MAESTRO_PACK:-maestros/rafi}",
+        "MAESTRO_DSN": "${MAESTRO_DSN:-postgresql://maestro:maestro@localhost:5432/maestro_rafi}"
+      }
+    }
+  }
+}

@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/amitabhmanu/maestro/schemas/maestro-pack.schema.json",
+  "title": "Maestro pack",
+  "description": "Everything maestro-specific the harness needs. The core reads only this file; it never hard-codes anything about a particular maestro.",
+  "type": "object",
+  "required": ["version", "status", "identity", "roles", "canon_model", "tiers", "sources", "verification", "legal", "budget"],
+  "additionalProperties": false,
+  "$defs": {
+    "evidence": {
+      "description": "Why the profiler proposed a value. Optional on every object.",
+      "type": "object",
+      "properties": {
+        "reason": {"type": "string"},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "evidence": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "role": {"enum": ["singer", "composer", "lyricist", "instrumentalist", "arranger", "producer", "music_director", "actor", "conductor"]},
+    "unit": {"enum": ["song", "recording", "work", "cue", "lyric"]},
+    "container": {"enum": ["film", "album", "session", "score", "work_catalogue", "broadcast", "none"]},
+    "access": {"enum": ["api", "crawlable", "print_owned", "print_library", "print", "licensed", "unavailable"]}
+  },
+  "properties": {
+    "version": {"type": "integer", "minimum": 1},
+    "status": {
+      "description": "draft = proposed by the profiler; approved = signed off by the user.",
+      "enum": ["draft", "approved"]
+    },
+    "identity": {
+      "type": "object",
+      "required": ["name", "slug", "ids", "active"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "slug": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
+        "ids": {
+          "type": "object",
+          "description": "Stable external IDs. Use null for an ID not yet confirmed.",
+          "properties": {
+            "wikidata": {"type": ["string", "null"], "pattern": "^Q[0-9]+$"},
+            "musicbrainz": {"type": ["string", "null"]},
+            "viaf": {"type": ["string", "null"]},
+            "isni": {"type": ["string", "null"]},
+            "bnf": {"type": ["string", "null"]}
+          },
+          "additionalProperties": false
+        },
+        "variants": {"type": "array", "items": {"type": "string"}},
+        "namesakes": {"type": "array", "items": {"type": "string"}},
+        "active": {
+          "type": "array",
+          "items": {"type": "integer", "minimum": 1800, "maximum": 2100},
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "_why": {"$ref": "#/$defs/evidence"}
+      }
+    },
+    "roles": {
+      "type": "object",
+      "required": ["primary", "in_scope"],
+      "additionalProperties": false,
+      "properties": {
+        "primary": {"$ref": "#/$defs/role"},
+        "in_scope": {"type": "array", "items": {"$ref": "#/$defs/role"}, "minItems": 1},
+        "out_of_scope": {"type": "array", "items": {"$ref": "#/$defs/role"}},
+        "_why": {"$ref": "#/$defs/evidence"}
+      }
+    },
+    "canon_model": {
+      "type": "object",
+      "required": ["unit", "container", "container_has_full_listing"],
+      "additionalProperties": false,
+      "properties": {
+        "unit": {"$ref": "#/$defs/unit"},
+        "version_levels": {"type": "array", "items": {"enum": ["work", "recording", "release"]}},
+        "container": {"$ref": "#/$defs/container"},
+        "container_has_full_listing": {
+          "type": "boolean",
+          "description": "True when a container's full listing can be fetched, which enables container-as-unit completeness checks."
+        },
+        "_why": {"$ref": "#/$defs/evidence"}
+      }
+    },
+    "tiers": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {"pattern": "^[A-Z]$"},
+      "additionalProperties": {
+        "type": "object",
+        "required": ["label", "target_missing"],
+        "additionalProperties": false,
+        "properties": {
+          "label": {"type": "string"},
+          "target_missing": {
+            "description": "Stop when the estimated missing share falls below this, e.g. 0.01. report_only = measure but never stop on it.",
+            "oneOf": [{"type": "number", "exclusiveMinimum": 0, "maximum": 1}, {"const": "report_only"}]
+          },
+          "_why": {"$ref": "#/$defs/evidence"}
+        }
+      }
+    },
+    "registers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "tiers", "access", "role"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string"},
+          "tiers": {"type": "array", "items": {"type": "string", "pattern": "^[A-Z]$"}},
+          "access": {"$ref": "#/$defs/access"},
+          "role": {"enum": ["ground_truth", "independent_check", "partial"]},
+          "url": {"type": "string"},
+          "_why": {"$ref": "#/$defs/evidence"}
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "lineage", "reliability", "access"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+          "kind": {"enum": ["structured", "semi", "prose"]},
+          "lineage": {"type": "string", "description": "Sources that copy each other share a lineage; capture-recapture groups by it."},
+          "reliability": {"type": "number", "minimum": 0, "maximum": 1},
+          "access": {"$ref": "#/$defs/access"},
+          "url": {"type": "string"},
+          "extractor": {"type": "string"},
+          "publishable": {"type": "boolean", "description": "Whether facts taken from this source may be included in a public release.", "default": true},
+          "_why": {"$ref": "#/$defs/evidence"}
+        }
+      }
+    },
+    "lexicon": {
+      "type": "object",
+      "additionalProperties": {"type": "string"},
+      "description": "Paths, relative to the pack folder, of alias and transliteration tables."
+    },
+    "collaborators": {
+      "type": "object",
+      "additionalProperties": {"type": "array", "items": {"type": "string"}}
+    },
+    "verification": {
+      "type": "object",
+      "required": ["method"],
+      "additionalProperties": false,
+      "properties": {
+        "method": {"enum": ["voice", "credit", "score_style", "none"]},
+        "references": {"type": "string"},
+        "confusables": {"type": "array", "items": {"type": "string"}},
+        "_why": {"$ref": "#/$defs/evidence"}
+      }
+    },
+    "checksums": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["scope", "total", "source"],
+        "additionalProperties": false,
+        "properties": {
+          "scope": {"type": "string"},
+          "total": {"type": "integer", "minimum": 0},
+          "breakdown": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+          "source": {"type": "string"}
+        }
+      }
+    },
+    "taxonomies": {"type": "object", "additionalProperties": {"type": "string"}},
+    "popularity_signals": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contemporary": {"type": "array", "items": {"type": "string"}},
+        "enduring": {"type": "array", "items": {"type": "string"}},
+        "penetration": {"type": "array", "items": {"type": "string"}},
+        "esteem": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "legal": {
+      "type": "object",
+      "required": ["purpose", "lyrics", "audio"],
+      "additionalProperties": false,
+      "properties": {
+        "purpose": {"enum": ["personal", "personal_then_foss", "public"]},
+        "lyrics": {"enum": ["none", "first_line_only", "private_full"]},
+        "audio": {"enum": ["none", "derived_features_only"]},
+        "_why": {"$ref": "#/$defs/evidence"}
+      }
+    },
+    "budget": {
+      "type": "object",
+      "required": ["crawl_requests_per_round", "per_domain_rps"],
+      "additionalProperties": false,
+      "properties": {
+        "crawl_requests_per_round": {"type": "integer", "minimum": 1},
+        "per_domain_rps": {"type": "number", "exclusiveMinimum": 0, "maximum": 10},
+        "model_spend_usd": {"type": ["number", "null"]},
+        "review_hours_per_week": {"type": ["number", "null"]}
+      }
+    },
+    "open_questions": {"type": "array", "items": {"type": "string"}}
+  }
+}

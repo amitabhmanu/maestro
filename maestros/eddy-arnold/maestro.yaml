@@ -1,0 +1,70 @@
+# DRAFT pack: values are proposals from the design discussion, to be confirmed by the profiler.
+version: 1
+status: draft
+identity:
+  name: Eddy Arnold
+  slug: eddy-arnold
+  ids: {wikidata: null, musicbrainz: null, viaf: null}
+  variants: [Richard Edward Arnold, "The Tennessee Plowboy"]
+  namesakes: []
+  active: [1944, 2008]
+roles:
+  primary: singer
+  in_scope: [singer]
+  out_of_scope: [actor]
+canon_model:
+  unit: recording
+  version_levels: [work, recording, release]
+  container: session
+  container_has_full_listing: true
+  _why:
+    reason: >-
+      A 60-year RCA career with re-recordings of his own hits makes the recording, not the song,
+      the unit. Session discographies list every take, so sessions are the checkable container.
+    confidence: 0.7
+tiers:
+  A: {label: "Commercially issued studio recordings", target_missing: 0.01}
+  B: {label: "Unissued studio recordings", target_missing: 0.05}
+  C: {label: "Radio transcriptions, TV and live recordings", target_missing: report_only}
+registers:
+  - name: Eddy Arnold Discography 1944-1996 (Michael D. Freda)
+    tiers: [A, B]
+    access: print
+    role: ground_truth
+    url: https://buecher.de/artikel/buch/eddy-arnold-discography-1944-1996/25562320
+  - name: Bear Family box sets (e.g. There's Been a Change in Me 1951-55)
+    tiers: [A, B]
+    access: print
+    role: independent_check
+    url: https://www.bear-family.com/arnold-eddy-there-s-been-a-change-7-cd-deluxe-box-set.html
+sources:
+  - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api}
+  - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api}
+  - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api}
+  - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable}
+  - {id: praguefrank, kind: semi, lineage: ruppli, reliability: 0.85, access: crawlable, url: https://countrydiscography.blogspot.com}
+verification:
+  method: voice
+  references: gold/voice_refs/
+  confusables: []
+taxonomies:
+  style: country_subgenre
+popularity_signals:
+  contemporary: [billboard_country, billboard_hot100]
+  enduring: [streaming, lastfm]
+  penetration: [covers, film_tv_use]
+  esteem: [hall_of_fame, critics_lists]
+legal:
+  purpose: personal_then_foss
+  lyrics: first_line_only
+  audio: derived_features_only
+budget:
+  crawl_requests_per_round: 3000
+  per_domain_rps: 0.5
+  model_spend_usd: null
+  review_hours_per_week: null
+open_questions:
+  - Confirm Wikidata, MusicBrainz and VIAF IDs.
+  - Does Praguefrank's country discography cover Eddy Arnold's sessions?
+  - Should his film and TV appearances be in Tier C or out of scope?
+  - Which soundalikes or misattributions are known?

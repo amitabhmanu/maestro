@@ -1,0 +1,65 @@
+# DRAFT pack: values are proposals from the design discussion, to be confirmed by the profiler.
+version: 1
+status: draft
+identity:
+  name: Jean Wiener
+  slug: jean-wiener
+  ids: {wikidata: null, musicbrainz: null, viaf: null, bnf: null}
+  variants: [Jean Wiéner]
+  namesakes: []
+  active: [1920, 1982]
+roles:
+  primary: composer
+  in_scope: [composer]
+  out_of_scope: [instrumentalist]
+  _why:
+    reason: >-
+      Composer-first canon. His piano-duo recordings with Clément Doucet are a candidate
+      for a later instrumentalist tier.
+    confidence: 0.6
+canon_model:
+  unit: work
+  version_levels: [work, recording, release]
+  container: score
+  container_has_full_listing: false
+  _why:
+    reason: No catalogue of works exists and most of his music is unpublished, so containers cannot be checked for completeness.
+    confidence: 0.7
+tiers:
+  A: {label: "Concert, stage and published works", target_missing: 0.05}
+  B: {label: "Film scores (300+ feature and short films)", target_missing: 0.05}
+  C: {label: "Individual film cues, radio themes and unpublished pieces", target_missing: report_only}
+registers:
+  - name: data.bnf.fr work records
+    tiers: [A, B]
+    access: api
+    role: partial
+    url: https://data.bnf.fr
+sources:
+  - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api}
+  - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.75, access: api}
+  - {id: bnf, kind: structured, lineage: bnf, reliability: 0.9, access: api, url: https://data.bnf.fr}
+  - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable, url: https://en.wikipedia.org/wiki/Jean_Wiener}
+verification:
+  method: credit
+taxonomies:
+  style: classical_form_and_film_genre
+popularity_signals:
+  contemporary: [film_success, press]
+  enduring: [streaming, concert_programming]
+  penetration: [recordings_by_others, film_reuse]
+  esteem: [musicology]
+legal:
+  purpose: personal_then_foss
+  lyrics: none
+  audio: derived_features_only
+budget:
+  crawl_requests_per_round: 3000
+  per_domain_rps: 0.5
+  model_spend_usd: null
+  review_hours_per_week: null
+open_questions:
+  - Confirm Wikidata, MusicBrainz, VIAF and BnF IDs, and rule out namesakes.
+  - Is the SACEM repertoire searchable for his works, and on what terms?
+  - Which film database is the best source for his 300+ film credits?
+  - Should the Wiener-Doucet duo recordings be in scope as an instrumentalist tier?
