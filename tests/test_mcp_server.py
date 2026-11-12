@@ -7,7 +7,8 @@ def test_tools_are_registered():
     tools = asyncio.run(mcp_server.server.list_tools())
     names = {t.name for t in tools}
     assert names == {"pack_summary", "create_entity", "upsert_claim", "merge_entities",
-                     "enqueue_crawl", "query_graph", "coverage_report", "find_gaps"}
+                     "enqueue_crawl", "query_graph", "coverage_report", "find_gaps",
+                     "resolve_entities", "list_reviews", "decide_review", "completeness_report"}
 
 
 def test_tools_run_against_a_store(pg_server, monkeypatch):
@@ -23,6 +24,9 @@ def test_tools_run_against_a_store(pg_server, monkeypatch):
         assert mcp_server.upsert_claim(rec, "year", "discogs", value=1965) > 0
         assert mcp_server.coverage_report()["maestro"] == "eddy-arnold"
         assert mcp_server.query_graph("SELECT count(*) AS n FROM entity")[0]["n"] >= 1
+        assert mcp_server.resolve_entities() == {"merged": {}, "queued": {}}
+        assert mcp_server.list_reviews() == []
+        assert mcp_server.completeness_report()["maestro"] == "eddy-arnold"
     finally:
         mcp_server._store().close()
         mcp_server._store.cache_clear()

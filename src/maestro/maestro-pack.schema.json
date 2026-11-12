@@ -168,7 +168,32 @@
           "scope": {"type": "string"},
           "total": {"type": "integer", "minimum": 0},
           "breakdown": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
-          "source": {"type": "string"}
+          "source": {"type": "string"},
+          "filter": {
+            "description": "Which canon units the published total counts, so the completeness engine can check it. Without a filter the checksum is reported but not checked.",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "tiers": {"type": "array", "items": {"type": "string", "pattern": "^[A-Z]$"}, "minItems": 1},
+              "years": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2, "description": "Inclusive range; a unit's own year, else its container's."},
+              "collaborator": {
+                "type": "object", "required": ["role", "name"], "additionalProperties": false,
+                "properties": {"role": {"type": "string"}, "name": {"type": "string"}}
+              },
+              "contained": {"type": "boolean", "description": "true: only units that belong to a container; false: only units that do not."}
+            }
+          },
+          "breakdown_by": {
+            "description": "How to split the observed count to compare with `breakdown`: by the number of people credited in `role`. Each bucket is [min, max]; max null means no upper bound.",
+            "type": "object", "required": ["role", "buckets"], "additionalProperties": false,
+            "properties": {
+              "role": {"type": "string"},
+              "buckets": {"type": "object", "additionalProperties": {
+                "type": "array", "minItems": 2, "maxItems": 2,
+                "prefixItems": [{"type": "integer", "minimum": 0}, {"type": ["integer", "null"]}]}}
+            }
+          },
+          "tolerance": {"type": "number", "minimum": 0, "maximum": 1, "description": "Relative difference still counted as a match (default 0.02)."}
         }
       }
     },

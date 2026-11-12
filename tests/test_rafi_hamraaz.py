@@ -44,10 +44,27 @@ def test_parse_film():
 
 def test_person_page_queues_films_in_year_range(store_for):
     s = store_for("rafi")
-    ctx = ExtractContext(s, {}, page("person.html", hamraaz.BASE + "person.php?id=4357"), 0, {"years": "1944-1950"})
+    raw = s.record_raw_page("u", 200, "x", "p")
+    ctx = ExtractContext(s, {}, page("person.html", hamraaz.BASE + "person.php?id=4357"), raw, {"years": "1944-1950"})
     hamraaz.extract(ctx)
     urls = [r["url"] for r in s.query_graph("SELECT url FROM job ORDER BY id")]
     assert urls == [hamraaz.BASE + "film.php?id=11"]
+
+
+def test_maestro_filmography_records_roles_and_gaps(store_for):
+    s = store_for("rafi")
+    raw = s.record_raw_page("u", 200, "x", "p")
+    hamraaz.extract(ExtractContext(s, {}, page("person.html", hamraaz.BASE + "person.php?id=4357"), raw))
+    roles = s.query_graph(
+        """SELECT e.label, c.value ->> 'role' AS role FROM claim c JOIN entity e ON e.id = c.entity_id
+           WHERE c.field = 'credit' ORDER BY e.id, role""")
+    assert [(r["label"], r["role"]) for r in roles] == [
+        ("Film One", "singer"), ("Film Two", "actor"), ("Film Two", "singer"), ("Shelved Film", "singer")]
+    # No film page fetched yet: every film is a gap. Once Film One is read it holds Rafi's song.
+    assert len([g for g in s.find_gaps() if g["kind"] == "empty_container"]) == 3
+    hamraaz.extract(ExtractContext(s, {}, page("film.html", hamraaz.BASE + "film.php?id=11"), raw))
+    gaps = [g["label"] for g in s.find_gaps() if g["kind"] == "empty_container"]
+    assert gaps == ["Film Two", "Shelved Film"]
 
 
 def test_film_page_writes_canon(store_for):
@@ -68,3 +85,36 @@ def test_film_page_writes_canon(store_for):
     # The maestro carries the database's person id, and the film credits him.
     assert s.entity_by_xref("hfgk_online", "4357") == s.maestro_entity()
     assert not [g for g in s.find_gaps() if g["kind"] == "empty_container"]
+
+
+def test_film_and_person_with_the_same_id_stay_apart(store_for):
+    # HFGK numbers films and people separately: film 502 is not person 502 (the film's composer).
+    s = store_for("rafi")
+    raw = s.record_raw_page("u", 200, "x", "p")
+    hamraaz.extract(ExtractContext(s, {}, page("film.html", hamraaz.BASE + "film.php?id=502"), raw))
+    film = s.entity_by_xref("hfgk_online", "502", "container")
+    composer = s.entity_by_xref("hfgk_online", "502", "person")
+    assert film and composer and film != composer
+    types = s.query_graph("SELECT type FROM entity WHERE id IN (%(a)s, %(b)s) ORDER BY type", {"a": film, "b": composer})
+    assert [r["type"] for r in types] == ["container", "person"]
+
+
+def test_replay_rebuilds_a_store_from_the_cache(store_for, tmp_path):
+    from maestro.crawl.runner import import_page, replay
+
+    old, new = store_for("rafi"), store_for("rafi")
+    raw = old.record_raw_page(hamraaz.BASE + "film.php?id=11", 200, "x", str(FIX / "film.html"))
+    job = old.enqueue_crawl(hamraaz.BASE + "film.php?id=11", "hamraaz", "container_sweep")
+    old.conn.execute("UPDATE job SET status = 'done', raw_page_id = %s WHERE id = %s", (raw, job["id"]))
+    import_page(old, "mohdrafi", "http://www.mohdrafi.com/x", ROOT / "tests" / "fixtures" / "mohdrafi" / "language.tsv",
+                tmp_path, {"tier": "B", "language": "Telugu"})
+    import_page(old, "mohdrafi", "http://www.mohdrafi.com/x", ROOT / "tests" / "fixtures" / "mohdrafi" / "language.tsv",
+                tmp_path, {"tier": "B", "language": "Telugu"})  # the same file again: replayed once
+    stats = replay(old, new)
+    assert stats.as_dict() == {"done": 2, "failed": 0, "skipped": 0}
+    assert new.coverage_report()["tiers"]["A"]["observed"] == 1
+    assert new.coverage_report()["tiers"]["B"]["observed"] == old.coverage_report()["tiers"]["B"]["observed"] > 0
+    assert new.query_graph("SELECT count(*) AS n FROM job WHERE status = 'queued'")[0]["n"] == 0
+    # The new store can be replayed in turn.
+    assert len(new.query_graph("SELECT id FROM job")) == 1
+    assert len(new.query_graph("SELECT id FROM import_log")) == 1

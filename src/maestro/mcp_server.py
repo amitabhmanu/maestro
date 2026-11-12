@@ -120,6 +120,39 @@ def find_gaps(limit: int = 50) -> list[dict[str, Any]]:
     return _store().find_gaps(limit)
 
 
+@server.tool()
+def resolve_entities() -> dict[str, Any]:
+    """Run entity resolution: merge clear duplicates across sources, queue unclear pairs for review."""
+    from maestro.resolve import resolve
+
+    return resolve(_store()).as_dict()
+
+
+@server.tool()
+def list_reviews(limit: int = 30, kind: str | None = None) -> list[dict[str, Any]]:
+    """Open review items (ambiguous merges and other judgement calls), highest priority first."""
+    from maestro.resolve import open_reviews
+
+    return open_reviews(_store(), limit, kind)
+
+
+@server.tool()
+def decide_review(item_id: int, decision: str, note: str | None = None, keep_id: int | None = None) -> dict[str, Any]:
+    """Record the user's decision on a review item: merge, distinct or dismiss. Only call this with the
+    user's own decision; the claim is recorded with source 'user'."""
+    from maestro.resolve import decide_review as decide
+
+    return {"item": item_id, "decision": decision, "claim_id": decide(_store(), item_id, decision, note, keep_id)}
+
+
+@server.tool()
+def completeness_report() -> dict[str, Any]:
+    """Tier estimates (capture-recapture), published-count checks and container checks."""
+    from maestro.completeness import completeness_report as report
+
+    return report(_store())
+
+
 def main() -> None:
     server.run("stdio")
 

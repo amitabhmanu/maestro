@@ -85,14 +85,20 @@ verification:
   references: gold/voice_refs/
   confusables: [Anwar, Shabbir Kumar, Mahendra Kapoor, Sonu Nigam (tribute covers)]
 checksums:
-  - {scope: "years 1944-1950", total: 341, breakdown: {solo: 132, duet: 169, three_or_more: 40}, source: "https://atulsongaday.me/2014/08/20/zahe-kismat-teri-mehfil-se-jo-paighaam-aaya-hai/"}
-  - {scope: "composer Naushad", total: 149, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
-  - {scope: "composer Laxmikant-Pyarelal", total: 388, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
-  - {scope: "composer Shankar-Jaikishan", total: 341, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
-  - {scope: "composer O. P. Nayyar", total: 197, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
-  - {scope: "Hindi film songs (Shahid Rafi and Sujata Dev, 2015)", total: 4425, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
-  - {scope: "non-Hindi film songs (Shahid Rafi and Sujata Dev, 2015)", total: 310, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
-  - {scope: "non-film songs (Shahid Rafi and Sujata Dev, 2015)", total: 328, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
+  # `filter` makes a checksum machine-checkable (see the pack schema); the report compares it with the canon.
+  - scope: "years 1944-1950"
+    total: 341
+    breakdown: {solo: 132, duet: 169, three_or_more: 40}
+    source: "https://atulsongaday.me/2014/08/20/zahe-kismat-teri-mehfil-se-jo-paighaam-aaya-hai/"
+    filter: {tiers: [A, C], years: [1944, 1950]}
+    breakdown_by: {role: singer, buckets: {solo: [1, 1], duet: [2, 2], three_or_more: [3, null]}}
+  - {scope: "composer Naushad", total: 149, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi", filter: {tiers: [A, C], collaborator: {role: composer, name: Naushad}}, tolerance: 0.05}
+  - {scope: "composer Laxmikant-Pyarelal", total: 388, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi", filter: {tiers: [A, C], collaborator: {role: composer, name: Laxmikant-Pyarelal}}, tolerance: 0.05}
+  - {scope: "composer Shankar-Jaikishan", total: 341, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi", filter: {tiers: [A, C], collaborator: {role: composer, name: Shankar-Jaikishan}}, tolerance: 0.05}
+  - {scope: "composer O. P. Nayyar", total: 197, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi", filter: {tiers: [A, C], collaborator: {role: composer, name: O. P. Nayyar}}, tolerance: 0.05}
+  - {scope: "Hindi film songs (Shahid Rafi and Sujata Dev, 2015)", total: 4425, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi", filter: {tiers: [A, C]}, tolerance: 0.05}
+  - {scope: "non-Hindi film songs (Shahid Rafi and Sujata Dev, 2015)", total: 310, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi", filter: {tiers: [B], contained: true}}
+  - {scope: "non-film songs (Shahid Rafi and Sujata Dev, 2015)", total: 328, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi", filter: {tiers: [B], contained: false}}
 taxonomies:
   style: raga
 popularity_signals:

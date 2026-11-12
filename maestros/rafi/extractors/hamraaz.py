@@ -1,7 +1,9 @@
 """Extractor for the HFGK Online database V2.0 (hamraaz.org/filmssite).
 
 Two page kinds:
-  person.php?id=N  a filmography: queues one film job per film (optionally limited by year)
+  person.php?id=N  a filmography: queues one film job per film (optionally limited by year). On Rafi's
+                   own page it also records each film and Rafi's roles in it, so a film that credits
+                   him but yields no Rafi song shows up as a gap.
   film.php?id=N    a film with its full song list: writes the film, its songs and every credit
 
 Song-level singers, lyricists and composers come from the song rows; actors shown with a song
@@ -139,13 +141,36 @@ def _person(store, pid: str | None, name: str) -> int | None:
     return store.find_or_create_by_xref("person", SOURCE, pid, name)
 
 
+PERSON_PAGE_ROLES = {"singer": "singer", "artists": "actor", "lyricist": "lyricist",
+                     "music director": "composer", "director": "director", "producer": "producer"}
+
+
+def _record_filmography_entry(ctx, film: dict) -> None:
+    store = ctx.store
+    kw = dict(source_id=SOURCE, extractor="hamraaz", extractor_version="1", raw_page_id=ctx.raw_page_id)
+    fid = store.find_or_create_by_xref("container", SOURCE, film["id"], film["title"])
+    store.upsert_claim(fid, "title", value=film["title"], **kw)
+    if film["year"]:
+        store.upsert_claim(fid, "year", value=film["year"], **kw)
+    maestro = store.maestro_entity()
+    for role in film["roles"]:
+        mapped = PERSON_PAGE_ROLES.get(role.lower())
+        if mapped:
+            store.upsert_claim(fid, "credit", value={"role": mapped}, ref_entity_id=maestro, **kw)
+        else:
+            store.upsert_claim(fid, "credit_unmapped", value={"role": role}, ref_entity_id=maestro, **kw)
+
+
 def extract(ctx) -> None:
     url = ctx.page.url
     if "person.php" in url:
         years = _year_range(ctx.options.get("years"))
+        is_maestro = re.search(r"id=(\d+)", url).group(1) == MAESTRO_PERSON_ID
         for film in parse_person(ctx.page.text):
             if years and (film["year"] is None or not years[0] <= film["year"] <= years[1]):
                 continue
+            if is_maestro:
+                _record_filmography_entry(ctx, film)
             # Earlier films first, so a partial run covers whole years.
             priority = -(film["year"] or 9999)
             ctx.enqueue(urljoin(BASE, f"film.php?id={film['id']}"), "hamraaz", "container_sweep", priority=priority)

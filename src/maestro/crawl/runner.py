@@ -14,6 +14,8 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+from psycopg.types.json import Jsonb
+
 from maestro.crawl.fetcher import Disallowed, Fetcher, Page
 from maestro.store import Store
 
@@ -27,8 +29,11 @@ class ExtractContext:
     page: Page
     raw_page_id: int
     options: dict[str, str] = field(default_factory=dict)
+    follow: bool = True  # False during a replay: follow-up jobs are not queued
 
     def enqueue(self, url: str, extractor: str, purpose: str, **kw: Any) -> dict[str, Any]:
+        if not self.follow:
+            return {}
         return self.store.enqueue_crawl(url, extractor, purpose, **kw)
 
 
@@ -68,6 +73,8 @@ def import_page(
         path.write_bytes(body)
     page = Page(url=url, status=200, body=body, sha256=digest, path=path)
     raw_id = store.record_raw_page(url, 200, digest, str(path))
+    store.conn.execute("INSERT INTO import_log (raw_page_id, extractor, options) VALUES (%s, %s, %s)",
+                       (raw_id, extractor, Jsonb(dict(options or {}))))
     job = {"id": None, "url": url, "extractor": extractor, "purpose": "import"}
     module.extract(ExtractContext(store, job, page, raw_id, dict(options or {})))
     return raw_id
@@ -109,5 +116,51 @@ def run_jobs(store: Store, fetcher: Fetcher, *, max_jobs: int, options: dict[str
         except Exception as exc:  # keep the run going; the job records why it failed
             log.exception("job %s failed", job["id"])
             store.finish_job(job["id"], status="failed", error=f"{type(exc).__name__}: {exc}")
+            stats.failed += 1
+    return stats
+
+
+def replay(source: Store, target: Store, *, root: Path | None = None) -> RunStats:
+    """Re-run extractors over every page `source` has already fetched or imported, writing into `target`.
+
+    Use it after an extractor or core fix: the raw cache is re-read, nothing is fetched. Only the latest
+    fetch per (url, extractor) is replayed; every distinct imported file is (one page may be pasted in
+    parts). Imports keep the options they were loaded with, and follow-up jobs are not queued. `root` resolves relative cache paths (default: the working directory).
+    """
+    rows = source.conn.execute(
+        """SELECT DISTINCT ON (url, extractor, part) * FROM (
+               SELECT r.id AS raw_page_id, r.url, r.http_status, r.sha256, r.path, j.extractor,
+                      '{}'::jsonb AS options, j.purpose, '' AS part
+               FROM job j JOIN raw_page r ON r.id = j.raw_page_id WHERE j.status = 'done'
+               UNION ALL
+               SELECT r.id, r.url, r.http_status, r.sha256, r.path, i.extractor, i.options, 'import', r.sha256
+               FROM import_log i JOIN raw_page r ON r.id = i.raw_page_id
+           ) pages ORDER BY url, extractor, part, raw_page_id DESC"""
+    ).fetchall()
+    rows.sort(key=lambda r: r["raw_page_id"])
+    pack_dir = target.pack.path.parent
+    extractors: dict[str, ModuleType] = {}
+    stats = RunStats()
+    for r in rows:
+        try:
+            module = extractors.get(r["extractor"]) or load_extractor(pack_dir, r["extractor"])
+            extractors[r["extractor"]] = module
+            path = Path(r["path"])
+            if root is not None and not path.is_absolute():
+                path = root / path
+            page = Page(url=r["url"], status=r["http_status"] or 200, body=path.read_bytes(), sha256=r["sha256"], path=path)
+            raw_id = target.record_raw_page(r["url"], page.status, r["sha256"], r["path"])
+            if r["purpose"] == "import":
+                target.conn.execute("INSERT INTO import_log (raw_page_id, extractor, options) VALUES (%s, %s, %s)",
+                                    (raw_id, r["extractor"], Jsonb(r["options"])))
+            else:  # keep the target replayable in turn
+                target.conn.execute(
+                    """INSERT INTO job (url, extractor, purpose, status, attempts, fetched_at, raw_page_id)
+                       VALUES (%s, %s, %s, 'done', 1, now(), %s)""", (r["url"], r["extractor"], r["purpose"], raw_id))
+            job = {"id": None, "url": r["url"], "extractor": r["extractor"], "purpose": r["purpose"]}
+            module.extract(ExtractContext(target, job, page, raw_id, dict(r["options"]), follow=False))
+            stats.done += 1
+        except Exception:
+            log.exception("replay of %s failed", r["url"])
             stats.failed += 1
     return stats
