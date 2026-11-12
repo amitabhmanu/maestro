@@ -57,7 +57,8 @@ Inconsistency to resolve: Wikipedia's prose says 19 No. 1 hits within 57 consecu
 | --- | --- | --- | --- | --- | --- | --- |
 | Freda, *Eddy Arnold Discography 1944–1996* | Every session and release, incl. 104 unreleased | Register | freda | Print | Structured (print) | Facts yes |
 | Bear Family box sets | Complete recordings by period, with notes | Careful secondary | bearfamily | Print / product pages | Semi | Facts yes |
-| Praguefrank's Country Discographies | Session data for many country artists (Arnold coverage unconfirmed) | Careful secondary | ruppli | Crawlable | Semi | Facts yes |
+| Praguefrank's Country Discographies | Session data for many country artists (Arnold coverage unconfirmed) | Careful secondary | ruppli | robots.txt blocks crawling; check or save by hand | Semi | Facts yes |
+| [DAHR (UCSB)](https://adp.library.ucsb.edu/names/100566) | 87 Victor recordings 1944–1953: matrix number, first recording date, title | Label ledgers | victor_ledgers | Crawlable | Structured | Facts yes |
 | Wikipedia discography | Albums, singles, chart peaks | Aggregator | wiki | Crawlable | Semi | Yes (CC BY-SA) |
 | MusicBrainz, Discogs | Releases, tracks | Aggregator | musicbrainz / discogs | API | Structured | MusicBrainz yes (CC0); Discogs check terms |
 
@@ -77,4 +78,4 @@ Inconsistency to resolve: Wikipedia's prose says 19 No. 1 hits within 57 consecu
 
 ## Open questions
 
-- Does Praguefrank cover Arnold's sessions?
+- Does Praguefrank have Arnold's sessions? Its robots.txt blocks crawling, so check [the Arnold label page](https://countrydiscography.blogspot.com/search/label/Arnold%20Eddy) by hand.
