@@ -105,3 +105,14 @@ def test_near_titles_in_one_film_from_two_sources_go_to_review(store_for):
     stats = resolve(s).as_dict()
     assert stats["merged"] == {"container": 1} and stats["queued"] == {"unit": 1}
     assert open_reviews(s)[0]["kind"] == "unit_near_title"
+
+
+def test_joint_credits_are_not_name_variants(store_for):
+    s = store_for("rafi")
+    a = person(s, "hfgk_online", "40", "Hasrat Jaipuri")
+    b = person(s, "hfgk_online", "41", "Hasrat Jaipuri + Neeraj")
+    f = film(s, "hfgk_online", "500", "Film", 1965)
+    song(s, "hfgk_online", "501", "One", f, a)
+    song(s, "hfgk_online", "502", "Two", f, b)
+    resolve(s)
+    assert open_reviews(s) == []

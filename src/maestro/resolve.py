@@ -249,6 +249,14 @@ def _role_counts(store: Store) -> dict[int, dict[str, int]]:
     return out
 
 
+_JOINT = re.compile(r"\s*(\+|&|/|\band\b)\s*|[^\s]-[^\s]")
+
+
+def _is_joint_credit(label: str) -> bool:
+    """A credit naming two or more people ("Hasrat Jaipuri + Neeraj", "Sardar Malik-Premnath")."""
+    return bool(_JOINT.search(label or ""))
+
+
 def resolve_people(store: Store, norm: Normaliser, stats: ResolveStats) -> None:
     groups, distinct = Groups(store), _distinct_pairs(store)
     maestro = store.maestro_entity()
@@ -275,6 +283,8 @@ def resolve_people(store: Store, norm: Normaliser, stats: ResolveStats) -> None:
                 short, long_ = sorted((ka.split(), kb.split()), key=len)
                 if len(short) > 2 or long_[: len(short)] != short:
                     continue
+                if _is_joint_credit(ra["label"]) or _is_joint_credit(rb["label"]):
+                    continue  # "A + B" or "A-B" names two people, not a variant of A
                 a, b = groups.find(ra["id"]), groups.find(rb["id"])
                 if a == b or tuple(sorted((a, b))) in distinct:
                     continue
