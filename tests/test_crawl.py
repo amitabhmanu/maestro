@@ -101,3 +101,21 @@ def test_runner_runs_jobs_and_records_failures(tmp_path, store_for):
     assert jobs["https://ex.org/missing"] == ("failed", "HTTP 404")
     labels = sorted(r["label"] for r in s.query_graph("SELECT label FROM entity WHERE type = 'song'"))
     assert labels == ["child", "seed"]
+
+
+def test_busy_server_is_retried_with_backoff(tmp_path):
+    web = FakeWeb({"https://ex.org/robots.txt": b"", "https://ex.org/a": b"A"})
+    busy = [503, 429]
+    real_open = web.open
+
+    def open_(req, timeout):
+        if req.full_url.endswith("/a") and busy:
+            web.calls.append((req.full_url, web.now))
+            raise urllib.error.HTTPError(req.full_url, busy.pop(0), "Busy", {}, io.BytesIO(b""))
+        return real_open(req, timeout)
+
+    f = Fetcher(tmp_path / "raw", 100, opener=open_, clock=web.clock, sleep=web.sleep)
+    page = f.fetch("https://ex.org/a")
+    assert page.status == 200 and page.text == "A"
+    assert [u for u, _ in web.calls].count("https://ex.org/a") == 3
+    assert 5.0 in web.slept and 10.0 in web.slept

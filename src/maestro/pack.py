@@ -68,6 +68,13 @@ def _cross_checks(data: dict[str, Any]) -> list[str]:
         if unknown:
             problems.append(f"register {reg['name']!r} names unknown tiers {sorted(unknown)}")
 
+    for src in data["sources"]:
+        for key in ("default_tier", "live_tier"):
+            if src.get(key) and src[key] not in tiers:
+                problems.append(f"source {src['id']!r} {key} {src[key]!r} is not a tier")
+        if src.get("live_tier") and not src.get("default_tier"):
+            problems.append(f"source {src['id']!r} has live_tier without default_tier")
+
     ids = [s["id"] for s in data["sources"]]
     dupes = {i for i in ids if ids.count(i) > 1}
     if dupes:

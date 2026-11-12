@@ -131,6 +131,9 @@ _MONTHS = {m: i for i, m in enumerate(
     "january february march april may june july august september october november december".split(), 1)}
 
 
+_TITLE_WORDS = {"OLD", "THE", "OF", "IN", "ON", "MY", "TO", "AND", "YOU", "ME", "ROOM", "ROAD", "MILE"}  # "THE WRECK OF THE OLD 97"
+
+
 def _is_release_start(tokens: list[str], i: int) -> bool:
     t = tokens[i]
     if re.search(r"[a-z]", t) or t[0].isdigit() and not re.match(r"^\d+[A-Z']*$", t) and "-" in t:
@@ -140,9 +143,28 @@ def _is_release_start(tokens: list[str], i: int) -> bool:
     if re.match(r"^[A-Z]{1,4}-?\d", t):  # LSP-2337, K14478/SE, SE-4878
         return True
     nxt = tokens[i + 1] if i + 1 < len(tokens) else ""
-    if re.match(r"^[A-Z]{2,4}$", t) and re.match(r"^\d+/?$", nxt):  # LSP 2578, SE 4878, BCD 17205
+    if re.match(r"^[A-Z]{2,4}$", t) and t not in _TITLE_WORDS and re.match(r"^\d+/?$", nxt):  # LSP 2578, BCD 17205
         return True
     return t in {"RCA", "MGM", "BMG", "BNJ"} and (nxt[:1].isdigit() or _is_release_start([nxt], 0))  # RCA 82876-70710-2, BNJ BR-101
+
+
+def issue_numbers(issues: str) -> list[str]:
+    """Catalogue numbers in a take's issue list: `20-2488 P 195 /LPM 3031 BCD-15726 Documents 1103925`
+    -> ['20-2488', 'P 195', 'LPM 3031', 'BCD-15726', '1103925']. A capitalised prefix joins the number
+    after it ("LPM 3031"); a label name with no digits ("Documents", "Quality") is dropped."""
+    text = re.sub(r"\([^)]*\)", " ", issues or "")
+    tokens = [t for t in re.split(r"[\s/]+", text) if t]
+    out, i = [], 0
+    while i < len(tokens):
+        t = tokens[i]
+        if re.fullmatch(r"[A-Z]{1,5}", t) and i + 1 < len(tokens) and tokens[i + 1][:1].isdigit():
+            out.append(f"{t} {tokens[i + 1]}")
+            i += 2
+            continue
+        if re.search(r"\d", t):
+            out.append(t)
+        i += 1
+    return out
 
 
 def _split_take(rest: str) -> tuple[str | None, str, str]:
@@ -255,6 +277,8 @@ def _extract_sessions(ctx, claim, maestro, text: str) -> None:
                 store.upsert_claim(rid, "xref", value=f"matrix:{take['matrix']}", source_id=SOURCE)
             claim(rid, "part_of", {"position": pos}, ref=sid)
             claim(rid, "issues", take["releases"] or "unissued")
+            for number in issue_numbers(take["releases"]):
+                claim(rid, "catalogue", number)
             claim(rid, "credit", {"role": "singer"}, ref=maestro)
             store.upsert_claim(rid, "tier", value="A" if take["issued"] else "B", source_id="claude",
                                kind="decided", extractor="praguefrank")

@@ -34,6 +34,10 @@ class Unit:
     credits: dict[str, set[int]] = field(default_factory=lambda: defaultdict(set))  # role -> person roots
     lineages: set[str] = field(default_factory=set)
     tier_inherited: bool = False
+    tier_default: bool = False  # tier taken from the pack's default for the unit's source
+    sources: set[str] = field(default_factory=set)
+    live: bool = False
+    pending_match: bool = False  # one of several same-title units, the choice is in review
 
 
 def load_units(store: Store, groups: Groups | None = None) -> dict[int, Unit]:
@@ -62,10 +66,10 @@ def load_units(store: Store, groups: Groups | None = None) -> dict[int, Unit]:
              AND status = 'active' AND ref_entity_id = %(maestro)s AND value ->> 'role' = ANY(%(roles)s)""",
         {"ids": ids, "maestro": params["maestro"], "roles": params["roles"]}).fetchall()}
     rows = store.conn.execute(
-        """SELECT c.entity_id, c.field, c.value, c.ref_entity_id, s.lineage, s.kind AS source_kind
+        """SELECT c.entity_id, c.field, c.value, c.ref_entity_id, c.source_id, s.lineage, s.kind AS source_kind
            FROM claim c JOIN source s ON s.id = c.source_id
            WHERE c.entity_id = ANY(%s) AND c.status = 'active'
-             AND c.field IN ('tier', 'year', 'part_of', 'credit', 'xref', 'title')""",
+             AND c.field IN ('tier', 'year', 'part_of', 'credit', 'xref', 'title', 'live')""",
         (ids,),
     ).fetchall()
     for r in rows:
@@ -79,6 +83,10 @@ def load_units(store: Store, groups: Groups | None = None) -> dict[int, Unit]:
             u.container = groups.find(r["ref_entity_id"])
         elif f == "credit" and r["ref_entity_id"] is not None:
             u.credits[(r["value"] or {}).get("role")].add(groups.find(r["ref_entity_id"]))
+        elif f == "live" and r["value"] is True:
+            u.live = True
+        if f == "title":
+            u.sources.add(r["source_id"])
         if r["source_kind"] in ("structured", "semi", "prose") and r["entity_id"] in crediting:
             u.lineages.add(r["lineage"])
 
@@ -96,7 +104,44 @@ def load_units(store: Store, groups: Groups | None = None) -> dict[int, Unit]:
         if u.tier is None and u.container is not None and len(tiers_in.get(u.container, ())) == 1:
             u.tier = next(iter(tiers_in[u.container]))
             u.tier_inherited = True
+    # Still no tier: the pack may give one per source (a release database lists only issued
+    # recordings, so its units are commercially issued, or live when the release says so).
+    defaults = {s["id"]: s for s in store.pack.data.get("sources", []) if s.get("default_tier")}
+    for u in units.values():
+        if u.tier is None:
+            for sid in sorted(u.sources & defaults.keys()):
+                src = defaults[sid]
+                u.tier = src.get("live_tier", src["default_tier"]) if u.live else src["default_tier"]
+                u.tier_default = True
+                break
+    _settle_pending_matches(store, groups, units)
     return units
+
+
+def _settle_pending_matches(store: Store, groups: Groups, units: dict[int, Unit]) -> None:
+    """A floating unit waiting in review between several same-title units (a song recorded more
+    than once) is one of them, not a new unit: for the estimate it is set aside and its lineages are
+    lent to the first candidate of the same tier that lacks them, so it counts as a recapture, not
+    as a find."""
+    cands: dict[int, list[int]] = defaultdict(list)
+    for r in store.conn.execute(
+        """SELECT subject_ids, evidence FROM review_item
+           WHERE status = 'open' AND kind = 'unit_same_title' AND evidence ? 'floating' ORDER BY id"""
+    ).fetchall():
+        f = groups.find(r["evidence"]["floating"])
+        for sid in r["subject_ids"]:
+            c = groups.find(sid)
+            if c != f and c in units:
+                cands[f].append(c)
+    for f, cs in sorted(cands.items()):
+        u = units.get(f)
+        if u is None or u.pending_match or not u.tier_default:
+            continue  # only a unit with no tier of its own (known from one source alone) is set aside
+        u.pending_match = True
+        for c in cs:
+            if not units[c].pending_match and units[c].tier == u.tier and not u.lineages <= units[c].lineages:
+                units[c].lineages |= u.lineages
+                break
 
 
 def _container_years(store: Store, groups: Groups) -> dict[int, int]:
@@ -121,6 +166,8 @@ def _people_named(store: Store, groups: Groups, norm: Normaliser, name: str) -> 
 def select_units(units: dict[int, Unit], filt: dict[str, Any], people: set[int] | None = None) -> list[Unit]:
     out = []
     for u in units.values():
+        if u.pending_match:
+            continue
         if "tiers" in filt and u.tier not in filt["tiers"]:
             continue
         if "years" in filt and (u.year is None or not filt["years"][0] <= u.year <= filt["years"][1]):
@@ -258,13 +305,15 @@ def estimate_tiers(store: Store, units: dict[int, Unit]) -> dict[str, Any]:
     """
     out = {}
     for tier, spec in store.pack.tiers.items():
-        tier_units = [u for u in units.values() if u.tier == tier]
+        tier_units = [u for u in units.values() if u.tier == tier and not u.pending_match]
         s = len(tier_units)
         lineages = sorted({lin for u in tier_units for lin in u.lineages})
         f1 = sum(1 for u in tier_units if len(u.lineages) == 1)
         f2 = sum(1 for u in tier_units if len(u.lineages) == 2)
         est: dict[str, Any] = {"label": spec["label"], "observed": s, "lineages": lineages, "f1": f1, "f2": f2,
                                "inherited_tier": sum(1 for u in tier_units if u.tier_inherited),
+                               "default_tier": sum(1 for u in tier_units if u.tier_default),
+                               "pending_match": sum(1 for u in units.values() if u.tier == tier and u.pending_match),
                                "by_lineage": {lin: sum(1 for u in tier_units if lin in u.lineages) for lin in lineages},
                                "target_missing": spec["target_missing"], "method": None}
         if s == 0 or len(lineages) < 2:
@@ -304,7 +353,8 @@ def completeness_report(store: Store) -> dict[str, Any]:
     return {
         "maestro": store.pack.slug,
         "unit_word": store.pack.unit,
-        "canon_units": len(units),
+        "canon_units": sum(1 for u in units.values() if not u.pending_match),
+        "pending_match": sum(1 for u in units.values() if u.pending_match),
         "tiers": estimate_tiers(store, units),
         "checksums": check_checksums(store, units, groups, norm),
         "containers": check_containers(store, groups) if store.pack.data["canon_model"]["container_has_full_listing"] else None,
@@ -314,7 +364,9 @@ def completeness_report(store: Store) -> dict[str, Any]:
 
 
 def render_markdown(report: dict[str, Any]) -> str:
-    lines = [f"# Completeness report: {report['maestro']}", "", f"Canon units: {report['canon_units']}", "",
+    lines = [f"# Completeness report: {report['maestro']}", "", f"Canon units: {report['canon_units']}"
+             + (f" (plus {report['pending_match']} awaiting a same-title choice in review, counted as recaptures)"
+                if report.get("pending_match") else ""), "",
              "## Tiers", "", "| Tier | Observed | Lineages | f1 | f2 | Estimate | Missing | Target |",
              "|---|---|---|---|---|---|---|---|"]
     for tier, t in report["tiers"].items():

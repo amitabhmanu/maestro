@@ -59,3 +59,20 @@ def test_report(store_for):
     assert r["tiers"]["B"]["estimate"] is None  # one lineage only
     assert r["containers"]["mismatched"] == 1 and r["containers"]["examples"][0]["stored"] == 3
     assert "| A | 3 |" in render_markdown(r)
+
+
+def test_source_default_tier(store_for):
+    s = store_for("eddy-arnold")
+    me = s.maestro_entity()
+    a = s.find_or_create_by_xref("recording", "musicbrainz", "r1", "Studio song")
+    b = s.find_or_create_by_xref("recording", "musicbrainz", "r2", "Live song")
+    for r in (a, b):
+        s.upsert_claim(r, "title", value="x", source_id="musicbrainz")
+        s.upsert_claim(r, "credit", ref_entity_id=me, value={"role": "singer"}, source_id="musicbrainz")
+    s.upsert_claim(b, "live", value=True, source_id="musicbrainz")
+    from maestro.completeness import load_units
+
+    units = load_units(s)
+    assert (units[a].tier, units[a].tier_default) == ("A", True)
+    assert units[b].tier == "C"
+    assert completeness_report(s)["tiers"]["A"]["default_tier"] == 1

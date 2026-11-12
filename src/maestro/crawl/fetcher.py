@@ -80,15 +80,23 @@ class Fetcher:
                 self._sleep(gap)
         self._last[host] = self._clock()
 
+    RETRY_STATUS = (429, 503)  # the server asks us to slow down (MusicBrainz answers 503 when busy)
+    RETRIES = 3
+
     def _get(self, url: str) -> tuple[int, bytes]:
         host = urlsplit(url).netloc
-        self._wait_turn(host)
         req = urllib.request.Request(url, headers={"User-Agent": self.user_agent})
-        try:
-            with self._open(req, timeout=60) as resp:
-                return resp.status, resp.read()
-        except urllib.error.HTTPError as exc:
-            return exc.code, exc.read() if exc.fp else b""
+        for attempt in range(self.RETRIES + 1):
+            self._wait_turn(host)
+            try:
+                with self._open(req, timeout=60) as resp:
+                    return resp.status, resp.read()
+            except urllib.error.HTTPError as exc:
+                if exc.code not in self.RETRY_STATUS or attempt == self.RETRIES:
+                    return exc.code, exc.read() if exc.fp else b""
+                after = (exc.headers or {}).get("Retry-After", "")
+                self._sleep(float(after) if after.isdigit() else 5.0 * 2 ** attempt)
+        raise AssertionError("unreachable")
 
     def allowed(self, url: str) -> bool:
         parts = urlsplit(url)

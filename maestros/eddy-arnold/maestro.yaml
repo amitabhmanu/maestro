@@ -17,6 +17,7 @@ canon_model:
   version_levels: [work, recording, release]
   container: session
   container_has_full_listing: true
+  match_titles_across_containers: true  # MusicBrainz knows releases, not sessions
   _why:
     reason: >-
       A 60-year RCA career with re-recordings of his own hits makes the recording, not the song,
@@ -48,7 +49,8 @@ registers:
       evidence: [https://adp.library.ucsb.edu/names/100566]
 sources:
   - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api}
-  - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api, api_rps: 1, distinct_ids: false, url: "https://musicbrainz.org/ws/2/"}
+  # MusicBrainz lists released recordings: one it alone knows is issued (A), or live (C).
+  - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api, api_rps: 1, distinct_ids: false, default_tier: A, live_tier: C, url: "https://musicbrainz.org/ws/2/"}
   - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api}
   - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable}
   - {id: praguefrank, kind: semi, lineage: ruppli, reliability: 0.85, access: unavailable, url: https://countrydiscography.blogspot.com}
@@ -62,7 +64,7 @@ verification:
 checksums:
   - {scope: "Billboard country chart entries", total: 147, source: "https://en.wikipedia.org/wiki/Eddy_Arnold"}
   - {scope: "unreleased songs (Freda)", total: 104, source: "https://buecher.de/artikel/buch/eddy-arnold-discography-1944-1996/25562320"}
-  - {scope: "recordings 1951-1955 (Bear Family)", total: 166, breakdown: {previously_unissued: 44}, source: "https://www.bear-family.com/arnold-eddy-there-s-been-a-change-7-cd-deluxe-box-set.html"}
+  - {scope: "recordings 1951-1955 (Bear Family)", total: 166, breakdown: {previously_unissued: 44}, filter: {tiers: [A, B], years: [1951, 1955]}, source: "https://www.bear-family.com/arnold-eddy-there-s-been-a-change-7-cd-deluxe-box-set.html"}
 taxonomies:
   style: country_subgenre
 popularity_signals:

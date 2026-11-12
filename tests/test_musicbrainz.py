@@ -65,3 +65,13 @@ def test_next_page_is_queued(store_for):
     page = Page(url=musicbrainz.release_url(RAFI), status=200, body=body, sha256="x", path=FIX)
     musicbrainz.extract(ExtractContext(s, {"purpose": "spine"}, page, raw))
     assert [r["url"] for r in s.query_graph("SELECT url FROM job")] == [musicbrainz.release_url(RAFI, 2)]
+
+
+def test_catalogue_numbers_and_live_flag():
+    data = {"release-count": 1, "release-offset": 0, "releases": [{
+        "id": "rel", "date": "1966-03", "label-info": [{"catalog-number": "LSP-3361"}, {"catalog-number": "[none]"}],
+        "release-group": {"id": "rg", "secondary-types": ["Live"]},
+        "media": [{"tracks": [{"title": "T", "recording": {"id": "rec", "title": "T"},
+                               "artist-credit": [{"name": "A", "artist": {"id": "me"}}]}]}]}]}
+    t = musicbrainz.parse(data, "me")["tracks"][0]
+    assert (t["catalogues"], t["live"], t["release_year"]) == (["LSP-3361"], True, 1966)

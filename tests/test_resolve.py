@@ -161,3 +161,97 @@ def test_versions_from_a_loose_source_join_one_song(store_for):
         "SELECT entity_id FROM claim WHERE source_id = 'musicbrainz' AND field = 'xref'")]
     assert {g.find(i) for i in ids if i != f2} == {h}
     assert s.coverage_report()["tiers"]["A"]["observed"] == 1
+
+
+def test_catalogue_key():
+    from maestro.resolve import catalogue_key
+
+    assert catalogue_key("LPM-3027") == catalogue_key("LPM 3027") == "LPM3027"
+    assert catalogue_key("BCD 16953 AR") == catalogue_key("BCD-16953") == "BCD16953"
+    assert catalogue_key("[none]") is None and catalogue_key("12") is None
+
+
+def test_recordings_without_a_session_match_through_a_shared_catalogue_number(store_for):
+    # Eddy Arnold: Praguefrank places takes in sessions and lists their issues; MusicBrainz knows
+    # only the releases. Two recordings of one song are told apart by the issue they are on.
+    s = store_for("eddy-arnold")
+
+    def rec(source, xid, title, catalogues, session=None):
+        r = s.find_or_create_by_xref("recording", source, xid, title)
+        if session:
+            s.upsert_claim(r, "part_of", ref_entity_id=session, value={"position": 1}, source_id=source)
+        for c in catalogues:
+            s.upsert_claim(r, "catalogue", value=c, source_id=source)
+        s.upsert_claim(r, "credit", ref_entity_id=s.maestro_entity(), value={"role": "singer"}, source_id=source)
+        return r
+
+    s1 = s.find_or_create_by_xref("container", "praguefrank", "session:1", "1947 session")
+    s2 = s.find_or_create_by_xref("container", "praguefrank", "session:2", "1965 session")
+    old = rec("praguefrank", "seq:1", "BOUQUET OF ROSES", ["20-2806", "LPM 3027"], s1)
+    new = rec("praguefrank", "seq:2", "BOUQUET OF ROSES", ["LSP-3361"], s2)
+    mb_old = rec("musicbrainz", "r1", "Bouquet of Roses", ["LPM-3027"])
+    mb_new = rec("musicbrainz", "r2", "Bouquet of Roses", ["LSP 3361"])
+    mb_other = rec("musicbrainz", "r3", "Bouquet of Roses", ["XYZ-1"])
+    resolve(s)
+    from maestro.resolve import Groups
+
+    g = Groups(s)
+    assert g.find(mb_old) == g.find(old) and g.find(mb_new) == g.find(new)
+    assert g.find(old) != g.find(new) and g.find(mb_other) == mb_other
+
+
+def test_sessions_on_different_days_stay_apart(store_for):
+    s = store_for("eddy-arnold")
+    a = s.find_or_create_by_xref("container", "praguefrank", "s1", "5 February 1962 RCA Victor Studio, Nashville")
+    b = s.find_or_create_by_xref("container", "praguefrank", "s2", "23 February 1962 RCA Victor Studio, Nashville")
+    for c, d in ((a, "1962-02-05"), (b, "1962-02-23")):
+        s.upsert_claim(c, "year", value=1962, source_id="praguefrank")
+        s.upsert_claim(c, "date", value=d, source_id="praguefrank")
+    resolve(s)
+    assert open_reviews(s, kind="same_container_same_source") == []
+
+
+def test_floating_recordings_match_by_title_across_the_canon(store_for):
+    s = store_for("eddy-arnold")
+    me = s.maestro_entity()
+
+    def session(xid, year):
+        c = s.find_or_create_by_xref("container", "praguefrank", xid, f"session {xid}")
+        s.upsert_claim(c, "container_kind", value="session", source_id="praguefrank")
+        s.upsert_claim(c, "year", value=year, source_id="praguefrank")
+        return c
+
+    def take(xid, title, sess, tier="A"):
+        r = s.find_or_create_by_xref("recording", "praguefrank", xid, title)
+        s.upsert_claim(r, "part_of", ref_entity_id=sess, value={"position": 1}, source_id="praguefrank")
+        s.upsert_claim(r, "credit", ref_entity_id=me, value={"role": "singer"}, source_id="praguefrank")
+        s.upsert_claim(r, "tier", value=tier, source_id="claude", kind="decided")
+        return r
+
+    def mb(xid, title, released):
+        r = s.find_or_create_by_xref("recording", "musicbrainz", xid, title)
+        s.upsert_claim(r, "title", value=title, source_id="musicbrainz")
+        s.upsert_claim(r, "credit", ref_entity_id=me, value={"role": "singer"}, source_id="musicbrainz")
+        s.upsert_claim(r, "release_year", value=released, source_id="musicbrainz")
+        return r
+
+    s44, s55, s65 = session("s44", 1944), session("s55", 1955), session("s65", 1965)
+    roving = take("1", "THE ROVIN' GAMBLER", s44)
+    call44, call55 = take("2", "CATTLE CALL", s44), take("3", "THE CATTLE CALL", s55)
+    world = take("4", "TURN THE WORLD AROUND", s65)
+    m_roving = mb("a", "Roving Gambler", 1990)
+    m_call = mb("b", "Cattle Call", 1990)       # two session recordings fit: review
+    m_early = mb("c", "Cattle Call", 1950)      # released before the 1955 remake: only 1944 fits
+    m_other = mb("d", "Turn the World Around the Other Way", 1990)  # another song
+    resolve(s)
+    from maestro.completeness import load_units
+    from maestro.resolve import Groups
+
+    g = Groups(s)
+    assert g.find(m_roving) == g.find(roving) and g.find(m_early) == g.find(call44)
+    assert g.find(m_call) == m_call and g.find(m_other) == m_other and g.find(world) == world
+    pairs = {tuple(sorted(i["subject_ids"])) for i in open_reviews(s, kind="unit_same_title")}
+    assert pairs == {tuple(sorted((m_call, g.find(call44)))), tuple(sorted((m_call, call55)))}
+    units = load_units(s, g)
+    assert units[m_call].pending_match and not units[m_other].pending_match
+    assert "musicbrainz" in units[call55].lineages or "musicbrainz" in units[g.find(call44)].lineages
