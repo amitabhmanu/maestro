@@ -65,6 +65,6 @@ budget:
   model_spend_usd: null
   review_hours_per_week: null
 open_questions:
-  - Is the SACEM repertoire searchable for his works, and on what terms?
-  - Which film database is the best source for his 300+ film credits?
-  - Should the Wiener-Doucet duo recordings be in scope as an instrumentalist tier?
+  - "SACEM repertoire: suggested use by hand for spot checks only (terms understood to forbid extraction; site unreachable from the cloud)."
+  - "Film credits: suggested IMDb non-commercial datasets (private) as completeness check, Wikidata (69 films) and BnF as publishable sources, Ciné-Ressources by hand."
+  - "Wiener-Doucet duo (1925-1938): suggested in scope as tier D, performer recordings, with DAHR Columbia matrices as register."
