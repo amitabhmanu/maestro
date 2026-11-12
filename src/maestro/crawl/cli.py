@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 
 from maestro.crawl.fetcher import Fetcher
-from maestro.crawl.runner import import_page, run_jobs
+from maestro.crawl.runner import import_page, replay, run_jobs
 from maestro.pack import load_pack
 from maestro.store import Store
 
@@ -74,6 +74,28 @@ def import_main(argv: list[str] | None = None) -> int:
     raw_id = import_page(store, args.extractor, args.url, args.file, cache, dict(o.split("=", 1) for o in args.opt))
     print(json.dumps({"raw_page_id": raw_id, "coverage": store.coverage_report()}, indent=2, default=str))
     store.close()
+    return 0
+
+
+def replay_main(argv: list[str] | None = None) -> int:
+    """`maestro-replay`: rebuild a store from the raw cache of another (after an extractor or core fix)."""
+    p = argparse.ArgumentParser(description=replay_main.__doc__)
+    p.add_argument("--pack", required=True, help="maestro folder, e.g. maestros/rafi")
+    p.add_argument("--from-dsn", required=True, help="store whose fetched and imported pages are replayed")
+    p.add_argument("--dsn", default=os.environ.get("MAESTRO_DSN"), help="target store, normally a new empty database")
+    args = p.parse_args(argv)
+    if not args.dsn:
+        p.error("--dsn or MAESTRO_DSN is required")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    pack = load_pack(args.pack)
+    source, target = Store.connect(args.from_dsn, pack), Store.connect(args.dsn, pack)
+    target.migrate()
+    target.sync_sources()
+    source.migrate()  # older stores may lack import_log
+    stats = replay(source, target)
+    print(json.dumps({"replay": stats.as_dict(), "coverage": target.coverage_report()}, indent=2, default=str))
+    source.close()
+    target.close()
     return 0
 
 

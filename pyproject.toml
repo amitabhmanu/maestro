@@ -21,6 +21,10 @@ maestro-validate = "maestro.cli:validate_main"
 maestro-identify = "maestro.profiler.identify:main"
 maestro-crawl = "maestro.crawl.cli:main"
 maestro-import = "maestro.crawl.cli:import_main"
+maestro-replay = "maestro.crawl.cli:replay_main"
+maestro-resolve = "maestro.cli:resolve_main"
+maestro-review = "maestro.cli:review_main"
+maestro-report = "maestro.cli:report_main"
 
 [build-system]
 requires = ["hatchling>=1.25"]

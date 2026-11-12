@@ -80,4 +80,32 @@ CREATE TABLE IF NOT EXISTS job (
 CREATE UNIQUE INDEX IF NOT EXISTS job_open_url_idx ON job (url, extractor) WHERE status IN ('queued', 'running');
 CREATE INDEX IF NOT EXISTS job_queue_idx ON job (status, priority DESC, id);
 
+-- Human review queue: ambiguous merges, checksum mismatches and other judgement calls.
+-- A decision is recorded as a decided claim (source 'user'); the item keeps a pointer to it.
+CREATE TABLE IF NOT EXISTS review_item (
+    id              bigserial PRIMARY KEY,
+    kind            text NOT NULL,
+    subject_ids     bigint[] NOT NULL,
+    evidence        jsonb NOT NULL DEFAULT '{}'::jsonb,
+    priority        integer NOT NULL DEFAULT 0,
+    status          text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'decided', 'dismissed')),
+    decision        text,
+    note            text,
+    decided_claim_id bigint REFERENCES claim (id),
+    created_at      timestamptz NOT NULL DEFAULT now(),
+    decided_at      timestamptz
+);
+CREATE UNIQUE INDEX IF NOT EXISTS review_item_subject_idx ON review_item (kind, subject_ids);
+CREATE INDEX IF NOT EXISTS review_item_open_idx ON review_item (status, priority DESC, id);
+
+-- Pages loaded by hand (maestro-import), with the extractor options used, so they can be replayed.
+CREATE TABLE IF NOT EXISTS import_log (
+    id           bigserial PRIMARY KEY,
+    raw_page_id  bigint NOT NULL REFERENCES raw_page (id),
+    extractor    text NOT NULL,
+    options      jsonb NOT NULL DEFAULT '{}'::jsonb,
+    imported_at  timestamptz NOT NULL DEFAULT now()
+);
+
 INSERT INTO schema_version (version) VALUES (1) ON CONFLICT DO NOTHING;
+INSERT INTO schema_version (version) VALUES (2) ON CONFLICT DO NOTHING;

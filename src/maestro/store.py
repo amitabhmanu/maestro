@@ -129,19 +129,24 @@ class Store:
         ).fetchone()
         return row["id"]
 
-    def entity_by_xref(self, source_id: str, external_id: str) -> int | None:
-        """The entity a source knows by `external_id` (recorded as an `xref` claim), if any."""
+    def entity_by_xref(self, source_id: str, external_id: str, type: str | None = None) -> int | None:
+        """The entity a source knows by `external_id` (recorded as an `xref` claim), if any.
+
+        Sources often number films, people and songs independently, so pass `type` whenever it is known:
+        film 4357 and person 4357 are different entities.
+        """
         row = self.conn.execute(
-            """SELECT entity_id FROM claim
-               WHERE field = 'xref' AND source_id = %s AND value = %s AND status = 'active'
-               ORDER BY id LIMIT 1""",
-            (source_id, Jsonb(str(external_id))),
+            """SELECT c.entity_id FROM claim c JOIN entity e ON e.id = c.entity_id
+               WHERE c.field = 'xref' AND c.source_id = %s AND c.value = %s AND c.status = 'active'
+                 AND (%s::text IS NULL OR e.type = %s)
+               ORDER BY c.id LIMIT 1""",
+            (source_id, Jsonb(str(external_id)), type, type),
         ).fetchone()
         return row["entity_id"] if row else None
 
     def find_or_create_by_xref(self, type: str, source_id: str, external_id: str, label: str) -> int:
         """Get or create the entity a source identifies by `external_id`, recording the xref claim."""
-        eid = self.entity_by_xref(source_id, external_id)
+        eid = self.entity_by_xref(source_id, external_id, type)
         if eid is None:
             eid = self.create_entity(type, label)
             self.upsert_claim(eid, "xref", value=str(external_id), source_id=source_id)
@@ -284,12 +289,12 @@ class Store:
         gaps: list[dict[str, Any]] = []
 
         if self.pack.data["canon_model"]["container_has_full_listing"]:
-            # Containers the maestro worked on (credited directly) that hold no canon units yet.
+            # Containers that credit the maestro in an in-scope role but hold no canon units yet.
             for r in self.conn.execute(
                 f"""WITH units AS ({self._canon_units_sql()})
-                    SELECT e.id, e.label FROM entity e
+                    SELECT DISTINCT e.id, e.label FROM entity e
                     JOIN claim c ON c.entity_id = e.id AND c.field = 'credit' AND c.status = 'active'
-                         AND c.ref_entity_id = %(maestro)s
+                         AND c.ref_entity_id = %(maestro)s AND c.value ->> 'role' = ANY(%(roles)s)
                     WHERE e.type = 'container'
                       AND NOT EXISTS (SELECT 1 FROM claim m JOIN units u ON u.id = m.entity_id
                                       WHERE m.field = 'part_of' AND m.ref_entity_id = e.id
