@@ -37,10 +37,17 @@ class ExtractContext:
         return self.store.enqueue_crawl(url, extractor, purpose, **kw)
 
 
+CORE_EXTRACTORS = Path(__file__).resolve().parent.parent / "extractors"
+
+
 def load_extractor(pack_dir: Path, name: str) -> ModuleType:
+    """The maestro's own extractor `maestros/<slug>/extractors/<name>.py`, else a core one
+    (`maestro/extractors/<name>.py`, for sources any maestro can use)."""
     path = Path(pack_dir) / "extractors" / f"{name}.py"
     if not path.is_file():
-        raise FileNotFoundError(f"no extractor {name!r} at {path}")
+        path = CORE_EXTRACTORS / f"{name}.py"
+    if not path.is_file():
+        raise FileNotFoundError(f"no extractor {name!r} in {Path(pack_dir) / 'extractors'} or {CORE_EXTRACTORS}")
     spec = importlib.util.spec_from_file_location(f"maestro_extractor_{path.parent.parent.name}_{name}", path)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None

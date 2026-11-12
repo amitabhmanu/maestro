@@ -6,7 +6,10 @@ from maestro.completeness import chao1, completeness_report, render_markdown
 from test_resolve import film, person, song
 
 
-def test_chao1():
+def test_estimators():
+    from maestro.completeness import chapman
+
+    assert chapman(99, 49, 24) == 199
     assert chao1(100, 10, 5) == 110
     assert chao1(10, 3, 0) == 13  # bias-corrected form
 
@@ -51,7 +54,8 @@ def test_report(store_for):
     assert by_scope["unchecked"]["status"] == "unchecked"
     tier_a = r["tiers"]["A"]
     assert (tier_a["observed"], tier_a["f1"], tier_a["f2"], tier_a["lineages"]) == (3, 2, 1, ["atul", "hfgk"])
-    assert tier_a["estimate"] == 5.0 and tier_a["meets_target"] is False
+    # Two lineages: Chapman. hfgk saw 3, atul 1, both 1 -> (4 * 2 / 2) - 1 = 3: nothing missing.
+    assert tier_a["method"] == "chapman" and tier_a["estimate"] == 3.0 and tier_a["meets_target"] is True
     assert r["tiers"]["B"]["estimate"] is None  # one lineage only
     assert r["containers"]["mismatched"] == 1 and r["containers"]["examples"][0]["stored"] == 3
     assert "| A | 3 |" in render_markdown(r)

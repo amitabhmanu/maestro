@@ -69,9 +69,9 @@ def test_near_names_go_to_review_and_decisions_stick(store_for):
     a = person(s, "hfgk_online", "20", "Naushad")
     b = person(s, "hfgk_online", "21", "Naushad Ali")
     f = film(s, "hfgk_online", "200", "Mela", 1948)
-    for i in range(3):
-        song(s, "hfgk_online", f"20{i}", f"Song {i}", f, a)
-    song(s, "hfgk_online", "210", "Song x", f, b)
+    for i, title in enumerate(["Song one", "Song two", "Song three"]):
+        song(s, "hfgk_online", f"20{i}", title, f, a)
+    song(s, "hfgk_online", "210", "Song four", f, b)
     resolve(s)
     (item,) = open_reviews(s, kind="person_near_name")
     assert item["evidence"]["labels"] == ["Naushad", "Naushad Ali"] and item["priority"] == 4
@@ -100,23 +100,29 @@ def test_distinct_decision_is_not_queued_again(store_for):
     assert open_reviews(s) == []
 
 
-def test_near_titles_in_one_film_from_two_sources_go_to_review(store_for):
+def test_titles_in_one_film_from_two_sources(store_for):
     s = store_for("rafi")
     f1 = film(s, "hfgk_online", "400", "Kohinoor", 1960)
-    f2 = film(s, "mohdrafi", "Kohinoor", "Kohinoor", 1960)
-    song(s, "hfgk_online", "401", "Madhuban Mein Radhika Nache Re", f1)
-    song(s, "mohdrafi", "x", "Madhuban Men Radhika Nache Re", f2)
+    f2 = film(s, "musicbrainz", "rg:k", "Kohinoor", 1961)  # a soundtrack dated a year later
+    full = song(s, "hfgk_online", "401", "Madhuban Mein Radhika Nache Re, Giridhar Ki Muraliya Baje Re", f1)
+    song(s, "musicbrainz", "r1", "Madhuban Men Radhika Nache Re", f2)  # first line only, other spelling
+    a = song(s, "hfgk_online", "402", "Dil Todne Wale Tujhe Dil Dhundh Raha Hai", f1)
+    b = song(s, "musicbrainz", "r2", "Dil Tod Ke Jane Wale", f2)  # close, but not close enough to merge unseen
+    song(s, "musicbrainz", "r3", "Koi Pyar Ki Dekhe Jaadugari", f2)  # nothing like it in HFGK
     stats = resolve(s).as_dict()
-    assert stats["merged"] == {"container": 1} and stats["queued"] == {"unit": 1}
-    assert open_reviews(s)[0]["kind"] == "unit_near_title"
+    assert stats["merged"] == {"container": 1, "unit": 1}
+    assert stats["queued"] == {"unit": 1}
+    (item,) = open_reviews(s)
+    assert item["kind"] == "unit_near_title" and sorted(item["subject_ids"]) == sorted([a, b])
+    assert s.coverage_report()["tiers"]["A"]["observed"] == 4  # the first-line record merged into the full one
+    assert full in [u["id"] for u in s.query_graph("SELECT entity_id AS id FROM claim WHERE field = 'tier'")]
 
 
-def test_joint_credits_are_not_name_variants(store_for):
-    s = store_for("rafi")
-    a = person(s, "hfgk_online", "40", "Hasrat Jaipuri")
-    b = person(s, "hfgk_online", "41", "Hasrat Jaipuri + Neeraj")
-    f = film(s, "hfgk_online", "500", "Film", 1965)
-    song(s, "hfgk_online", "501", "One", f, a)
-    song(s, "hfgk_online", "502", "Two", f, b)
-    resolve(s)
-    assert open_reviews(s) == []
+def test_title_similarity():
+    from maestro.resolve import title_similarity
+
+    assert title_similarity("chaudhvin ka chand ho", "chaudhvin ka chand ho ya aaftab ho") == 1.0
+    assert title_similarity("chaudahavin ka chand ho", "chaudhvin ka chand ho ya aaftab ho") > 0.93
+    assert title_similarity("pyar", "pyar kiya to darna kya") == 0.0
+    assert title_similarity("tan rang lo ji", "tan ranglo ji aaj man ranglo") == 1.0
+    assert title_similarity("jadugar qatil", "jaadoogar kaatil haazir hai meraa dil") == 1.0

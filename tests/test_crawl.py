@@ -61,6 +61,21 @@ def test_robots_disallow(tmp_path):
         f.fetch("https://ex.org/private/x")
 
 
+def test_api_hosts_skip_robots_and_keep_their_rate(tmp_path):
+    from maestro.crawl.fetcher import api_hosts
+
+    web = FakeWeb({"https://api.ex.org/robots.txt": b"User-agent: *\nDisallow: /ws\n",
+                   "https://api.ex.org/ws/1": b"1", "https://api.ex.org/ws/2": b"2"})
+    hosts = api_hosts({"budget": {"per_domain_rps": 0.5},
+                       "sources": [{"access": "api", "url": "https://api.ex.org/ws/", "api_rps": 1},
+                                   {"access": "crawlable", "url": "https://other.org/"}]})
+    assert hosts == {"api.ex.org": 1}
+    f = Fetcher(tmp_path / "raw", 0.5, opener=web.open, clock=web.clock, sleep=web.sleep, api_hosts=hosts)
+    assert f.fetch("https://api.ex.org/ws/1").text == "1" and f.fetch("https://api.ex.org/ws/2").text == "2"
+    assert [u for u, _ in web.calls] == ["https://api.ex.org/ws/1", "https://api.ex.org/ws/2"]
+    assert web.calls[1][1] - web.calls[0][1] >= 1.0
+
+
 def test_runner_runs_jobs_and_records_failures(tmp_path, store_for):
     # A throwaway copy of the Rafi pack with a tiny extractor.
     pack_dir = tmp_path / "rafi"
