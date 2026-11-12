@@ -78,9 +78,9 @@ Unit: a work (a cue inside a film score is a sub-unit). Container: a film score;
 | Penetration | Recordings by other performers, film reuse |
 | Esteem | Musicology, critical writing |
 
-## Open questions
+## Resolved questions
 
-Suggested answers (12 Nov 2026), waiting for Amitabh's confirmation:
+Answered 12 Nov 2026 (Amitabh accepted the suggestions); kept here for the reasoning:
 
 - **Film credits source.** Wikidata lists him as composer on only 69 films against 300+, so it is a start, not a register. Suggested: IMDb's non-commercial datasets (title.principals has composer credits; personal use allowed, so private layer only) as the completeness check; Wikidata and data.bnf.fr as the publishable sources; Ciné-Ressources (French film archives' union catalogue) by hand for shorts and documentaries, since this environment cannot reach it.
 - **SACEM repertoire.** repertoire.sacem.fr is SACEM's free public search of registered works by title or creator. Neither this environment nor the fetch tool can reach it, so its terms are unconfirmed; SACEM's terms are understood to forbid extracting the database. Suggested: use it by hand for spot checks of works and film cues, not as a crawled source.
