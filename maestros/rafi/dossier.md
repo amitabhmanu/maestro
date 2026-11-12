@@ -34,6 +34,8 @@ Unit: a song. Container: a film. Songs belong to films, and the Hindi Film Geet 
 | Hindi film songs | 4,425 | Shahid Rafi and Sujata Dev (2015), via [Wikipedia](https://en.wikipedia.org/wiki/Mohammed_Rafi) |
 | Non-Hindi film songs | 310 | same |
 | Non-film songs | 328 | same |
+| Non-Hindi film songs (alternative count) | 112 | reader comment on [mohdrafi.com](https://www.mohdrafi.com/?p=2465), unsourced; conflicts with 310 |
+| Non-film songs (Muveen's spreadsheet) | ~238 Hindi + 105+ other languages | [Songs of Yore](https://www.songsofyore.com/mohammad-rafis-non-film-hindi-geets-and-ghazals/) |
 | Hindi film songs to 1980 (Hamraz register) | ~4,525 | [mohdrafi.com](https://mohdrafi.com/meri-awaaz-suno/setting-the-records-straight.html/comment-page-1) |
 | 1944–1950 | 341 (132 solo, 169 duet, 40 with 3+ singers) | [Atul's Song A Day](https://atulsongaday.me/2014/08/20/zahe-kismat-teri-mehfil-se-jo-paighaam-aaya-hai/) |
 | Composer Laxmikant–Pyarelal | 388 | [Wikipedia](https://en.wikipedia.org/wiki/Mohammed_Rafi) |
@@ -68,14 +70,18 @@ The 25,000–28,000 figures Rafi himself gave (BBC 1977; Guinness 1984) are not 
 | Atul's Song A Day | Per-song essays, picturisation | Careful secondary | atul | Crawlable | Prose | Facts yes, text no |
 | Songs of Yore | Essays, esteem | Careful secondary | songsofyore | Crawlable | Prose | Facts yes, text no |
 | Wikipedia song lists | Partial lists | Aggregator | wiki | Crawlable | Semi | Yes (CC BY-SA) |
-| Wikidata | [Q156815](https://www.wikidata.org/wiki/Q156815) | maestro-identify |
-| MusicBrainz | [28365249-f3fd-44db-8131-32cb170970c4](https://musicbrainz.org/artist/28365249-f3fd-44db-8131-32cb170970c4) | via Wikidata |
-| VIAF / ISNI / BnF | 7575974 / 0000000063085938 / 13921553r | via Wikidata |
+| Discogs | LPs, EPs, 78s, cassettes with label numbers | Secondary | discogs | API | Structured | Facts yes |
+| Muveen's spreadsheet | ~343 non-film songs | Fan compilation | muveen | Ask via Songs of Yore | Structured | Facts yes |
+
+HFGK Online fields. V1.0 (hindi-movies-songs.com/hfgk) is retired and frozen; V2.0 (hamraaz.org/filmssite) is the maintained copy and the one the extractor reads. V2.0 gives, per film: English and Devanagari title, year (or decade when undated), banner, record company, subject, and cast and crew credits. Per song: position in the film, English and Devanagari first line, singers, lyricist, music director, on-screen artists, and the 78 RPM record number (song page only).
 
 ## Registers
 
 - Tier A: HFGK Online (ground truth, covers to 1985 so includes posthumous releases); print HFGK and Geet Gata Chal as checks.
-- Tier B: Geet Gata Chal partly; no complete register known for non-film songs.
+- Tier B: no single register exists, so Tier B is built as a union of partial lists and its completeness is estimated by capture-recapture rather than checked against ground truth. Proposed:
+  - Non-Hindi film songs (container = the regional film): Wikipedia's song list (about 64 entries: Punjabi ~38, Telugu ~19, others) as the starting list, film credits from MusicBrainz and Wikidata, and the 310 count as checksum.
+  - Non-film songs (no container; group by record or album): Muveen's spreadsheet (~343 songs, the only documented list; ask for it via Songs of Yore) as the candidate register; HMV/Saregama record numbers to anchor each song; Discogs and MusicBrainz for LPs, EPs and cassettes; Atul's Song A Day NFS category and the Songs of Yore NFS article as independent checks; the 328 count as checksum.
+  - Geet Gata Chal (print) as an independent check for both.
 - Tier C: none; report only.
 
 ## Popularity signals
@@ -90,5 +96,5 @@ The 25,000–28,000 figures Rafi himself gave (BBC 1977; Guinness 1984) are not 
 ## Open questions
 
 - Permission from the HFGK Online site master for bulk crawling, or an export of Rafi's songs.
-- Which fields HFGK Online gives per song, and how V2.0 at hamraaz.org differs.
-- Register for Tier B (non-Hindi film and non-film songs).
+- Get Muveen's spreadsheet of Rafi non-film songs (via Songs of Yore) to serve as the Tier B non-film register.
+- Which count of non-Hindi film songs is right, 310 (Shahid Rafi and Sujata Dev) or 112 (unsourced)?

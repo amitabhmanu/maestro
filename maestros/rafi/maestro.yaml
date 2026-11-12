@@ -46,6 +46,22 @@ registers:
     tiers: [A, B]
     access: print
     role: independent_check
+  - name: Muveen's spreadsheet of Rafi non-film songs
+    tiers: [B]
+    access: unavailable
+    role: partial
+    url: https://www.songsofyore.com/mohammad-rafis-non-film-hindi-geets-and-ghazals/
+    _why:
+      reason: >-
+        The only documented list of Rafi's non-film songs (about 238 Hindi and 105+ in other languages).
+        Not published; request it through Songs of Yore.
+      confidence: 0.6
+      evidence: [https://www.songsofyore.com/mohammad-rafis-non-film-hindi-geets-and-ghazals/]
+  - name: Wikipedia list of songs recorded by Mohammed Rafi (non-Hindi film and non-film sections)
+    tiers: [B]
+    access: crawlable
+    role: partial
+    url: https://en.wikipedia.org/wiki/List_of_songs_recorded_by_Mohammed_Rafi
 sources:
   - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api}
   - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api}
@@ -53,6 +69,7 @@ sources:
   - {id: hfgk_online, kind: structured, lineage: hfgk, reliability: 0.95, access: crawlable, url: "https://hindi-movies-songs.com/hfgk/"}
   - {id: hindigeetmala, kind: semi, lineage: hfgk, reliability: 0.85, access: crawlable}
   - {id: atulsongaday, kind: prose, lineage: atul, reliability: 0.75, access: crawlable, url: https://atulsongaday.me}
+  - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api, url: https://www.discogs.com}
   - {id: songsofyore, kind: prose, lineage: songsofyore, reliability: 0.75, access: crawlable, url: https://www.songsofyore.com}
 lexicon:
   transliteration: lexicon/translit.tsv
@@ -92,5 +109,5 @@ budget:
   review_hours_per_week: null
 open_questions:
   - Permission from the HFGK Online site master for bulk crawling, or an export of Rafi's songs.
-  - Which fields HFGK Online gives per song (singers per song, record numbers) and how V2.0 at hamraaz.org differs.
-  - Register for Tier B (non-Hindi film and non-film songs), which HFGK does not cover.
+  - Get Muveen's spreadsheet of Rafi non-film songs (via Songs of Yore) to serve as the Tier B non-film register.
+  - Which count of non-Hindi film songs is right, 310 (Shahid Rafi and Sujata Dev) or 112 (unsourced)?
