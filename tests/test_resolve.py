@@ -2,7 +2,7 @@
 
 import pytest
 
-from maestro.resolve import Normaliser, decide_review, fold, open_reviews, resolve
+from maestro.resolve import Normaliser, decide_review, export_reviews, fold, open_reviews, resolve
 
 
 def person(s, source, xid, name):
@@ -83,6 +83,22 @@ def test_near_names_go_to_review_and_decisions_stick(store_for):
         decide_review(s, item["id"], "dismiss")
     resolve(s)
     assert open_reviews(s) == []
+
+
+def test_export_gives_each_subject_its_label_sources_and_credits(store_for):
+    s = store_for("rafi")
+    a = person(s, "hfgk_online", "40", "Roshan")
+    b = person(s, "hfgk_online", "41", "Roshan Lal")
+    f = film(s, "hfgk_online", "400", "Bawre Nain", 1950)
+    song(s, "hfgk_online", "401", "Khayalon Mein", f, a)
+    song(s, "hfgk_online", "402", "Sun Bairi Balam", f, b)
+    resolve(s)
+    (item,) = export_reviews(s)
+    assert item["kind"] == "person_near_name"
+    subjects = {x["label"]: x for x in item["subjects"]}
+    assert set(subjects) == {"Roshan", "Roshan Lal"}
+    assert subjects["Roshan"]["sources"] == ["hfgk_online"] and subjects["Roshan"]["type"] == "person"
+    assert any(k.startswith("credited as") for k in subjects["Roshan Lal"]["facts"])
 
 
 def test_distinct_decision_is_not_queued_again(store_for):

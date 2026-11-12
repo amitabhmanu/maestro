@@ -18,6 +18,7 @@ claim that stops the pair being queued again.
 from __future__ import annotations
 
 import csv
+import json
 import re
 import unicodedata
 from collections import defaultdict
@@ -811,3 +812,68 @@ def close_settled_reviews(store: Store) -> int:
                    decided_at = now() WHERE id = %s""", (item["id"],))
             closed += 1
     return closed
+
+
+def export_reviews(store: Store, limit: int = 100000) -> list[dict[str, Any]]:
+    """Open review items with what a reviewer needs to decide each one: for every subject (taken at
+    its merge root) its label, type, sources, and a few facts (year, container, credits, other
+    identifiers). Used to build a review page outside the store."""
+    groups = Groups(store)
+    items = open_reviews(store, limit)
+    roots = {groups.find(i) for it in items for i in it["subject_ids"]}
+    members: dict[int, list[int]] = defaultdict(list)
+    for r in store.conn.execute("SELECT id FROM entity").fetchall():
+        g = groups.find(r["id"])
+        if g in roots:
+            members[g].append(r["id"])
+    ids = [i for g in roots for i in members[g]]
+    ent = {r["id"]: r for r in store.conn.execute(
+        "SELECT id, type, label FROM entity WHERE id = ANY(%s)", (ids,)).fetchall()}
+    facts: dict[int, dict[str, Any]] = {g: {"sources": set(), "facts": defaultdict(set)} for g in roots}
+    rows = store.conn.execute(
+        """SELECT c.entity_id, c.field, c.value, c.source_id, r.label AS ref_label, c.ref_entity_id
+           FROM claim c LEFT JOIN entity r ON r.id = c.ref_entity_id
+           WHERE c.entity_id = ANY(%s) AND c.status = 'active'
+             AND c.field IN ('xref', 'year', 'release_year', 'part_of', 'credit', 'matrix', 'catalogue', 'title',
+                             'work_kind', 'role', 'issues', 'date', 'primary_performer', 'film')""", (ids,)).fetchall()
+    maestro = store.maestro_entity()
+    for r in rows:
+        g = groups.find(r["entity_id"])
+        f = facts[g]
+        if r["source_id"] not in ("claude", "user"):
+            f["sources"].add(r["source_id"])
+        field, v = r["field"], r["value"]
+        if field == "xref":
+            continue
+        if field == "part_of":
+            f["facts"]["in"].add(r["ref_label"] or "")
+        elif field == "credit":
+            if r["ref_entity_id"] != maestro:
+                f["facts"][(v or {}).get("role") or "credit"].add(r["ref_label"] or "")
+        elif field == "title":
+            if v != ent.get(r["entity_id"], {}).get("label"):
+                f["facts"]["also titled"].add(str(v))
+        else:
+            f["facts"][field.replace("_", " ")].add(v if isinstance(v, (int, str)) else json.dumps(v, ensure_ascii=False))
+    # People: how they are credited, and on what (a few examples with the container and year).
+    for r in store.conn.execute(
+        """SELECT c.ref_entity_id, c.value ->> 'role' AS role, count(*) AS n,
+                  (array_agg(u.label ORDER BY u.id))[1:3] AS examples
+           FROM claim c JOIN entity u ON u.id = c.entity_id
+           WHERE c.ref_entity_id = ANY(%s) AND c.field = 'credit' AND c.status = 'active'
+           GROUP BY 1, 2""", (ids,)).fetchall():
+        g = groups.find(r["ref_entity_id"])
+        f = facts[g]["facts"]
+        f[f"credited as {r['role']}"].add(f"{r['n']} times, e.g. " + "; ".join(r["examples"]))
+    out = []
+    for it in items:
+        subjects = []
+        for sid in it["subject_ids"]:
+            g = groups.find(sid)
+            e = ent.get(g) or {"type": "?", "label": "?"}
+            fx = {k: sorted(map(str, v))[:6] for k, v in sorted(facts[g]["facts"].items()) if v}
+            subjects.append({"id": g, "type": e["type"], "label": e["label"], "sources": sorted(facts[g]["sources"]),
+                             "records": len(members[g]), "facts": fx})
+        out.append({"id": it["id"], "kind": it["kind"], "priority": it["priority"],
+                    "evidence": it["evidence"], "subjects": subjects})
+    return out
