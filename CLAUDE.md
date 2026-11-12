@@ -10,7 +10,7 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 
 - **Nothing maestro-specific in `src/`.** Anything about one maestro (sources, tiers, aliases, extractors, gold sets) belongs in that maestro's folder. If the core needs a new kind of canon, extend the pack schema deliberately.
 - **Every fact is a claim** with a source (`maestro.store.Store.upsert_claim`). Never overwrite or delete claims; supersede them. Merges are reversible `same_as` claims.
-- **The agent plans, workers fetch.** Queue crawls with `enqueue_crawl`; do not browse freely to collect canon data. Respect robots.txt and the pack's `per_domain_rps`.
+- **The agent plans, workers fetch.** Queue crawls with `enqueue_crawl`; do not browse freely to collect canon data. Respect robots.txt and the pack's `per_domain_rps`. Public APIs a pack lists as `access: api` (MusicBrainz) skip robots.txt but keep the API's own rate (`api_rps`). Never get around a site's bot protection: import pages the user saves instead.
 - **Legal posture:** personal use now, eventual FOSS release. Never download full audio; keep only derived features from lawfully obtained audio. Lyrics beyond what the pack's `legal.lyrics` allows must not be stored. Anything from a non-publishable source, or marked private, stays in the private layer (`data/`, git-ignored) and never ships.
 
 ## Layout
@@ -22,6 +22,7 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 - `src/maestro/profiler/`: profiler helpers (`identify.py`: Wikidata candidates and external IDs).
 - `src/maestro/resolve.py`: entity resolution (normalise, block, merge across sources, review queue).
 - `src/maestro/completeness.py`: completeness engine (checksums with `filter`, container check, Chao1 per tier).
+- `src/maestro/extractors/`: extractors for sources any maestro can use (`musicbrainz`); a maestro's own extractor of the same name wins.
 - `src/maestro/crawl/`: polite fetcher (robots.txt, per-domain rate limit, raw cache in `data/<slug>/raw`) and the job runner that calls a maestro's extractors (`maestros/<slug>/extractors/<name>.py`, function `extract(ctx)`).
 - `.claude/skills/profile-maestro/`: the `/profile-maestro` skill (research a maestro, propose its pack).
 - `maestros/<slug>/`: pack, profiler dossier, and maestro-specific lexicons, extractors and gold data.
@@ -32,7 +33,7 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 - Validate packs: `uv run maestro-validate`
 - Identity lookup: `uv run maestro-identify "<name>"` (needs access to wikidata.org)
 - Crawl: `uv run maestro-crawl --pack maestros/rafi --dsn ... --seed <url> --extractor hamraaz --purpose spine [--opt years=1944-1950] [--max-jobs N]`
-- Import a saved or copied page (sites whose robots.txt forbids crawling): `uv run maestro-import --pack maestros/<slug> --dsn ... --extractor <name> --url <page url> [--opt key=value] <file>` (extractors: rafi/mohdrafi, eddy-arnold/praguefrank)
+- Import a saved or copied page (sites whose robots.txt forbids crawling): `uv run maestro-import --pack maestros/<slug> --dsn ... --extractor <name> --url <page url> [--opt key=value] <file>` (extractors: rafi/mohdrafi, rafi/atul, eddy-arnold/praguefrank)
 - Rebuild a store from the raw cache after an extractor or core fix: `uv run maestro-replay --pack maestros/<slug> --from-dsn <old> --dsn <new empty db>`
 - Resolve entities (merge clear duplicates, queue unclear ones): `uv run maestro-resolve --pack ... --dsn ...`
 - Review queue: `uv run maestro-review` lists open items; `uv run maestro-review <id> merge|distinct|dismiss [--keep ID]` records the user's decision. Only record decisions the user made.
