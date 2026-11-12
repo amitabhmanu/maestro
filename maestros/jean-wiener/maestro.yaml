@@ -22,7 +22,7 @@ canon_model:
   container: score
   container_has_full_listing: false
   match_titles_across_containers: true  # no source places works in containers
-  kind_tiers: {film_score: B}
+  kind_tiers: {film_score: B, performance_recording: D}  # DAHR masters he plays on are tier D
   _why:
     reason: No catalogue of works exists and most of his music is unpublished, so containers cannot be checked for completeness.
     confidence: 0.7
@@ -64,7 +64,8 @@ sources:
   - {id: imdb, kind: structured, lineage: imdb, reliability: 0.8, access: api, publishable: false, url: "https://developer.imdb.com/non-commercial-datasets/"}
   - {id: cineressources, kind: semi, lineage: cineressources, reliability: 0.9, access: unavailable, url: https://www.cineressources.net}
   - {id: sacem, kind: structured, lineage: sacem, reliability: 0.9, access: unavailable, publishable: false, url: https://repertoire.sacem.fr}
-  - {id: dahr, kind: structured, lineage: columbia_ledgers, reliability: 0.95, access: crawlable, url: https://adp.library.ucsb.edu}
+  # DAHR's firewall refuses cloud machines: Amitabh saves the "View All" pages (Wiener 354258, Doucet 353008).
+  - {id: dahr, kind: structured, lineage: columbia_ledgers, reliability: 0.95, access: unavailable, default_tier: A, url: https://adp.library.ucsb.edu/names/354258}
 collaborators:
   directors: [Jean Renoir, Robert Bresson, Jacques Becker, Jacques Rivette]
   conductors: [Roger Désormière]

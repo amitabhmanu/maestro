@@ -585,8 +585,12 @@ YEAR_SLACK = 2  # a work's year differs between sources (composition, premiere, 
 def _match_uncontained_by_title(store, norm, groups, distinct, stats, unit_recs) -> None:
     """No source places units in containers (a composer's works with no catalogue): units from
     different sources whose whole titles match are merged when each is the other's only candidate
-    and their years, where both are known, are at most YEAR_SLACK apart. Other matches go to review."""
+    and their years, where both are known, are at most YEAR_SLACK apart. Other matches go to review.
+    A unit of a `*_recording` kind only matches another recording, never a work."""
     years = _years(store)
+    recordings = {groups.find(r["entity_id"]) for r in store.conn.execute(
+        """SELECT entity_id FROM claim WHERE field = 'work_kind' AND status = 'active'
+             AND value #>> '{}' LIKE '%%\\_recording' ESCAPE '\\'""").fetchall()}
     keys: dict[int, set[str]] = defaultdict(set)
     year: dict[int, int] = {}
     for r in unit_recs:
@@ -600,6 +604,8 @@ def _match_uncontained_by_title(store, norm, groups, distinct, stats, unit_recs)
         for c in keys:
             if c == g or groups.find(c) != c or not groups.can_join(g, c) or tuple(sorted((g, c))) in distinct:
                 continue
+            if (g in recordings) != (c in recordings):
+                continue  # a recording (kind *_recording) is not the work it records
             if g in year and c in year and abs(year[g] - year[c]) > YEAR_SLACK:
                 continue
             sim = max((whole_title_similarity(x, y) for x in keys[g] for y in keys[c]), default=0.0)

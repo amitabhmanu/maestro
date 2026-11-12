@@ -8,6 +8,13 @@ title, primary performer, description and the maestro's roles on it. A row becom
 `matrix:<company>:<matrix>` with title, date, year, `matrix`, and `work_kind` issued_recording or
 unissued_recording (the pack's `canon_model.kind_tiers` can tier these). The maestro is credited in
 each role DAHR gives, mapped to pack roles (vocalist -> singer, composer/songwriter -> composer, ...).
+
+When the pack's unit is the work, a master the maestro performs on becomes a unit of kind
+`performance_recording`, and a master of a piece the maestro wrote is a sighting of that work
+(keyed by its title, so several recordings of one piece are one unit).
+
+A partner's page (one whose subject is not the maestro) gives the partner's roles: only masters
+naming the maestro as a performer are kept, credited in the performing roles only.
 """
 
 from __future__ import annotations
@@ -24,6 +31,12 @@ _ROW = re.compile(r"<tr(?P<attrs>[^>]*)>(?P<body>.*?)</tr>", re.S)
 _CELL = re.compile(r'<td[^>]*data-label="(?P<label>[^"]+)"[^>]*>(?P<v>.*?)</td>', re.S)
 
 
+def _fold(s: str) -> str:
+    import unicodedata
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", s)).strip()
+
+
 def _text(s: str) -> str:
     return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", s))).strip()
 
@@ -36,6 +49,12 @@ def _date(s: str) -> str | None:
         except ValueError:
             return None
     return None
+
+
+def subject(page: str) -> str:
+    """Whose name page this is (the Role column gives that person's roles)."""
+    m = re.search(r'<meta property="og:title" content="([^"]*)"', page)
+    return html.unescape(m.group(1)).strip() if m else ""
 
 
 def parse(page: str) -> list[dict]:
@@ -64,29 +83,63 @@ def parse(page: str) -> list[dict]:
     return rows
 
 
+PERFORMING = {"singer", "instrumentalist", "conductor", "leader"}
+WRITING = {"composer", "lyricist", "arranger"}
+
+
 def extract(ctx) -> None:
     store, pack = ctx.store, ctx.store.pack
     maestro = store.maestro_entity()
+    in_scope = set(pack.data["roles"]["in_scope"])
 
     def claim(eid, field, value=None, ref=None):
         store.upsert_claim(eid, field, value=value, ref_entity_id=ref, source_id=SOURCE,
-                           extractor="dahr", extractor_version="1", raw_page_id=ctx.raw_page_id)
+                           extractor="dahr", extractor_version="2", raw_page_id=ctx.raw_page_id)
 
+    names = {_fold(n) for n in [pack.data["identity"]["name"], *pack.data["identity"].get("variants", [])]}
+    own_page = _fold(subject(ctx.page.text)) in names
     for r in parse(ctx.page.text):
-        uid = store.find_or_create_by_xref(pack.unit, SOURCE, f"matrix:{r['company']}:{r['matrix']}", r["title"])
-        claim(uid, "title", r["title"])
-        claim(uid, "matrix", r["matrix"])
-        claim(uid, "label", r["company"])
-        if r["date"]:
-            claim(uid, "date", r["date"])
-        if r["year"]:
-            claim(uid, "year", r["year"])
-        if r["performer"]:
-            claim(uid, "primary_performer", r["performer"])
-        if r["description"]:
-            claim(uid, "description", r["description"])
-        if r["url"]:
-            claim(uid, "dahr_url", r["url"])
-        claim(uid, "work_kind", "issued_recording" if r["issued"] else "unissued_recording")
-        for role in sorted({ROLE[x] for x in r["roles"] if x in ROLE}):
-            claim(uid, "credit", {"role": role}, ref=maestro)
+        roles = {ROLE[x] for x in r["roles"] if x in ROLE}
+        if not own_page:
+            # A partner's page (e.g. a piano duo): the roles are the partner's. Keep only masters that
+            # name the maestro as a performer, and only the performing roles they share.
+            if not any(n and n in _fold(r["performer"]) for n in names):
+                continue
+            roles &= PERFORMING
+        if pack.unit == "recording":
+            _recording(store, pack, claim, maestro, r, roles, "issued_recording" if r["issued"] else "unissued_recording")
+            continue
+        # A canon of works: a master the maestro plays on is a performance (its own kind of unit);
+        # a master of a piece the maestro wrote is a sighting of that work, keyed by its title.
+        if roles & PERFORMING & in_scope:
+            _recording(store, pack, claim, maestro, r, roles & PERFORMING, "performance_recording")
+        written = roles & WRITING & in_scope
+        if written and r["title"]:
+            uid = store.find_or_create_by_xref(pack.unit, SOURCE, "title:" + re.sub(r"\W+", " ", r["title"].lower()).strip(),
+                                               r["title"])
+            claim(uid, "title", r["title"])
+            if r["year"]:
+                claim(uid, "recorded_year", r["year"])
+            claim(uid, "recorded_as", r["matrix"])
+            for role in sorted(written):
+                claim(uid, "credit", {"role": role}, ref=maestro)
+
+
+def _recording(store, pack, claim, maestro, r, roles, kind) -> None:
+    uid = store.find_or_create_by_xref(pack.unit, SOURCE, f"matrix:{r['company']}:{r['matrix']}", r["title"])
+    claim(uid, "title", r["title"])
+    claim(uid, "matrix", r["matrix"])
+    claim(uid, "label", r["company"])
+    if r["date"]:
+        claim(uid, "date", r["date"])
+    if r["year"]:
+        claim(uid, "year", r["year"])
+    if r["performer"]:
+        claim(uid, "primary_performer", r["performer"])
+    if r["description"]:
+        claim(uid, "description", r["description"])
+    if r["url"]:
+        claim(uid, "dahr_url", r["url"])
+    claim(uid, "work_kind", kind)
+    for role in sorted(roles):
+        claim(uid, "credit", {"role": role}, ref=maestro)
