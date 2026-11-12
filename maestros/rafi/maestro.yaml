@@ -4,9 +4,9 @@ status: draft
 identity:
   name: Mohammed Rafi
   slug: rafi
-  ids: {wikidata: null, musicbrainz: null, viaf: null}
-  variants: [Mohd. Rafi, Md. Rafi, Mohammad Rafi, محمد رفیع, मोहम्मद रफ़ी]
-  namesakes: []
+  ids: {wikidata: Q156815, musicbrainz: 28365249-f3fd-44db-8131-32cb170970c4, viaf: "7575974", isni: "0000000063085938", bnf: 13921553r}
+  variants: [Mohd. Rafi, Mohd Rafi, Md. Rafi, Mohammad Rafi, Muhammad Rafi, Muhammed Rafi, محمد رفیع, मोहम्मद रफ़ी]
+  namesakes: ["Q6893273: Indian footballer, born 1982", "Q109473241: Indian businessperson, born 1959"]
   active: [1941, 1980]
 roles:
   primary: singer
@@ -25,36 +25,78 @@ tiers:
   B: {label: "Non-Hindi film songs and non-film songs", target_missing: 0.05}
   C: {label: "Unreleased or shelved films, chorus, radio and live recordings", target_missing: report_only}
 registers:
-  - name: Hindi Film Geet Kosh (vols. 1-5, 1931-1980)
+  - name: HFGK Online (Hindi Film Geet Kosh database, films and songs 1931-1985)
+    tiers: [A]
+    access: crawlable
+    role: ground_truth
+    url: https://hindi-movies-songs.com/hfgk/
+    _why:
+      reason: >-
+        Online edition of the Hamraaz register: 6,361 films and 47,129 songs 1931-1985, so it also covers
+        Rafi's posthumous releases. Database V1.0 is retired; V2.0 is said to be at hamraaz.org.
+        No terms of use published; ask the site master before bulk crawling.
+      confidence: 0.8
+      evidence: [https://hindi-movies-songs.com/hfgk/]
+  - name: Hindi Film Geet Kosh (print, vols. 1-5, 1931-1980)
     tiers: [A]
     access: print
-    role: ground_truth
+    role: independent_check
     url: https://giitaayan.com/satish/12.html
   - name: Geet Gata Chal (Waheed Riasat Bhatti)
     tiers: [A, B]
     access: print
     role: independent_check
+  - name: Rafi Sahab's Song Database (mohdrafi.com)
+    tiers: [B]
+    access: unavailable
+    role: partial
+    url: https://mohdrafi.com/database/index.php?FILM=Non-Filmi+Ghazals&load=film
+    _why:
+      reason: >-
+        Fan database with categories for non-filmi ghazals, bhajans and songs and for Punjabi, Marathi,
+        Bengali and Gujarati songs. robots.txt disallows automated access, so it needs the site's
+        permission or a manual export. Replaces Muveen's spreadsheet, which is not available.
+      confidence: 0.6
+      evidence: ["https://mohdrafi.com/database/index.php?FILM=Non-Filmi+Ghazals&load=film"]
+  - name: Mohd. Rafi Sahab alphabetical song list (Scribd, 17 pages, compiler not stated)
+    tiers: [A, B]
+    access: unavailable
+    role: partial
+    url: https://www.scribd.com/document/44070958/Mohd-Rafi
+  - name: Wikipedia list of songs recorded by Mohammed Rafi (non-Hindi film and non-film sections)
+    tiers: [B]
+    access: crawlable
+    role: partial
+    url: https://en.wikipedia.org/wiki/List_of_songs_recorded_by_Mohammed_Rafi
 sources:
   - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api}
   - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api}
   - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable, url: https://en.wikipedia.org/wiki/List_of_songs_recorded_by_Mohammed_Rafi}
+  - {id: hfgk_online, kind: structured, lineage: hfgk, reliability: 0.95, access: crawlable, url: "https://hindi-movies-songs.com/hfgk/"}
   - {id: hindigeetmala, kind: semi, lineage: hfgk, reliability: 0.85, access: crawlable}
   - {id: atulsongaday, kind: prose, lineage: atul, reliability: 0.75, access: crawlable, url: https://atulsongaday.me}
+  - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api, url: https://www.discogs.com}
   - {id: songsofyore, kind: prose, lineage: songsofyore, reliability: 0.75, access: crawlable, url: https://www.songsofyore.com}
 lexicon:
   transliteration: lexicon/translit.tsv
   container_aliases: lexicon/film_aliases.tsv
   people_aliases: lexicon/people.tsv
 collaborators:
-  composers: [Naushad, O. P. Nayyar, Shankar-Jaikishan, S. D. Burman, Madan Mohan, Laxmikant-Pyarelal]
+  composers: [Laxmikant-Pyarelal, Shankar-Jaikishan, O. P. Nayyar, Kalyanji-Anandji, Naushad, S. D. Burman, Ravi, Madan Mohan]
   co_singers: [Lata Mangeshkar, Asha Bhosle, Geeta Dutt, Shamshad Begum]
 verification:
   method: voice
   references: gold/voice_refs/
   confusables: [Anwar, Shabbir Kumar, Mahendra Kapoor, Sonu Nigam (tribute covers)]
 checksums:
-  - {scope: "years 1944-1950", total: 341, breakdown: {solo: 132, duet: 169, three_or_more: 40}, source: atulsongaday}
-  - {scope: "composer Naushad", total: 149, breakdown: {solo: 81}, source: "to confirm"}
+  - {scope: "years 1944-1950", total: 341, breakdown: {solo: 132, duet: 169, three_or_more: 40}, source: "https://atulsongaday.me/2014/08/20/zahe-kismat-teri-mehfil-se-jo-paighaam-aaya-hai/"}
+  - {scope: "composer Naushad", total: 149, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
+  - {scope: "composer Laxmikant-Pyarelal", total: 388, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
+  - {scope: "composer Shankar-Jaikishan", total: 341, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
+  - {scope: "composer O. P. Nayyar", total: 197, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
+  - {scope: "Hindi film songs (Shahid Rafi and Sujata Dev, 2015)", total: 4425, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
+  - {scope: "non-Hindi film songs (Shahid Rafi and Sujata Dev, 2015)", total: 310, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
+  - {scope: "non-film songs (Shahid Rafi and Sujata Dev, 2015)", total: 328, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi"}
 taxonomies:
   style: raga
 popularity_signals:
@@ -72,6 +114,7 @@ budget:
   model_spend_usd: null
   review_hours_per_week: null
 open_questions:
-  - Confirm Wikidata, MusicBrainz and VIAF IDs.
-  - Is a copy of HFGK available to digitise, and which volumes?
-  - Source for the Naushad subtotal (149 songs, 81 solo).
+  - Permission from the HFGK Online site master for bulk crawling, or an export of Rafi's songs.
+  - Access to Rafi Sahab's Song Database on mohdrafi.com (robots.txt blocks crawling), by permission or manual export.
+  - A copy of the Scribd alphabetical Rafi song list (needs a Scribd sign-in).
+  - Which count of non-Hindi film songs is right, 310 (Shahid Rafi and Sujata Dev) or 112 (unsourced)?

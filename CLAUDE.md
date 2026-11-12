@@ -19,11 +19,14 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 - `src/maestro/schema.sql`: Postgres schema (source, entity, claim, job, raw_page).
 - `src/maestro/store.py`: store API (claims, merges, crawl queue, coverage, gaps).
 - `src/maestro/mcp_server.py`: MCP server exposing the store to Claude Code (configured in `.mcp.json`).
-- `maestros/<slug>/`: pack plus maestro-specific lexicons, extractors and gold data.
+- `src/maestro/profiler/`: profiler helpers (`identify.py`: Wikidata candidates and external IDs).
+- `.claude/skills/profile-maestro/`: the `/profile-maestro` skill (research a maestro, propose its pack).
+- `maestros/<slug>/`: pack, profiler dossier, and maestro-specific lexicons, extractors and gold data.
 
 ## Commands
 
 - Install: `uv venv && uv pip install -e ".[dev]"`
 - Validate packs: `uv run maestro-validate`
+- Identity lookup: `uv run maestro-identify "<name>"` (needs access to wikidata.org)
 - Tests: `uv run pytest` (starts a throwaway Postgres if `pg_ctl` is installed; otherwise set `MAESTRO_TEST_DSN`)
 - Local database: `docker compose up -d`, then `MAESTRO_PACK=maestros/rafi` and `MAESTRO_DSN=...` for the MCP server.
