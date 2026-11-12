@@ -35,6 +35,7 @@ REVIEW_TITLE_RATIO = 0.8  # unit titles in one container at or above this are co
 AUTO_TITLE_RATIO = 0.93  # a mutual best match at or above this is merged
 CLEAR_TITLE_RATIO = 0.85  # ... and so is one at or above this that leads every other candidate by CLEAR_MARGIN
 CLEAR_MARGIN = 0.2
+TIE_MARGIN = 0.03  # two candidates this close (a song and its reprise) always go to review
 
 
 # ---- normalisation -------------------------------------------------------------
@@ -64,6 +65,9 @@ def load_lexicon(pack_dir: Path, rel: str | None) -> dict[str, str]:
     return table
 
 
+_PART_WORDS = {"pt", "part"}
+
+
 @dataclass
 class Normaliser:
     translit: dict[str, str] = field(default_factory=dict)
@@ -91,7 +95,7 @@ class Normaliser:
         # Drop a trailing language or version tag such as "(Telugu)" or "[2]".
         title = re.sub(r"\s*[\(\[][^\)\]]*[\)\]]\s*$", "", title or "")
         # Bare numbers are repeat marks ("Arati-2") or part numbers, not words of the title.
-        return " ".join(w for w in self._words(title).split() if not w.isdigit())
+        return " ".join(w for w in self._words(title).split() if not w.isdigit() and w not in _PART_WORDS)
 
     def container(self, title: str) -> str:
         key = self.title(title)
@@ -106,6 +110,9 @@ class Groups:
     def __init__(self, store: Store):
         self.parent: dict[int, int] = {}
         self.src: dict[int, set[str]] = {}
+        # Sources whose ids do not mean distinct things (MusicBrainz keeps a recording per release
+        # version): two of their records may still be one unit.
+        self.loose = {s["id"] for s in store.pack.data.get("sources", []) if s.get("distinct_ids") is False}
         for r in store.conn.execute(
             "SELECT entity_id, ref_entity_id FROM claim WHERE field = 'same_as' AND status = 'active'"
         ).fetchall():
@@ -137,7 +144,7 @@ class Groups:
     def can_join(self, a: int, b: int) -> bool:
         """Two groups may be merged automatically only if no source lists records in both:
         a source that keeps two records apart knows they are different."""
-        return self.find(a) != self.find(b) and self.sources(a).isdisjoint(self.sources(b))
+        return self.find(a) != self.find(b) and not ((self.sources(a) & self.sources(b)) - self.loose)
 
     def members(self, ids: list[int]) -> dict[int, list[int]]:
         out: dict[int, list[int]] = defaultdict(list)
@@ -251,13 +258,14 @@ def _merge_or_queue(store, groups, distinct, stats, kind, recs, evidence, priori
         if pair in distinct:
             continue
         shared_role = roles is not None and set(roles.get(keep["id"], {})) & set(roles.get(other["id"], {}))
-        if set(keep["sources"]) & set(other["sources"]) and shared_role:
+        shared_strict = (set(keep["sources"]) & set(other["sources"])) - groups.loose
+        if shared_strict and shared_role:
             store.merge_entities(keep["id"], other["id"],
                                  f"same name {evidence.get('key')!r} and role {sorted(shared_role)} in one source")
             groups.union(keep["id"], other["id"])
             stats.merged[kind] += 1
             continue
-        if set(keep["sources"]) & set(other["sources"]):
+        if shared_strict:
             if queue_review(store, f"same_{kind}_same_source", list(pair),
                             {**evidence, "labels": [keep["label"], other["label"]]}, priority):
                 stats.queued[kind] += 1
@@ -429,25 +437,33 @@ def _prefix_similarity(sa: str, la: str) -> float:
     return max(SequenceMatcher(None, sa, la[:n]).ratio() for n in range(max(1, len(sa) - 3), len(sa) + 4))
 
 
+TITLE_LETTERS = 32  # compare at most this many letters: the opening line, not the whole verse
+MIN_TITLE_LETTERS = 10
+
+
 def title_similarity(a: str, b: str) -> float:
-    """How alike two normalised titles are, comparing the shorter with the same length of the longer.
+    """How alike two normalised titles are, comparing their openings letter by letter.
 
     One source may give the first line and another the whole opening, often after a spoken or sung
-    lead-in ("O Sss ...", "Aae Hain Badee Door Se ... Mahafil Men Shama Chamakee"), so the shorter
-    title is also tried against the longer one from each later word. Letters are compared, not words,
+    lead-in ("O Sss ...", "Duniya Chala-Chali Ka Mela ... Do Din Ki Zindagi Hai"), so each title's
+    opening is also tried against the other from each later word. Letters are compared, not words,
     because transliterations split words and spell vowels differently ("rang lo" / "ranglo",
-    "jaadoogar" / "jadugar").
+    "jaadoogar" / "jadugar"). At most TITLE_LETTERS letters are compared.
     """
     wa, wb = a.split(), b.split()
-    short, long_ = (wa, wb) if len(wa) <= len(wb) else (wb, wa)
-    if len(short) < 2:
-        return 1.0 if short == long_ else 0.0
-    sa = _squash("".join(short))
+    if min(len(wa), len(wb)) < 2:
+        return 1.0 if wa == wb else 0.0
     best = 0.0
-    for i in range(0, len(long_) - len(short) + 1):
-        best = max(best, _prefix_similarity(sa, _squash("".join(long_[i:]))) - (0.02 if i else 0.0))
-        if best >= 0.999:
-            break
+    for x, y in ((wa, wb), (wb, wa)):
+        sx = _squash("".join(x))
+        for j in range(len(y)):
+            sy = _squash("".join(y[j:]))
+            n = min(len(sx), len(sy), TITLE_LETTERS)
+            if n < MIN_TITLE_LETTERS:
+                break
+            best = max(best, _prefix_similarity(sx[:n], sy) - (0.02 if j else 0.0))
+            if best >= 0.999:
+                return best
     return best
 
 
@@ -469,40 +485,44 @@ def resolve_units(store: Store, norm: Normaliser, stats: ResolveStats) -> None:
     by_container: dict[int, list[tuple[str, dict]]] = defaultdict(list)
     for (container, key), block in blocks.items():
         if key and container is not None:
-            by_container[container].append((key, block[0]))
+            by_container[container].extend((key, r) for r in block)
     for container, entries in by_container.items():
-        scores: dict[tuple[int, int], float] = {}
+        # Scores between groups (records already merged count as one), keeping each pair's best.
+        scores: dict[tuple[int, int], tuple[float, str, str, dict, dict]] = {}
         for i, (ka, ra) in enumerate(entries):
-            for kb, rb in entries[i + 1:]:
-                if not set(ra["sources"]).isdisjoint(rb["sources"]):
+            for j in range(i + 1, len(entries)):
+                kb, rb = entries[j]
+                a, b = groups.find(ra["id"]), groups.find(rb["id"])
+                if a == b or (set(ra["sources"]) & set(rb["sources"])) - groups.loose:
                     continue  # one source listing two titles in a container means two units
                 sim = title_similarity(ka, kb)
-                if sim < REVIEW_TITLE_RATIO:
-                    continue
-                scores[(i, entries.index((kb, rb)))] = sim
-        ranked: dict[int, list[tuple[float, int]]] = defaultdict(list)  # per record: its candidates, best first
-        for (i, j), sim in scores.items():
-            ranked[i].append((sim, j))
-            ranked[j].append((sim, i))
+                pair = (min(a, b), max(a, b))
+                if sim >= REVIEW_TITLE_RATIO and sim > scores.get(pair, (0.0,))[0]:
+                    scores[pair] = (sim, ka, kb, ra, rb)
+        ranked: dict[int, list[tuple[float, int]]] = defaultdict(list)  # per group: its candidates, best first
+        for (a, b), (sim, *_rest) in scores.items():
+            ranked[a].append((sim, b))
+            ranked[b].append((sim, a))
         for lst in ranked.values():
             lst.sort(reverse=True)
 
         def margin(x):  # how far the best candidate leads the next one (1.0 when there is no other)
             lst = ranked[x]
             return lst[0][0] - lst[1][0] if len(lst) > 1 else 1.0
-        for (i, j), sim in sorted(scores.items(), key=lambda kv: -kv[1]):
-            ra, rb = entries[i][1], entries[j][1]
-            a, b = groups.find(ra["id"]), groups.find(rb["id"])
+
+        for (a0, b0), (sim, ka, kb, ra, rb) in sorted(scores.items(), key=lambda kv: -kv[1][0]):
+            a, b = groups.find(a0), groups.find(b0)
             if a == b or tuple(sorted((a, b))) in distinct:
                 continue
             if not groups.can_join(a, b):
                 continue  # one side's group already holds a record from the other's source
-            mutual = ranked[i][0][1] == j and ranked[j][0][1] == i
-            clear = sim >= AUTO_TITLE_RATIO or (sim >= CLEAR_TITLE_RATIO and min(margin(i), margin(j)) >= CLEAR_MARGIN)
+            mutual = ranked[a0][0][1] == b0 and ranked[b0][0][1] == a0
+            lead = min(margin(a0), margin(b0))
+            clear = lead >= TIE_MARGIN and (sim >= AUTO_TITLE_RATIO or (sim >= CLEAR_TITLE_RATIO and lead >= CLEAR_MARGIN))
             if mutual and clear:
                 keep, other = sorted((a, b))
-                store.merge_entities(keep, other, f"title {entries[i][0]!r} ~ {entries[j][0]!r} "
-                                                  f"({sim:.2f}) in container {container}, different sources")
+                store.merge_entities(keep, other, f"title {ka!r} ~ {kb!r} ({sim:.2f}) in container {container}, "
+                                                  "different sources")
                 groups.union(keep, other)
                 stats.merged["unit"] += 1
             elif queue_review(store, "unit_near_title", [a, b],
