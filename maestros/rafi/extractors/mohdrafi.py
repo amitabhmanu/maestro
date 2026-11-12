@@ -1,7 +1,8 @@
 """Rafi Sahab's Song Database (mohdrafi.com/database), from pages saved by hand.
 
 The site's robots.txt forbids crawling, so pages are saved in a browser and loaded with
-`maestro-import --extractor mohdrafi --url <page url> --opt tier=B <file>`.
+`maestro-import --extractor mohdrafi --url <page url> --opt tier=B [--opt language=Telugu] <file>`.
+The file can be the saved HTML or the page's table copied as tab-separated text.
 
 A page holds one or more blocks, each a header table naming a category ("Non-Filmi Ghazals")
 or a film, an optional release year, and rows of track, singers, lyricist and musician.
@@ -67,6 +68,41 @@ def parse(page: str) -> list[dict]:
     return blocks
 
 
+def parse_table(text: str) -> list[dict]:
+    """A table copied from a language page ("Track Name<TAB>Film Name<TAB>Year"), as blocks per film.
+
+    These pages list only Rafi's tracks, so each track gets Rafi as singer.
+    """
+    films: dict[str, dict] = {}
+    started = False
+    for line in text.splitlines():
+        cols = [c.strip() for c in line.split("\t")]
+        if cols[0].lower() == "track name":
+            started = True
+            continue
+        if not started:
+            continue
+        if not cols[0]:
+            break  # the table ends at the first blank line; page furniture (search box) follows
+        if len(cols) < 2 or not cols[1]:
+            continue
+        film = cols[1]
+        year = cols[2] if len(cols) > 2 else ""
+        block = films.setdefault(film, {"name": film, "year": int(year) if year.isdigit() else None, "tracks": []})
+        if year.isdigit() and block["year"] is None:
+            block["year"] = int(year)
+        block["tracks"].append({"track_key": cols[0], "title": cols[0], "singers": ["Mohd Rafi"],
+                                "lyricists": [], "composers": []})
+    return list(films.values())
+
+
+def parse_any(body: bytes) -> list[dict]:
+    text = decode(body)
+    if "<table" in text.lower():
+        return parse(text)
+    return parse_table(text)
+
+
 def _person(store, name: str) -> int:
     if name.lower().replace(".", "").strip() in MAESTRO_NAMES:
         eid = store.maestro_entity()
@@ -84,19 +120,24 @@ def extract(ctx) -> None:
         store.upsert_claim(eid, field, value=value, ref_entity_id=ref, source_id=SOURCE,
                            extractor="mohdrafi", extractor_version="1", raw_page_id=raw)
 
-    for block in parse(decode(ctx.page.body)):
-        is_category = block["name"].lower().startswith("non-filmi")
+    for block in parse_any(ctx.page.body):
+        # "Unknown" means the site has no film for the track; keep it uncontained.
+        is_category = bool(re.match(r"non[- ]?filmi", block["name"], re.I)) or block["name"].lower() == "unknown"
         container = None
         if not is_category:
             container = store.find_or_create_by_xref("container", SOURCE, f"film:{block['name']}", block["name"])
             claim(container, "title", block["name"])
             if block["year"]:
                 claim(container, "year", block["year"])
+            if ctx.options.get("language"):
+                claim(container, "language", ctx.options["language"])
         for n, t in enumerate(block["tracks"], 1):
             song = store.find_or_create_by_xref("song", SOURCE, f"{block['name']}|{t['track_key']}", t["title"])
             claim(song, "title", t["title"])
             if is_category:
                 claim(song, "category", block["name"])
+                if ctx.options.get("language"):
+                    claim(song, "language", ctx.options["language"])
                 if block["year"]:
                     claim(song, "year", block["year"])
             else:
