@@ -33,6 +33,11 @@ class Store:
     @classmethod
     def connect(cls, dsn: str, pack: Pack) -> "Store":
         conn = psycopg.connect(dsn, row_factory=dict_row, autocommit=True)
+        if conn.info.encoding != "utf-8":
+            # SQL_ASCII databases hand text back as bytes and cannot be trusted with Devanagari or Urdu.
+            enc = conn.info.encoding
+            conn.close()
+            raise StoreError(f"database encoding is {enc!r}; create it with ENCODING 'UTF8' (e.g. TEMPLATE template0)")
         return cls(conn, pack)
 
     def close(self) -> None:
@@ -124,6 +129,24 @@ class Store:
         ).fetchone()
         return row["id"]
 
+    def entity_by_xref(self, source_id: str, external_id: str) -> int | None:
+        """The entity a source knows by `external_id` (recorded as an `xref` claim), if any."""
+        row = self.conn.execute(
+            """SELECT entity_id FROM claim
+               WHERE field = 'xref' AND source_id = %s AND value = %s AND status = 'active'
+               ORDER BY id LIMIT 1""",
+            (source_id, Jsonb(str(external_id))),
+        ).fetchone()
+        return row["entity_id"] if row else None
+
+    def find_or_create_by_xref(self, type: str, source_id: str, external_id: str, label: str) -> int:
+        """Get or create the entity a source identifies by `external_id`, recording the xref claim."""
+        eid = self.entity_by_xref(source_id, external_id)
+        if eid is None:
+            eid = self.create_entity(type, label)
+            self.upsert_claim(eid, "xref", value=str(external_id), source_id=source_id)
+        return eid
+
     def merge_entities(self, keep_id: int, merge_id: int, reason: str, source_id: str = "claude") -> int:
         """Record that merge_id is the same entity as keep_id. Reversible: supersede the claim to undo."""
         if keep_id == merge_id:
@@ -162,6 +185,32 @@ class Store:
                VALUES (%s, %s, %s, %s, %s, %s) RETURNING *""",
             (url, extractor, purpose, entity_id, gap_id, priority),
         ).fetchone()
+
+    def next_job(self) -> dict[str, Any] | None:
+        """Claim the highest-priority queued job (marks it running)."""
+        with self.conn.transaction():
+            return self.conn.execute(
+                """UPDATE job SET status = 'running', attempts = attempts + 1
+                   WHERE id = (SELECT id FROM job WHERE status = 'queued'
+                               ORDER BY priority DESC, id LIMIT 1 FOR UPDATE SKIP LOCKED)
+                   RETURNING *"""
+            ).fetchone()
+
+    def finish_job(self, job_id: int, *, status: str, raw_page_id: int | None = None, error: str | None = None) -> None:
+        if status not in ("done", "failed", "skipped", "queued"):
+            raise StoreError(f"bad job status {status!r}")
+        self.conn.execute(
+            """UPDATE job SET status = %s, raw_page_id = coalesce(%s::bigint, raw_page_id), error = %s,
+                              fetched_at = CASE WHEN %s::bigint IS NULL THEN fetched_at ELSE now() END
+               WHERE id = %s""",
+            (status, raw_page_id, error, raw_page_id, job_id),
+        )
+
+    def record_raw_page(self, url: str, http_status: int, sha256: str, path: str) -> int:
+        return self.conn.execute(
+            "INSERT INTO raw_page (url, http_status, sha256, path) VALUES (%s, %s, %s, %s) RETURNING id",
+            (url, http_status, sha256, path),
+        ).fetchone()["id"]
 
     # ---- reads -------------------------------------------------------------
 
