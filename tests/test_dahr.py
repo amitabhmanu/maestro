@@ -51,3 +51,37 @@ def test_same_matrix_merges_across_sources(store_for):
     resolve(s)
     g = Groups(s)
     assert g.find(pf) == g.find(dh) and g.find(other) == other
+
+
+def _ctx(store, text):
+    from maestro.crawl.fetcher import Page
+    from maestro.crawl.runner import ExtractContext
+
+    raw = store.record_raw_page("u", 200, "x", "p")
+    return ExtractContext(store, {"purpose": "spine"}, Page("u", 200, text.encode(), "x", None), raw)
+
+
+DUO = """<meta property="og:title" content="{who}" /><section class="recording-section"><table>
+<tr class="issued"><td data-label="Company">Columbia (U.K.)</td><td data-label="Matrix No.">WL256</td>
+ <td data-label="First Recording Date">12/14/1925</td><td data-label="Primary Title">Charleston blues</td>
+ <td data-label="Primary Performer">Clément Doucet ; Jean Wiener</td><td data-label="Role">{roles}</td></tr>
+<tr class="issued"><td data-label="Company">Brunswick</td><td data-label="Matrix No.">E30325</td>
+ <td data-label="First Recording Date">7/5/1929</td><td data-label="Primary Title">Blues</td>
+ <td data-label="Primary Performer">Rosita Renard</td><td data-label="Role">composer</td></tr>
+</table></section>"""
+
+
+def test_work_canon_splits_performances_from_works_and_reads_partner_pages(store_for):
+    s = store_for("jean-wiener")
+    dahr.extract(_ctx(s, DUO.format(who="Jean Wiener", roles="instrumentalist, piano, composer")))
+    rows = s.query_graph(
+        """SELECT e.label, c.value #>> '{}' AS kind FROM entity e
+           LEFT JOIN claim c ON c.entity_id = e.id AND c.field = 'work_kind' WHERE e.type = 'work' ORDER BY 1, 2""")
+    # The duo master is a performance; "Charleston blues" and "Blues" are also works he wrote.
+    assert [(r["label"], r["kind"]) for r in rows] == [
+        ("Blues", None), ("Charleston blues", "performance_recording"), ("Charleston blues", None)]
+    n = s.query_graph("SELECT count(*) AS n FROM entity WHERE type = 'work'")[0]["n"]
+    assert n == 3
+    # Doucet's page: the Renard master is not Wiener's; the duo master is the same unit as before.
+    dahr.extract(_ctx(s, DUO.format(who="Clément Doucet", roles="instrumentalist, piano, composer")))
+    assert s.query_graph("SELECT count(*) AS n FROM entity WHERE type = 'work'")[0]["n"] == 3
