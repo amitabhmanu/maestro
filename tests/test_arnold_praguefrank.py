@@ -66,3 +66,14 @@ def test_import_sessions(store_for, tmp_path):
     assert [(r["t"], r["n"]) for r in tiers] == [("A", 5), ("B", 1)]
     parts = store.query_graph("SELECT count(*) AS n FROM claim WHERE field = 'part_of'")
     assert parts[0]["n"] == 6
+
+
+def test_issue_numbers():
+    assert pf.issue_numbers("20-2488 P 195 /LPM 3031 BCD-15726 Documents 1103925") == [
+        "20-2488", "P 195", "LPM 3031", "BCD-15726", "1103925"]
+    assert pf.issue_numbers("20-1948 (1st press)/ BCD-15726") == ["20-1948", "BCD-15726"]
+    assert pf.issue_numbers("unissued") == []
+
+
+def test_a_number_in_a_title_is_not_an_issue():
+    assert pf._split_take("K2-WB-1426 THE WRECK OF THE OLD 97   LSP 2036 Documents 1103925")[1] == "THE WRECK OF THE OLD 97"

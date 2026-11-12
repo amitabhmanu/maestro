@@ -4,7 +4,8 @@ Seed with `release_url(mbid)`; each page queues the next. For each track credite
 it writes a unit (keyed by the MusicBrainz recording id) with its title and a credit to the maestro
 in the pack's primary role. Releases whose release group is a soundtrack become containers (keyed by
 release group), so their recordings can be matched to a film's song list. Compilations add a
-sighting of the recording but no container.
+sighting of the recording but no container. Each unit also gets the catalogue numbers of the
+releases it is on (`catalogue`), which resolution uses to match units that have no container.
 
 MusicBrainz data is CC0. The API asks for at most one request per second and a descriptive
 User-Agent; set `api_rps` on the pack's musicbrainz source.
@@ -17,7 +18,7 @@ from urllib.parse import parse_qs, urlencode, urlsplit
 
 SOURCE = "musicbrainz"
 API = "https://musicbrainz.org/ws/2/"
-INC = "recordings+release-groups+artist-credits"
+INC = "recordings+release-groups+artist-credits+labels"
 
 
 def release_url(artist_mbid: str, offset: int = 0) -> str:
@@ -35,9 +36,12 @@ def parse(data: dict, artist_mbid: str) -> dict:
     for rel in data.get("releases", []):
         rg = rel.get("release-group") or {}
         soundtrack = "Soundtrack" in (rg.get("secondary-types") or [])
+        live = "Live" in (rg.get("secondary-types") or [])
         if soundtrack and rg.get("id"):
             containers[rg["id"]] = {"title": rg.get("title") or rel.get("title"),
                                     "year": _year(rg.get("first-release-date") or rel.get("date"))}
+        catalogues = sorted({li["catalog-number"] for li in rel.get("label-info") or []
+                             if li.get("catalog-number") and li["catalog-number"].lower() != "[none]"})
         for medium in rel.get("media") or []:
             for t in medium.get("tracks") or []:
                 credit = t.get("artist-credit") or (t.get("recording") or {}).get("artist-credit") or []
@@ -50,6 +54,9 @@ def parse(data: dict, artist_mbid: str) -> dict:
                     "track_title": t.get("title"),
                     "credit": "".join(c.get("name", "") + c.get("joinphrase", "") for c in credit).strip(),
                     "release": rel.get("id"),
+                    "catalogues": catalogues,
+                    "live": live,
+                    "release_year": _year(rel.get("date")),
                     "container": rg.get("id") if soundtrack else None,
                 })
     return {"containers": containers, "tracks": [t for t in tracks if t["recording"]],
@@ -84,6 +91,12 @@ def extract(ctx) -> None:
         claim(uid, "credit", {"role": role}, ref=maestro)
         claim(uid, "artist_credit", t["credit"])
         claim(uid, "on_release", t["release"])
+        for cat in t["catalogues"]:
+            claim(uid, "catalogue", cat)  # issue numbers let resolution match units across sources
+        if t["live"]:
+            claim(uid, "live", True)
+        if t["release_year"]:
+            claim(uid, "release_year", t["release_year"])
         if t["container"]:
             claim(uid, "part_of", {}, ref=cids[t["container"]])
 

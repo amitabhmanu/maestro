@@ -77,6 +77,7 @@
         "unit": {"$ref": "#/$defs/unit"},
         "version_levels": {"type": "array", "items": {"enum": ["work", "recording", "release"]}},
         "container": {"$ref": "#/$defs/container"},
+        "match_titles_across_containers": {"type": "boolean", "description": "Match a unit that no container holds (e.g. a release database's recording) to the one contained unit of the same title anywhere in the canon. Default false."},
         "container_has_full_listing": {
           "type": "boolean",
           "description": "True when a container's full listing can be fetched, which enables container-as-unit completeness checks."
@@ -132,6 +133,8 @@
           "reliability": {"type": "number", "minimum": 0, "maximum": 1},
           "access": {"$ref": "#/$defs/access"},
           "distinct_ids": {"type": "boolean", "description": "false when two of the source's ids can name one unit (MusicBrainz keeps a recording per release version); the resolver may then merge them. Default true."},
+          "default_tier": {"type": "string", "description": "Tier for a unit known only from this source, with no tier of its own or from its container (e.g. A for a release database that lists issued recordings)."},
+          "live_tier": {"type": "string", "description": "With default_tier: the tier for such a unit when the source marks it live."},
           "api_rps": {"type": "number", "exclusiveMinimum": 0, "description": "For access: api, the API's request limit per second. The fetcher skips robots.txt for an API host and keeps to this rate."},
           "url": {"type": "string"},
           "extractor": {"type": "string"},
