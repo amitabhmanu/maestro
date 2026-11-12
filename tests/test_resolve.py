@@ -46,15 +46,19 @@ def test_cross_source_duplicates_merge_and_same_source_ones_queue(store_for):
     u2 = song(s, "mohdrafi", "o-duniya", "O Duniya Ke Rakhwale", f2, sdb_b)
     song(s, "hfgk_online", "1001", "Other Song", f1, twin_a)
     song(s, "hfgk_online", "1002", "Third Song", f1, twin_b)
+    # Same name in one source but different roles: kept apart, sent to review.
+    twin_c = person(s, "hfgk_online", "13", "Ravi")
+    u3 = song(s, "hfgk_online", "1003", "Fourth Song", f1)
+    s.upsert_claim(u3, "credit", ref_entity_id=twin_c, value={"role": "lyricist"}, source_id="hfgk_online")
 
     stats = resolve(s).as_dict()
-    assert stats["merged"] == {"person": 1, "container": 1, "unit": 1}
+    assert stats["merged"] == {"person": 2, "container": 1, "unit": 1}  # S. D. Burman, and the two composer Ravis
     assert stats["queued"] == {"person": 1}
-    assert s.coverage_report()["tiers"]["A"]["observed"] == 3  # u2 merged into u1
+    assert s.coverage_report()["tiers"]["A"]["observed"] == 4  # u2 merged into u1
     merged = s.query_graph("SELECT entity_id, ref_entity_id FROM claim WHERE field = 'same_as' ORDER BY id")
     assert (merged[-1]["entity_id"], merged[-1]["ref_entity_id"]) == (u2, u1)
     (item,) = open_reviews(s)
-    assert item["kind"] == "same_person_same_source" and sorted(item["subject_ids"]) == sorted([twin_a, twin_b])
+    assert item["kind"] == "same_person_same_source" and sorted(item["subject_ids"]) == sorted([twin_a, twin_c])
 
     # Re-running changes nothing.
     assert resolve(s).as_dict() == {"merged": {}, "queued": {}}

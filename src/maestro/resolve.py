@@ -212,8 +212,13 @@ def _records(store: Store, type_: str) -> list[dict[str, Any]]:
     ).fetchall()
 
 
-def _merge_or_queue(store, groups, distinct, stats, kind, recs, evidence, priority=1):
-    """Within one block: merge records that come from different sources; queue same-source pairs."""
+def _merge_or_queue(store, groups, distinct, stats, kind, recs, evidence, priority=1, roles=None):
+    """Within one block: merge records that come from different sources; queue same-source pairs.
+
+    With `roles` (people only), a same-source pair credited in a shared role is merged too: one
+    database listing the same full name twice in the same role is a duplicate entry far more often
+    than two namesakes (decided by the user for Rafi's HFGK data, 2026-11-12). Merges are reversible.
+    """
     roots = {}
     for r in recs:
         roots.setdefault(groups.find(r["id"]), r)
@@ -224,6 +229,13 @@ def _merge_or_queue(store, groups, distinct, stats, kind, recs, evidence, priori
     for other in recs[1:]:
         pair = tuple(sorted((keep["id"], other["id"])))
         if pair in distinct:
+            continue
+        shared_role = roles is not None and set(roles.get(keep["id"], {})) & set(roles.get(other["id"], {}))
+        if set(keep["sources"]) & set(other["sources"]) and shared_role:
+            store.merge_entities(keep["id"], other["id"],
+                                 f"same name {evidence.get('key')!r} and role {sorted(shared_role)} in one source")
+            groups.union(keep["id"], other["id"])
+            stats.merged[kind] += 1
             continue
         if set(keep["sources"]) & set(other["sources"]):
             if queue_review(store, f"same_{kind}_same_source", list(pair),
@@ -264,13 +276,13 @@ def resolve_people(store: Store, norm: Normaliser, stats: ResolveStats) -> None:
     blocks: dict[str, list[dict]] = defaultdict(list)
     for r in recs:
         blocks[norm.person(r["label"])].append(r)
+    roles = _role_counts(store)
     for key, block in blocks.items():
         if key:
-            _merge_or_queue(store, groups, distinct, stats, "person", block, {"key": key})
+            _merge_or_queue(store, groups, distinct, stats, "person", block, {"key": key}, roles=roles)
 
     # Near matches: a one- or two-word name contained in a longer one ("naushad" / "naushad ali"),
     # between people credited in the same role. These always go to review.
-    roles = _role_counts(store)
     by_first: dict[str, list[tuple[str, dict]]] = defaultdict(list)
     for key, block in blocks.items():
         if key:
@@ -360,4 +372,18 @@ def resolve(store: Store) -> ResolveStats:
     resolve_people(store, norm, stats)
     resolve_containers(store, norm, stats)
     resolve_units(store, norm, stats)
+    close_settled_reviews(store)
     return stats
+
+
+def close_settled_reviews(store: Store) -> int:
+    """Close open review items whose subjects have since been merged into one entity."""
+    groups = Groups(store)
+    closed = 0
+    for item in open_reviews(store, limit=100000):
+        if len({groups.find(i) for i in item["subject_ids"]}) == 1:
+            store.conn.execute(
+                """UPDATE review_item SET status = 'decided', decision = 'merge', note = 'merged by a resolution rule',
+                   decided_at = now() WHERE id = %s""", (item["id"],))
+            closed += 1
+    return closed
