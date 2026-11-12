@@ -21,7 +21,7 @@ Namesakes ruled out:
 
 ## Career and roles
 
-Country singer recording for RCA Victor (1944–1972, 1976–2008) and MGM (1973–1976). Pioneer of the Nashville Sound in the 1960s. Also film actor (*Feudin' Rhythm* 1949, *Hoedown* 1950) and TV host (*Eddy Arnold Time* 1955–57, *Ozark Jubilee* guest host 1955–60, *Today on the Farm* 1960–61). Singing is the canon; film and TV are out of scope unless the user wants a Tier C for broadcast performances.
+Country singer recording for RCA Victor (1944–1972, 1976–2008) and MGM (1973–1976). Pioneer of the Nashville Sound in the 1960s. Also film actor (*Feudin' Rhythm* 1949, *Hoedown* 1950) and TV host (*Eddy Arnold Time* 1955–57, *Ozark Jubilee* guest host 1955–60, *Today on the Farm* 1960–61). Singing is the canon. Film and TV performances are out of scope because they are not music contributions (decided 12 Nov 2026).
 
 ## Output structure
 
@@ -78,4 +78,3 @@ Inconsistency to resolve: Wikipedia's prose says 19 No. 1 hits within 57 consecu
 ## Open questions
 
 - Does Praguefrank cover Arnold's sessions?
-- Film and TV performances: Tier C or out of scope?

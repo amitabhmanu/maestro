@@ -11,7 +11,7 @@ identity:
 roles:
   primary: singer
   in_scope: [singer]
-  out_of_scope: [actor]
+  out_of_scope: [actor]  # film and TV performances are not music contributions (Amitabh, 12 Nov 2026)
 canon_model:
   unit: recording
   version_levels: [work, recording, release]
@@ -25,7 +25,7 @@ canon_model:
 tiers:
   A: {label: "Commercially issued studio recordings", target_missing: 0.01}
   B: {label: "Unissued studio recordings", target_missing: 0.05}
-  C: {label: "Radio transcriptions, TV and live recordings", target_missing: report_only}
+  C: {label: "Radio transcriptions and live recordings", target_missing: report_only}
 registers:
   - name: Eddy Arnold Discography 1944-1996 (Michael D. Freda)
     tiers: [A, B]
@@ -71,5 +71,4 @@ budget:
   review_hours_per_week: null
 open_questions:
   - Does Praguefrank's country discography cover Eddy Arnold's sessions?
-  - Should his film and TV appearances be in Tier C or out of scope?
   - "Chart No. 1 count: prose says 19, singles tables show 26 A-sides. Reconcile from chart data."
