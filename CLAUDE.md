@@ -22,7 +22,7 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 - `src/maestro/profiler/`: profiler helpers (`identify.py`: Wikidata candidates and external IDs).
 - `src/maestro/resolve.py`: entity resolution (normalise, block, merge across sources, review queue).
 - `src/maestro/completeness.py`: completeness engine (checksums with `filter`, container check, Chao1 per tier).
-- `src/maestro/extractors/`: extractors for sources any maestro can use (`musicbrainz`); a maestro's own extractor of the same name wins.
+- `src/maestro/extractors/`: extractors for sources any maestro can use (`musicbrainz` releases, `musicbrainz_works`, `wikidata_films`, `bnf_works`); a maestro's own extractor of the same name wins.
 - `src/maestro/crawl/`: polite fetcher (robots.txt, per-domain rate limit, raw cache in `data/<slug>/raw`) and the job runner that calls a maestro's extractors (`maestros/<slug>/extractors/<name>.py`, function `extract(ctx)`).
 - `.claude/skills/profile-maestro/`: the `/profile-maestro` skill (research a maestro, propose its pack).
 - `maestros/<slug>/`: pack, profiler dossier, and maestro-specific lexicons, extractors and gold data.

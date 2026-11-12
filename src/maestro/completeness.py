@@ -37,6 +37,7 @@ class Unit:
     tier_default: bool = False  # tier taken from the pack's default for the unit's source
     sources: set[str] = field(default_factory=set)
     live: bool = False
+    kinds: set[str] = field(default_factory=set)  # e.g. film_score, from `work_kind` claims
     pending_match: bool = False  # one of several same-title units, the choice is in review
 
 
@@ -69,7 +70,7 @@ def load_units(store: Store, groups: Groups | None = None) -> dict[int, Unit]:
         """SELECT c.entity_id, c.field, c.value, c.ref_entity_id, c.source_id, s.lineage, s.kind AS source_kind
            FROM claim c JOIN source s ON s.id = c.source_id
            WHERE c.entity_id = ANY(%s) AND c.status = 'active'
-             AND c.field IN ('tier', 'year', 'part_of', 'credit', 'xref', 'title', 'live')""",
+             AND c.field IN ('tier', 'year', 'part_of', 'credit', 'xref', 'title', 'live', 'work_kind')""",
         (ids,),
     ).fetchall()
     for r in rows:
@@ -85,6 +86,8 @@ def load_units(store: Store, groups: Groups | None = None) -> dict[int, Unit]:
             u.credits[(r["value"] or {}).get("role")].add(groups.find(r["ref_entity_id"]))
         elif f == "live" and r["value"] is True:
             u.live = True
+        elif f == "work_kind" and isinstance(r["value"], str):
+            u.kinds.add(r["value"])
         if f == "title":
             u.sources.add(r["source_id"])
         if r["source_kind"] in ("structured", "semi", "prose") and r["entity_id"] in crediting:
@@ -104,6 +107,13 @@ def load_units(store: Store, groups: Groups | None = None) -> dict[int, Unit]:
         if u.tier is None and u.container is not None and len(tiers_in.get(u.container, ())) == 1:
             u.tier = next(iter(tiers_in[u.container]))
             u.tier_inherited = True
+    # Still no tier: the pack may give one per kind of work (a film score is tier B for a composer)
+    kind_tiers = store.pack.data["canon_model"].get("kind_tiers") or {}
+    for u in units.values():
+        if u.tier is None:
+            hits = sorted({kind_tiers[k] for k in u.kinds if k in kind_tiers})
+            if len(hits) == 1:
+                u.tier, u.tier_default = hits[0], True
     # Still no tier: the pack may give one per source (a release database lists only issued
     # recordings, so its units are commercially issued, or live when the release says so).
     defaults = {s["id"]: s for s in store.pack.data.get("sources", []) if s.get("default_tier")}

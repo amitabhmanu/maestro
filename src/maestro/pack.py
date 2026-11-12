@@ -75,6 +75,10 @@ def _cross_checks(data: dict[str, Any]) -> list[str]:
         if src.get("live_tier") and not src.get("default_tier"):
             problems.append(f"source {src['id']!r} has live_tier without default_tier")
 
+    for kind, tier in (data["canon_model"].get("kind_tiers") or {}).items():
+        if tier not in tiers:
+            problems.append(f"canon_model.kind_tiers {kind!r} names unknown tier {tier!r}")
+
     ids = [s["id"] for s in data["sources"]]
     dupes = {i for i in ids if ids.count(i) > 1}
     if dupes:

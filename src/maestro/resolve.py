@@ -532,7 +532,67 @@ def resolve_units(store: Store, norm: Normaliser, stats: ResolveStats) -> None:
             _match_titles(store, groups, distinct, stats, entries, {"catalogue": cat})
 
     if store.pack.data["canon_model"].get("match_titles_across_containers"):
-        _match_floating_by_title(store, norm, groups, distinct, stats, unit_recs, container_of)
+        if _has_kind_containers(store):
+            _match_floating_by_title(store, norm, groups, distinct, stats, unit_recs, container_of)
+        else:
+            _match_uncontained_by_title(store, norm, groups, distinct, stats, unit_recs)
+
+
+def _has_kind_containers(store: Store) -> bool:
+    return store.conn.execute(
+        """SELECT EXISTS (SELECT 1 FROM claim WHERE field = 'container_kind' AND status = 'active'
+             AND value #>> '{}' = %s) AS x""", (store.pack.data["canon_model"]["container"],)).fetchone()["x"]
+
+
+YEAR_SLACK = 2  # a work's year differs between sources (composition, premiere, publication)
+
+
+def _match_uncontained_by_title(store, norm, groups, distinct, stats, unit_recs) -> None:
+    """No source places units in containers (a composer's works with no catalogue): units from
+    different sources whose whole titles match are merged when each is the other's only candidate
+    and their years, where both are known, are at most YEAR_SLACK apart. Other matches go to review."""
+    years = _years(store)
+    keys: dict[int, set[str]] = defaultdict(set)
+    year: dict[int, int] = {}
+    for r in unit_recs:
+        g = groups.find(r["id"])
+        keys[g] |= _title_keys(norm, r["label"])
+        if r["id"] in years:
+            year[g] = min(year.get(g, years[r["id"]]), years[r["id"]])
+
+    def candidates(g):
+        out = []
+        for c in keys:
+            if c == g or groups.find(c) != c or not groups.can_join(g, c) or tuple(sorted((g, c))) in distinct:
+                continue
+            if g in year and c in year and abs(year[g] - year[c]) > YEAR_SLACK:
+                continue
+            sim = max((whole_title_similarity(x, y) for x in keys[g] for y in keys[c]), default=0.0)
+            if sim >= WHOLE_TITLE_RATIO:
+                out.append((sim, c))
+        return out
+
+    for g0 in sorted(keys):
+        g = groups.find(g0)
+        if g != g0:
+            continue
+        cands = candidates(g)
+        if len(cands) == 1 and [c for _s, c in candidates(cands[0][1])] == [g]:
+            sim, c = cands[0]
+            keep, other = sorted((g, c))
+            store.merge_entities(keep, other, f"title {sorted(keys[g])[0]!r} ~ {sorted(keys[c])[0]!r} ({sim:.2f}): "
+                                              "each the other's only match, different sources")
+            groups.union(keep, other)
+            keys[keep] = keys.pop(other) | keys[keep]
+            if other in year:
+                year[keep] = min(year.get(keep, year[other]), year.pop(other))
+            stats.merged["unit"] += 1
+        else:
+            for sim, c in cands:
+                if queue_review(store, "unit_same_title", [g, c],
+                                {"labels": [sorted(keys[g])[0], sorted(keys[c])[0]], "similarity": round(sim, 3),
+                                 "years": [year.get(g), year.get(c)]}, priority=0):
+                    stats.queued["unit"] += 1
 
 
 def _release_years(store: Store) -> dict[int, int]:

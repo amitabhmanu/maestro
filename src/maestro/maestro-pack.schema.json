@@ -77,6 +77,7 @@
         "unit": {"$ref": "#/$defs/unit"},
         "version_levels": {"type": "array", "items": {"enum": ["work", "recording", "release"]}},
         "container": {"$ref": "#/$defs/container"},
+        "kind_tiers": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Tier for a unit with no tier of its own, by the kind of work a source says it is (`work_kind` claim), e.g. {film_score: B}."},
         "match_titles_across_containers": {"type": "boolean", "description": "Match a unit that no container holds (e.g. a release database's recording) to the one contained unit of the same title anywhere in the canon. Default false."},
         "container_has_full_listing": {
           "type": "boolean",

@@ -21,6 +21,8 @@ canon_model:
   version_levels: [work, recording, release]
   container: score
   container_has_full_listing: false
+  match_titles_across_containers: true  # no source places works in containers
+  kind_tiers: {film_score: B}
   _why:
     reason: No catalogue of works exists and most of his music is unpublished, so containers cannot be checked for completeness.
     confidence: 0.7
@@ -54,9 +56,10 @@ registers:
     role: ground_truth
     url: https://adp.library.ucsb.edu
 sources:
-  - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api}
-  - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.75, access: api, api_rps: 1, distinct_ids: false, url: "https://musicbrainz.org/ws/2/"}
-  - {id: bnf, kind: structured, lineage: bnf, reliability: 0.9, access: api, url: https://data.bnf.fr}
+  # A work known only to one of these, and not a film score, is taken as a concert, stage or published work (A).
+  - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api, api_rps: 1, url: "https://query.wikidata.org/sparql"}
+  - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.75, access: api, api_rps: 1, distinct_ids: false, default_tier: A, url: "https://musicbrainz.org/ws/2/"}
+  - {id: bnf, kind: structured, lineage: bnf, reliability: 0.9, access: api, api_rps: 1, default_tier: A, url: "https://data.bnf.fr/sparql"}
   - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable, url: https://en.wikipedia.org/wiki/Jean_Wiener}
   - {id: imdb, kind: structured, lineage: imdb, reliability: 0.8, access: api, publishable: false, url: "https://developer.imdb.com/non-commercial-datasets/"}
   - {id: cineressources, kind: semi, lineage: cineressources, reliability: 0.9, access: unavailable, url: https://www.cineressources.net}
@@ -69,7 +72,7 @@ collaborators:
 verification:
   method: credit
 checksums:
-  - {scope: "film scores (more than)", total: 300, source: "https://en.wikipedia.org/wiki/Jean_Wiener"}
+  - {scope: "film scores (more than)", total: 300, filter: {tiers: [B]}, source: "https://en.wikipedia.org/wiki/Jean_Wiener"}
 taxonomies:
   style: classical_form_and_film_genre
 popularity_signals:
