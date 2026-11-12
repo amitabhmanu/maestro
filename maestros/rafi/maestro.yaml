@@ -58,11 +58,6 @@ registers:
         permission or a manual export. Replaces Muveen's spreadsheet, which is not available.
       confidence: 0.6
       evidence: ["https://mohdrafi.com/database/index.php?FILM=Non-Filmi+Ghazals&load=film"]
-  - name: Mohd. Rafi Sahab alphabetical song list (Scribd, 17 pages, compiler not stated)
-    tiers: [A, B]
-    access: unavailable
-    role: partial
-    url: https://www.scribd.com/document/44070958/Mohd-Rafi
   - name: Wikipedia list of songs recorded by Mohammed Rafi (non-Hindi film and non-film sections)
     tiers: [B]
     access: crawlable
@@ -116,5 +111,4 @@ budget:
   review_hours_per_week: null
 open_questions:
   - Permission from the HFGK Online site master for bulk crawling, or an export of Rafi's songs.
-  - A copy of the Scribd alphabetical Rafi song list (needs a Scribd sign-in).
   - Which count of non-Hindi film songs is right, 310 (Shahid Rafi and Sujata Dev) or 112 (unsourced)?
