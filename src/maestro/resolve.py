@@ -30,8 +30,11 @@ from psycopg.types.json import Jsonb
 
 from maestro.store import Store
 
-AUTO_CONFIDENCE = 0.9
-NEAR_TITLE_RATIO = 0.88
+NEAR_TITLE_RATIO = 0.88  # container titles at or above this go to review
+REVIEW_TITLE_RATIO = 0.8  # unit titles in one container at or above this are compared
+AUTO_TITLE_RATIO = 0.93  # a mutual best match at or above this is merged
+CLEAR_TITLE_RATIO = 0.85  # ... and so is one at or above this that leads every other candidate by CLEAR_MARGIN
+CLEAR_MARGIN = 0.2
 
 
 # ---- normalisation -------------------------------------------------------------
@@ -87,7 +90,8 @@ class Normaliser:
     def title(self, title: str) -> str:
         # Drop a trailing language or version tag such as "(Telugu)" or "[2]".
         title = re.sub(r"\s*[\(\[][^\)\]]*[\)\]]\s*$", "", title or "")
-        return self._words(title)
+        # Bare numbers are repeat marks ("Arati-2") or part numbers, not words of the title.
+        return " ".join(w for w in self._words(title).split() if not w.isdigit())
 
     def container(self, title: str) -> str:
         key = self.title(title)
@@ -101,6 +105,7 @@ class Groups:
 
     def __init__(self, store: Store):
         self.parent: dict[int, int] = {}
+        self.src: dict[int, set[str]] = {}
         for r in store.conn.execute(
             "SELECT entity_id, ref_entity_id FROM claim WHERE field = 'same_as' AND status = 'active'"
         ).fetchall():
@@ -118,6 +123,21 @@ class Groups:
         a, b = self.find(keep), self.find(other)
         if a != b:
             self.parent[b] = a
+            if b in self.src:
+                self.src.setdefault(a, set()).update(self.src.pop(b))
+
+    def note_sources(self, records: list[dict]) -> None:
+        """Remember which sources each record comes from, so a group knows all its members' sources."""
+        for r in records:
+            self.src.setdefault(self.find(r["id"]), set()).update(r["sources"])
+
+    def sources(self, x: int) -> set[str]:
+        return self.src.get(self.find(x), set())
+
+    def can_join(self, a: int, b: int) -> bool:
+        """Two groups may be merged automatically only if no source lists records in both:
+        a source that keeps two records apart knows they are different."""
+        return self.find(a) != self.find(b) and self.sources(a).isdisjoint(self.sources(b))
 
     def members(self, ids: list[int]) -> dict[int, list[int]]:
         out: dict[int, list[int]] = defaultdict(list)
@@ -242,6 +262,11 @@ def _merge_or_queue(store, groups, distinct, stats, kind, recs, evidence, priori
                             {**evidence, "labels": [keep["label"], other["label"]]}, priority):
                 stats.queued[kind] += 1
             continue
+        if groups.src and not groups.can_join(keep["id"], other["id"]):
+            if queue_review(store, f"same_{kind}_conflict", list(pair),
+                            {**evidence, "labels": [keep["label"], other["label"]]}, priority):
+                stats.queued[kind] += 1
+            continue
         store.merge_entities(keep["id"], other["id"],
                              f"same normalised {kind} key {evidence.get('key')!r} from different sources")
         groups.union(keep["id"], other["id"])
@@ -325,44 +350,165 @@ def _years(store: Store) -> dict[int, int]:
 
 
 def resolve_containers(store: Store, norm: Normaliser, stats: ResolveStats) -> None:
+    """Containers (films, albums, sessions) from different sources.
+
+    1. Same title and year: merge across sources, review within one.
+    2. Across sources, a title whose spellings fold to the same key (`_squash`), with years at most
+       one apart (a soundtrack can be dated by its release, a film by its certificate), or with no
+       year on one side: merged when it is the only candidate.
+    3. Across sources, a similar title (ratio >= NEAR_TITLE_RATIO) with years at most one apart and
+       a single candidate: review.
+    """
     groups, distinct = Groups(store), _distinct_pairs(store)
     years = _years(store)
+    recs = _records(store, "container")
+    groups.note_sources(recs)
     blocks: dict[tuple, list[dict]] = defaultdict(list)
-    for r in _records(store, "container"):
-        blocks[(norm.container(r["label"]), years.get(r["id"]))].append(r)
+    for r in recs:
+        r["key"] = norm.container(r["label"])
+        r["squashed"] = _squash(r["key"].replace(" ", ""))
+        r["year"] = years.get(r["id"])
+        blocks[(r["key"], r["year"])].append(r)
     for (key, year), block in blocks.items():
         if key:
             _merge_or_queue(store, groups, distinct, stats, "container", block, {"key": key, "year": year})
+
+    by_squash: dict[str, list[dict]] = defaultdict(list)
+    for r in recs:
+        if r["squashed"]:
+            by_squash[r["squashed"]].append(r)
+
+    def close_years(a, b):
+        return a["year"] is None or b["year"] is None or abs(a["year"] - b["year"]) <= 1
+
+    def candidates(r, pool):
+        return [o for o in pool if o is not r and close_years(r, o) and groups.can_join(o["id"], r["id"])]
+
+    for r in recs:
+        near = candidates(r, by_squash.get(r["squashed"], []))
+        # Two films a year apart with one title are remakes; a third record cannot tell which one it is.
+        if len(near) == 1 and len(candidates(near[0], by_squash[r["squashed"]])) == 1:
+            a, b = sorted((groups.find(r["id"]), groups.find(near[0]["id"])))
+            if (a, b) not in distinct and a != b:
+                store.merge_entities(a, b, f"container titles {r['label']!r} / {near[0]['label']!r}, "
+                                           "same spelling key, close years, different sources")
+                groups.union(a, b)
+                stats.merged["container"] += 1
+
+    by_year: dict[int, list[dict]] = defaultdict(list)
+    for r in recs:
+        if r["year"] is not None and r["squashed"]:
+            by_year[r["year"]].append(r)
+    for r in recs:
+        if r["year"] is None or not r["squashed"]:
+            continue
+        pool = [o for y in (r["year"] - 1, r["year"], r["year"] + 1) for o in by_year.get(y, [])]
+        similar = [o for o in candidates(r, pool) if o["id"] > r["id"]
+                   and SequenceMatcher(None, r["squashed"], o["squashed"]).ratio() >= NEAR_TITLE_RATIO]
+        if len(similar) == 1:
+            a, b = sorted((groups.find(r["id"]), groups.find(similar[0]["id"])))
+            if a != b and (a, b) not in distinct and queue_review(
+                    store, "container_near_title", [a, b],
+                    {"labels": [r["label"], similar[0]["label"]], "years": [r["year"], similar[0]["year"]]}, priority=2):
+                stats.queued["container"] += 1
+
+
+_SQUASH = [("oo", "u"), ("ee", "i"), ("q", "k"), ("w", "v"), ("ph", "f"), ("aye", "ae"), ("ay", "ai"),
+           ("ai", "e"), ("au", "o")]
+
+
+def _squash(text: str) -> str:
+    """A rough Latin-script key for Indic transliterations: doubled letters and common vowel spellings folded."""
+    for a, b in _SQUASH:
+        text = text.replace(a, b)
+    return re.sub(r"(.)\1+", r"\1", text)
+
+
+def _prefix_similarity(sa: str, la: str) -> float:
+    # The longer title's opening may be a few letters shorter or longer than the whole shorter one.
+    return max(SequenceMatcher(None, sa, la[:n]).ratio() for n in range(max(1, len(sa) - 3), len(sa) + 4))
+
+
+def title_similarity(a: str, b: str) -> float:
+    """How alike two normalised titles are, comparing the shorter with the same length of the longer.
+
+    One source may give the first line and another the whole opening, often after a spoken or sung
+    lead-in ("O Sss ...", "Aae Hain Badee Door Se ... Mahafil Men Shama Chamakee"), so the shorter
+    title is also tried against the longer one from each later word. Letters are compared, not words,
+    because transliterations split words and spell vowels differently ("rang lo" / "ranglo",
+    "jaadoogar" / "jadugar").
+    """
+    wa, wb = a.split(), b.split()
+    short, long_ = (wa, wb) if len(wa) <= len(wb) else (wb, wa)
+    if len(short) < 2:
+        return 1.0 if short == long_ else 0.0
+    sa = _squash("".join(short))
+    best = 0.0
+    for i in range(0, len(long_) - len(short) + 1):
+        best = max(best, _prefix_similarity(sa, _squash("".join(long_[i:]))) - (0.02 if i else 0.0))
+        if best >= 0.999:
+            break
+    return best
 
 
 def resolve_units(store: Store, norm: Normaliser, stats: ResolveStats) -> None:
     groups, distinct = Groups(store), _distinct_pairs(store)
     container_of = _containers_of_units(store)
     blocks: dict[tuple, list[dict]] = defaultdict(list)
-    for r in _records(store, store.pack.unit):
+    unit_recs = _records(store, store.pack.unit)
+    groups.note_sources(unit_recs)
+    for r in unit_recs:
         c = container_of.get(r["id"])
         blocks[(groups.find(c) if c else None, norm.title(r["label"]))].append(r)
     for (container, key), block in blocks.items():
         if key and container is not None:
             _merge_or_queue(store, groups, distinct, stats, "unit", block, {"key": key, "container": container})
 
-    # Near titles inside one container (transliteration variants): review, never automatic.
+    # Other titles inside one container, from different sources: a clear, mutual best match is
+    # merged; a weaker one goes to review.
     by_container: dict[int, list[tuple[str, dict]]] = defaultdict(list)
     for (container, key), block in blocks.items():
         if key and container is not None:
             by_container[container].append((key, block[0]))
     for container, entries in by_container.items():
+        scores: dict[tuple[int, int], float] = {}
         for i, (ka, ra) in enumerate(entries):
             for kb, rb in entries[i + 1:]:
                 if not set(ra["sources"]).isdisjoint(rb["sources"]):
                     continue  # one source listing two titles in a container means two units
-                if SequenceMatcher(None, ka, kb).ratio() < NEAR_TITLE_RATIO:
+                sim = title_similarity(ka, kb)
+                if sim < REVIEW_TITLE_RATIO:
                     continue
-                a, b = groups.find(ra["id"]), groups.find(rb["id"])
-                if a != b and tuple(sorted((a, b))) not in distinct:
-                    if queue_review(store, "unit_near_title", [a, b],
-                                    {"labels": [ra["label"], rb["label"]], "container": container}, priority=1):
-                        stats.queued["unit"] += 1
+                scores[(i, entries.index((kb, rb)))] = sim
+        ranked: dict[int, list[tuple[float, int]]] = defaultdict(list)  # per record: its candidates, best first
+        for (i, j), sim in scores.items():
+            ranked[i].append((sim, j))
+            ranked[j].append((sim, i))
+        for lst in ranked.values():
+            lst.sort(reverse=True)
+
+        def margin(x):  # how far the best candidate leads the next one (1.0 when there is no other)
+            lst = ranked[x]
+            return lst[0][0] - lst[1][0] if len(lst) > 1 else 1.0
+        for (i, j), sim in sorted(scores.items(), key=lambda kv: -kv[1]):
+            ra, rb = entries[i][1], entries[j][1]
+            a, b = groups.find(ra["id"]), groups.find(rb["id"])
+            if a == b or tuple(sorted((a, b))) in distinct:
+                continue
+            if not groups.can_join(a, b):
+                continue  # one side's group already holds a record from the other's source
+            mutual = ranked[i][0][1] == j and ranked[j][0][1] == i
+            clear = sim >= AUTO_TITLE_RATIO or (sim >= CLEAR_TITLE_RATIO and min(margin(i), margin(j)) >= CLEAR_MARGIN)
+            if mutual and clear:
+                keep, other = sorted((a, b))
+                store.merge_entities(keep, other, f"title {entries[i][0]!r} ~ {entries[j][0]!r} "
+                                                  f"({sim:.2f}) in container {container}, different sources")
+                groups.union(keep, other)
+                stats.merged["unit"] += 1
+            elif queue_review(store, "unit_near_title", [a, b],
+                              {"labels": [ra["label"], rb["label"]], "container": container,
+                               "similarity": round(sim, 3)}, priority=1):
+                stats.queued["unit"] += 1
 
 
 def resolve(store: Store) -> ResolveStats:

@@ -1,0 +1,138 @@
+{
+ "release-count": 2,
+ "release-offset": 0,
+ "releases": [
+  {
+   "id": "rel-1",
+   "title": "Kohinoor",
+   "date": "1961",
+   "release-group": {
+    "id": "rg-k",
+    "title": "Kohinoor",
+    "primary-type": "Album",
+    "secondary-types": [
+     "Soundtrack"
+    ],
+    "first-release-date": "1961"
+   },
+   "media": [
+    {
+     "tracks": [
+      {
+       "title": "Madhuban Men Radhika Nache Re",
+       "artist-credit": [
+        {
+         "name": "Mohd. Rafi",
+         "joinphrase": "",
+         "artist": {
+          "id": "28365249-f3fd-44db-8131-32cb170970c4",
+          "name": "Mohd. Rafi"
+         }
+        }
+       ],
+       "recording": {
+        "id": "rec-1",
+        "title": "Madhuban Men Radhika Nache Re"
+       }
+      },
+      {
+       "title": "Do Sitaron Ka Zamin Par Hai Milan",
+       "artist-credit": [
+        {
+         "name": "Lata Mangeshkar",
+         "joinphrase": " & ",
+         "artist": {
+          "id": "lata-id",
+          "name": "Lata Mangeshkar"
+         }
+        },
+        {
+         "name": "Mohd. Rafi",
+         "joinphrase": "",
+         "artist": {
+          "id": "28365249-f3fd-44db-8131-32cb170970c4",
+          "name": "Mohd. Rafi"
+         }
+        }
+       ],
+       "recording": {
+        "id": "rec-2",
+        "title": "Do Sitaron Ka Zamin Par Hai Milan"
+       }
+      },
+      {
+       "title": "Dil Men Bajin Pyar Ki Shehnaiyan",
+       "artist-credit": [
+        {
+         "name": "Lata Mangeshkar",
+         "joinphrase": "",
+         "artist": {
+          "id": "lata-id",
+          "name": "Lata Mangeshkar"
+         }
+        }
+       ],
+       "recording": {
+        "id": "rec-3",
+        "title": "Dil Men Bajin Pyar Ki Shehnaiyan"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "rel-2",
+   "title": "Golden Hits of Rafi",
+   "date": "1990",
+   "release-group": {
+    "id": "rg-c",
+    "title": "Golden Hits",
+    "primary-type": "Album",
+    "secondary-types": [
+     "Compilation"
+    ]
+   },
+   "media": [
+    {
+     "tracks": [
+      {
+       "title": "Madhuban Mein Radhika",
+       "artist-credit": [
+        {
+         "name": "Mohd. Rafi",
+         "joinphrase": "",
+         "artist": {
+          "id": "28365249-f3fd-44db-8131-32cb170970c4",
+          "name": "Mohd. Rafi"
+         }
+        }
+       ],
+       "recording": {
+        "id": "rec-1",
+        "title": "Madhuban Men Radhika Nache Re"
+       }
+      },
+      {
+       "title": "Baharo Phool Barsao",
+       "artist-credit": [
+        {
+         "name": "Mohd. Rafi",
+         "joinphrase": "",
+         "artist": {
+          "id": "28365249-f3fd-44db-8131-32cb170970c4",
+          "name": "Mohd. Rafi"
+         }
+        }
+       ],
+       "recording": {
+        "id": "rec-9",
+        "title": "Baharon Phool Barsao"
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

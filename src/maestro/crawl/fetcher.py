@@ -32,6 +32,15 @@ class Page:
         return self.body.decode("utf-8", errors="replace")
 
 
+def api_hosts(pack_data: dict) -> dict[str, float]:
+    """Hosts of the pack's `access: api` sources, with their request rate (`api_rps`, default the crawl rate)."""
+    out = {}
+    for src in pack_data.get("sources", []):
+        if src.get("access") == "api" and src.get("url"):
+            out[urlsplit(src["url"]).netloc] = src.get("api_rps", pack_data["budget"]["per_domain_rps"])
+    return out
+
+
 class Fetcher:
     """Fetches pages no faster than `rps` per domain and stores every body in `cache_dir`.
 
@@ -48,10 +57,14 @@ class Fetcher:
         opener: Callable[..., object] = urllib.request.urlopen,
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
+        api_hosts: dict[str, float] | None = None,
     ):
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.interval = 1.0 / rps
+        # Hosts of public APIs the pack lists (`access: api`): their robots.txt is written for web
+        # crawlers, so it is not consulted; the API's own rate limit (`api_rps`) applies instead.
+        self.api_intervals = {h: 1.0 / r for h, r in (api_hosts or {}).items()}
         self.user_agent = user_agent
         self._open = opener
         self._clock = clock
@@ -62,7 +75,7 @@ class Fetcher:
     def _wait_turn(self, host: str) -> None:
         last = self._last.get(host)
         if last is not None:
-            gap = self.interval - (self._clock() - last)
+            gap = self.api_intervals.get(host, self.interval) - (self._clock() - last)
             if gap > 0:
                 self._sleep(gap)
         self._last[host] = self._clock()
@@ -79,6 +92,8 @@ class Fetcher:
 
     def allowed(self, url: str) -> bool:
         parts = urlsplit(url)
+        if parts.netloc in self.api_intervals:
+            return True
         root = f"{parts.scheme}://{parts.netloc}"
         if root not in self._robots:
             status, body = self._get(root + "/robots.txt")

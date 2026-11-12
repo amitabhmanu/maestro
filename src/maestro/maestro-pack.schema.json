@@ -131,6 +131,7 @@
           "lineage": {"type": "string", "description": "Sources that copy each other share a lineage; capture-recapture groups by it."},
           "reliability": {"type": "number", "minimum": 0, "maximum": 1},
           "access": {"$ref": "#/$defs/access"},
+          "api_rps": {"type": "number", "exclusiveMinimum": 0, "description": "For access: api, the API's request limit per second. The fetcher skips robots.txt for an API host and keeps to this rate."},
           "url": {"type": "string"},
           "extractor": {"type": "string"},
           "publishable": {"type": "boolean", "description": "Whether facts taken from this source may be included in a public release.", "default": true},

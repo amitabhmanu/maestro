@@ -14,7 +14,7 @@ The stopping rule: a tier is done when its estimated missing share is below the 
 
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -33,6 +33,7 @@ class Unit:
     container: int | None = None
     credits: dict[str, set[int]] = field(default_factory=lambda: defaultdict(set))  # role -> person roots
     lineages: set[str] = field(default_factory=set)
+    tier_inherited: bool = False
 
 
 def load_units(store: Store, groups: Groups | None = None) -> dict[int, Unit]:
@@ -54,6 +55,12 @@ def load_units(store: Store, groups: Groups | None = None) -> dict[int, Unit]:
             members[r["id"]] = root
     ids = list(members)
 
+    # A record counts as a sighting of the unit only if it says the maestro is on it: a source
+    # that lists songs without singers can confirm a film's song list but cannot find a missing song.
+    crediting = {r["entity_id"] for r in store.conn.execute(
+        """SELECT DISTINCT entity_id FROM claim WHERE entity_id = ANY(%(ids)s) AND field = 'credit'
+             AND status = 'active' AND ref_entity_id = %(maestro)s AND value ->> 'role' = ANY(%(roles)s)""",
+        {"ids": ids, "maestro": params["maestro"], "roles": params["roles"]}).fetchall()}
     rows = store.conn.execute(
         """SELECT c.entity_id, c.field, c.value, c.ref_entity_id, s.lineage, s.kind AS source_kind
            FROM claim c JOIN source s ON s.id = c.source_id
@@ -72,13 +79,23 @@ def load_units(store: Store, groups: Groups | None = None) -> dict[int, Unit]:
             u.container = groups.find(r["ref_entity_id"])
         elif f == "credit" and r["ref_entity_id"] is not None:
             u.credits[(r["value"] or {}).get("role")].add(groups.find(r["ref_entity_id"]))
-        if r["source_kind"] in ("structured", "semi", "prose"):
+        if r["source_kind"] in ("structured", "semi", "prose") and r["entity_id"] in crediting:
             u.lineages.add(r["lineage"])
 
     years = _container_years(store, groups)
     for u in units.values():
         if u.year is None and u.container is not None:
             u.year = years.get(u.container)
+    # A unit no source has given a tier takes its container's, when the container's other units
+    # agree on one (a soundtrack recording found only on MusicBrainz, in a film the register covers).
+    tiers_in: dict[int, set[str]] = defaultdict(set)
+    for u in units.values():
+        if u.container is not None and u.tier is not None:
+            tiers_in[u.container].add(u.tier)
+    for u in units.values():
+        if u.tier is None and u.container is not None and len(tiers_in.get(u.container, ())) == 1:
+            u.tier = next(iter(tiers_in[u.container]))
+            u.tier_inherited = True
     return units
 
 
@@ -169,19 +186,55 @@ def check_containers(store: Store, groups: Groups, limit: int = 50) -> dict[str,
         root = groups.find(r["entity_id"])
         listed[root] = max(listed.get(root, 0), r["n"])
         labels.setdefault(root, r["label"])
+    listing_source = {groups.find(r["entity_id"]): r["source_id"] for r in store.conn.execute(
+        "SELECT entity_id, source_id FROM claim WHERE field = %s AND status = 'active'", (count_field,)).fetchall()}
+    # Units the listing source itself placed there (other sources' extra records are the outside check below).
     stored: dict[int, set[int]] = defaultdict(set)
     for r in store.conn.execute(
-        """SELECT c.entity_id, c.ref_entity_id FROM claim c JOIN entity e ON e.id = c.entity_id
+        """SELECT c.entity_id, c.ref_entity_id, c.source_id FROM claim c JOIN entity e ON e.id = c.entity_id
            WHERE e.type = %s AND c.field = 'part_of' AND c.status = 'active'""",
         (store.pack.unit,),
     ).fetchall():
-        stored[groups.find(r["ref_entity_id"])].add(groups.find(r["entity_id"]))
+        cont = groups.find(r["ref_entity_id"])
+        if listing_source.get(cont) == r["source_id"]:
+            stored[cont].add(groups.find(r["entity_id"]))
     mismatched = [
         {"container": cid, "label": labels[cid], "listed": n, "stored": len(stored.get(cid, ()))}
         for cid, n in listed.items() if len(stored.get(cid, ())) != n
     ]
     mismatched.sort(key=lambda m: -abs(m["listed"] - m["stored"]))
-    return {"containers_with_count": len(listed), "mismatched": len(mismatched), "examples": mismatched[:limit]}
+
+    # Outside check of the listings: records from other sources placed in a listed container that
+    # match none of the listing source's records there. Only containers holding canon units count.
+    canon_containers = {groups.find(r["ref_entity_id"]) for r in store.conn.execute(
+        f"""WITH units AS ({store._canon_units_sql()})
+            SELECT DISTINCT c.ref_entity_id FROM claim c JOIN units u ON u.id = c.entity_id
+            WHERE c.field = 'part_of' AND c.status = 'active'""", store._canon_params()).fetchall()}
+    unit_sources: dict[int, set[str]] = defaultdict(set)
+    placed: list[tuple[int, int, str, str]] = []
+    for r in store.conn.execute(
+        """SELECT c.entity_id, c.ref_entity_id, c.source_id, e.label FROM claim c JOIN entity e ON e.id = c.entity_id
+           WHERE e.type = %s AND c.field = 'part_of' AND c.status = 'active'""", (store.pack.unit,)).fetchall():
+        root = groups.find(r["entity_id"])
+        unit_sources[root].add(r["source_id"])
+        placed.append((root, groups.find(r["ref_entity_id"]), r["source_id"], r["label"]))
+    outside: dict[str, dict[str, Any]] = {}
+    seen_units: set[tuple[int, str]] = set()
+    for root, cont, src, label in placed:
+        lister = listing_source.get(cont)
+        if cont not in canon_containers or lister is None or src == lister or (root, src) in seen_units:
+            continue
+        seen_units.add((root, src))
+        o = outside.setdefault(src, {"in_listed_containers": 0, "matched": 0, "unmatched": 0, "examples": []})
+        o["in_listed_containers"] += 1
+        if lister in unit_sources[root]:
+            o["matched"] += 1
+        else:
+            o["unmatched"] += 1
+            if len(o["examples"]) < limit:
+                o["examples"].append({"label": label, "container": labels.get(cont, cont)})
+    return {"containers_with_count": len(listed), "mismatched": len(mismatched), "examples": mismatched[:limit],
+            "outside_check": outside}
 
 
 # ---- capture-recapture ------------------------------------------------------------
@@ -192,7 +245,17 @@ def chao1(observed: int, f1: int, f2: int) -> float:
     return observed + f1 * (f1 - 1) / 2  # bias-corrected form when no unit is seen exactly twice
 
 
+def chapman(n1: int, n2: int, m: int) -> float:
+    """Two-list capture-recapture (Chapman's bias-corrected Lincoln-Petersen)."""
+    return (n1 + 1) * (n2 + 1) / (m + 1) - 1
+
+
 def estimate_tiers(store: Store, units: dict[int, Unit]) -> dict[str, Any]:
+    """Estimated totals per tier. Two lineages: Chapman; three or more: Chao1.
+
+    Both assume the sources find units independently. Sources that favour the same (popular) units
+    make the estimate too low, so read it as a floor.
+    """
     out = {}
     for tier, spec in store.pack.tiers.items():
         tier_units = [u for u in units.values() if u.tier == tier]
@@ -201,18 +264,36 @@ def estimate_tiers(store: Store, units: dict[int, Unit]) -> dict[str, Any]:
         f1 = sum(1 for u in tier_units if len(u.lineages) == 1)
         f2 = sum(1 for u in tier_units if len(u.lineages) == 2)
         est: dict[str, Any] = {"label": spec["label"], "observed": s, "lineages": lineages, "f1": f1, "f2": f2,
-                               "target_missing": spec["target_missing"]}
+                               "inherited_tier": sum(1 for u in tier_units if u.tier_inherited),
+                               "by_lineage": {lin: sum(1 for u in tier_units if lin in u.lineages) for lin in lineages},
+                               "target_missing": spec["target_missing"], "method": None}
         if s == 0 or len(lineages) < 2:
             est["estimate"] = None
             est["note"] = "not estimable: needs units seen by at least two independent source lineages"
             est["meets_target"] = None
+            out[tier] = est
+            continue
+        if len(lineages) == 2:
+            a, b = lineages
+            n1, n2 = est["by_lineage"][a], est["by_lineage"][b]
+            m = sum(1 for u in tier_units if {a, b} <= u.lineages)
+            if m == 0:
+                est.update(estimate=None, meets_target=None, method="chapman",
+                           note="not estimable: the two lineages share no units yet")
+                out[tier] = est
+                continue
+            total, est["method"] = chapman(n1, n2, m), "chapman"
         else:
-            total = chao1(s, f1, f2)
-            est["estimate"] = round(total, 1)
-            est["missing_share"] = round(1 - s / total, 4) if total else 0.0
-            target = spec["target_missing"]
-            est["meets_target"] = None if target == "report_only" else est["missing_share"] <= target
+            total, est["method"] = chao1(s, f1, f2), "chao1"
+        est["estimate"] = round(total, 1)
+        est["missing_share"] = round(max(0.0, 1 - s / total), 4) if total else 0.0
+        target = spec["target_missing"]
+        est["meets_target"] = None if target == "report_only" else est["missing_share"] <= target
         out[tier] = est
+    unplaced = [u for u in units.values() if u.tier is None]
+    out["unassigned"] = {"observed": len(unplaced),
+                         "by_lineage": dict(sorted(Counter(lin for u in unplaced for lin in u.lineages).items())),
+                         "in_container": sum(1 for u in unplaced if u.container is not None)}
     return out
 
 
@@ -222,6 +303,7 @@ def completeness_report(store: Store) -> dict[str, Any]:
     units = load_units(store, groups)
     return {
         "maestro": store.pack.slug,
+        "unit_word": store.pack.unit,
         "canon_units": len(units),
         "tiers": estimate_tiers(store, units),
         "checksums": check_checksums(store, units, groups, norm),
@@ -236,9 +318,18 @@ def render_markdown(report: dict[str, Any]) -> str:
              "## Tiers", "", "| Tier | Observed | Lineages | f1 | f2 | Estimate | Missing | Target |",
              "|---|---|---|---|---|---|---|---|"]
     for tier, t in report["tiers"].items():
+        if tier == "unassigned":
+            continue
         miss = f"{t['missing_share']:.1%}" if t.get("missing_share") is not None else "n/a"
         lines.append(f"| {tier} | {t['observed']} | {', '.join(t['lineages']) or '-'} | {t['f1']} | {t['f2']} | "
                      f"{t['estimate'] if t['estimate'] is not None else 'n/a'} | {miss} | {t['target_missing']} |")
+    un = report["tiers"].get("unassigned")
+    if un and un["observed"]:
+        lines += ["", f"Units with no tier: {un['observed']} ({un['in_container']} in a container the registers do not "
+                  f"cover; by lineage: {', '.join(f'{k} {v}' for k, v in un['by_lineage'].items())}). "
+                  "They need placing before the estimates can count them."]
+    lines += ["", "Estimates: two lineages use Chapman's estimator, three or more Chao1. Both assume the sources "
+              "are independent; sources that favour the same popular units make the estimate a floor."]
     lines += ["", "## Published counts", "", "| Scope | Published | Observed | Difference | Status |", "|---|---|---|---|---|"]
     for c in report["checksums"]:
         lines.append(f"| {c['scope']} | {c['published']} | {c.get('observed', '-')} | "
@@ -252,6 +343,12 @@ def render_markdown(report: dict[str, Any]) -> str:
                   "than their listing says."]
         for m in cc["examples"][:20]:
             lines.append(f"- {m['label']} (#{m['container']}): listed {m['listed']}, stored {m['stored']}")
+        for src, o in cc.get("outside_check", {}).items():
+            share = o["matched"] / o["in_listed_containers"] if o["in_listed_containers"] else 0
+            lines += ["", f"Outside check by {src}: {o['in_listed_containers']} of its {report['unit_word']}s fall in "
+                      f"listed containers holding canon units; {o['matched']} ({share:.1%}) match a listed one, "
+                      f"{o['unmatched']} do not (a listing gap or a title the matcher missed). Examples:"]
+            lines += [f"- {e['label']} ({e['container']})" for e in o["examples"][:10]]
     if report["open_reviews"]:
         lines += ["", "## Open review items", ""] + [f"- {k}: {n}" for k, n in report["open_reviews"].items()]
     return "\n".join(lines) + "\n"
