@@ -6,11 +6,17 @@
 
 | Field | Value | Source |
 | --- | --- | --- |
-| Wikidata, MusicBrainz, VIAF, BnF | Not yet resolved: run `uv run maestro-identify "Jean Wiener"` where wikidata.org is reachable | |
+| Wikidata | [Q553384](https://www.wikidata.org/wiki/Q553384) | maestro-identify |
+| MusicBrainz | [ea63b818-07cc-468e-b0e9-8e5e4d3f3200](https://musicbrainz.org/artist/ea63b818-07cc-468e-b0e9-8e5e4d3f3200) | via Wikidata |
+| VIAF / ISNI / BnF | 27253581 / 0000000121001190 / 13901146z | via Wikidata |
 | Born / died | 19 Mar 1896, Paris / 8 Jun 1982, Paris | [Wikipedia](https://en.wikipedia.org/wiki/Jean_Wiener) |
 | Name variants | Jean Wiéner; misspelt "Weiner" | Wikipedia |
 
-Namesakes ruled out: none checked yet. His son Stéphane Wiéner must not be confused with him.
+Namesakes ruled out:
+
+- Q19833470: Haitian marine biologist
+
+His son Stéphane Wiéner must not be confused with him.
 
 ## Career and roles
 
@@ -74,7 +80,6 @@ Unit: a work (a cue inside a film score is a sub-unit). Container: a film score;
 
 ## Open questions
 
-- Confirm Wikidata, MusicBrainz, VIAF and BnF IDs, and rule out namesakes.
 - Which film database is the best source for his film credits?
 - Is the SACEM repertoire searchable, and on what terms?
 - Should the Wiener–Doucet duo recordings form an instrumentalist tier?

@@ -7,6 +7,8 @@ Uses the Wikidata API (no key needed). Each candidate carries the IDs the pack's
 from __future__ import annotations
 
 import json
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass, field
@@ -23,10 +25,20 @@ BORN, DIED, OCCUPATION = "P569", "P570", "P106"
 Fetch = Callable[[str], dict[str, Any]]
 
 
-def http_get_json(url: str) -> dict[str, Any]:
+def http_get_json(url: str, *, retries: int = 4, sleep: Callable[[float], None] = time.sleep) -> dict[str, Any]:
+    """GET JSON, honouring Retry-After on 429/503 (Wikimedia rate-limits shared IPs)."""
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.load(resp)
+    for attempt in range(retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return json.load(resp)
+        except urllib.error.HTTPError as exc:
+            if exc.code not in (429, 503) or attempt == retries:
+                raise
+            retry_after = exc.headers.get("Retry-After", "")
+            delay = float(retry_after) if retry_after.isdigit() else 2.0 ** (attempt + 1)
+            sleep(min(delay, 60.0))
+    raise AssertionError("unreachable")
 
 
 @dataclass

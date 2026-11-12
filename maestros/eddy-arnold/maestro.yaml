@@ -4,9 +4,9 @@ status: draft
 identity:
   name: Eddy Arnold
   slug: eddy-arnold
-  ids: {wikidata: null, musicbrainz: null, viaf: null}
+  ids: {wikidata: Q721943, musicbrainz: 1c4c789d-06af-42ef-b86c-7d6bf49c652c, viaf: "32182471", isni: "0000000115070317", bnf: 13890896w}
   variants: [Richard Edward Arnold, "The Tennessee Plowboy"]
-  namesakes: []
+  namesakes: ["Q29840104: researcher", "Q64019769: American chemist", "Q16946105: Eddy Arnold Jean, Haitian writer"]
   active: [1944, 2008]
 roles:
   primary: singer
@@ -70,7 +70,6 @@ budget:
   model_spend_usd: null
   review_hours_per_week: null
 open_questions:
-  - Confirm Wikidata, MusicBrainz and VIAF IDs.
   - Does Praguefrank's country discography cover Eddy Arnold's sessions?
   - Should his film and TV appearances be in Tier C or out of scope?
   - "Chart No. 1 count: prose says 19, singles tables show 26 A-sides. Reconcile from chart data."

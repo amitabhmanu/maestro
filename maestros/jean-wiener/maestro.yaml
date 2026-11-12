@@ -4,9 +4,9 @@ status: draft
 identity:
   name: Jean Wiener
   slug: jean-wiener
-  ids: {wikidata: null, musicbrainz: null, viaf: null, bnf: null}
+  ids: {wikidata: Q553384, musicbrainz: ea63b818-07cc-468e-b0e9-8e5e4d3f3200, viaf: "27253581", isni: "0000000121001190", bnf: 13901146z}
   variants: [Jean Wiéner]
-  namesakes: []  # do not confuse with his son, Stéphane Wiéner
+  namesakes: ["Q19833470: Haitian marine biologist"]  # also not his son, Stéphane Wiéner
   active: [1920, 1982]
 roles:
   primary: composer
@@ -65,7 +65,6 @@ budget:
   model_spend_usd: null
   review_hours_per_week: null
 open_questions:
-  - Confirm Wikidata, MusicBrainz, VIAF and BnF IDs, and rule out namesakes.
   - Is the SACEM repertoire searchable for his works, and on what terms?
   - Which film database is the best source for his 300+ film credits?
   - Should the Wiener-Doucet duo recordings be in scope as an instrumentalist tier?

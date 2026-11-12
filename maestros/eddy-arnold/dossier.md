@@ -6,12 +6,18 @@
 
 | Field | Value | Source |
 | --- | --- | --- |
-| Wikidata, MusicBrainz, VIAF, ISNI | Not yet resolved: run `uv run maestro-identify "Eddy Arnold"` where wikidata.org is reachable | |
+| Wikidata | [Q721943](https://www.wikidata.org/wiki/Q721943) | maestro-identify |
+| MusicBrainz | [1c4c789d-06af-42ef-b86c-7d6bf49c652c](https://musicbrainz.org/artist/1c4c789d-06af-42ef-b86c-7d6bf49c652c) | via Wikidata |
+| VIAF / ISNI / BnF | 32182471 / 0000000115070317 / 13890896w | via Wikidata |
 | Born / died | 15 May 1918, Henderson, Tennessee / 8 May 2008, Franklin, Tennessee | [Wikipedia](https://en.wikipedia.org/wiki/Eddy_Arnold) |
 | Active | Radio debut 1934; recordings 1944–2008 | Wikipedia |
 | Name variants | Richard Edward Arnold; "The Tennessee Plowboy" | Wikipedia |
 
-Namesakes ruled out: none checked yet.
+Namesakes ruled out:
+
+- Q29840104: researcher
+- Q64019769: American chemist
+- Q16946105: Eddy Arnold Jean, Haitian writer (1952–2019)
 
 ## Career and roles
 
@@ -71,6 +77,5 @@ Inconsistency to resolve: Wikipedia's prose says 19 No. 1 hits within 57 consecu
 
 ## Open questions
 
-- Confirm Wikidata, MusicBrainz and VIAF IDs.
 - Does Praguefrank cover Arnold's sessions?
 - Film and TV performances: Tier C or out of scope?

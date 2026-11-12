@@ -60,3 +60,29 @@ def test_identify_keeps_humans_with_ids_and_occupations():
 
 def test_identify_with_no_hits():
     assert identify("nobody", fetch=lambda url: {"search": []}) == []
+
+
+def test_http_get_json_retries_on_rate_limit(monkeypatch):
+    import io
+    import urllib.error
+
+    from maestro.profiler import identify as mod
+
+    calls, slept = [], []
+
+    class Resp(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout):
+        calls.append(req.full_url)
+        if len(calls) < 3:
+            raise urllib.error.HTTPError(req.full_url, 429, "Too Many Requests", {"Retry-After": "3"}, None)
+        return Resp(b'{"ok": true}')
+
+    monkeypatch.setattr(mod.urllib.request, "urlopen", fake_urlopen)
+    assert mod.http_get_json("https://example.org/x", sleep=slept.append) == {"ok": True}
+    assert slept == [3.0, 3.0]

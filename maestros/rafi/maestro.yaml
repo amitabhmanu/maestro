@@ -4,9 +4,9 @@ status: draft
 identity:
   name: Mohammed Rafi
   slug: rafi
-  ids: {wikidata: null, musicbrainz: null, viaf: null}
-  variants: [Mohd. Rafi, Md. Rafi, Mohammad Rafi, محمد رفیع, मोहम्मद रफ़ी]
-  namesakes: []
+  ids: {wikidata: Q156815, musicbrainz: 28365249-f3fd-44db-8131-32cb170970c4, viaf: "7575974", isni: "0000000063085938", bnf: 13921553r}
+  variants: [Mohd. Rafi, Mohd Rafi, Md. Rafi, Mohammad Rafi, Muhammad Rafi, Muhammed Rafi, محمد رفیع, मोहम्मद रफ़ी]
+  namesakes: ["Q6893273: Indian footballer, born 1982", "Q109473241: Indian businessperson, born 1959"]
   active: [1941, 1980]
 roles:
   primary: singer
@@ -78,6 +78,5 @@ budget:
   model_spend_usd: null
   review_hours_per_week: null
 open_questions:
-  - Confirm Wikidata, MusicBrainz and VIAF IDs.
   - Is a copy of HFGK available to digitise, and which volumes?
   - What does the 7,405-song research count include?

@@ -6,12 +6,18 @@
 
 | Field | Value | Source |
 | --- | --- | --- |
-| Wikidata, MusicBrainz, VIAF, ISNI | Not yet resolved: run `uv run maestro-identify "Mohammed Rafi"` where wikidata.org is reachable | |
+| Wikidata | [Q156815](https://www.wikidata.org/wiki/Q156815) | maestro-identify |
+| MusicBrainz | [28365249-f3fd-44db-8131-32cb170970c4](https://musicbrainz.org/artist/28365249-f3fd-44db-8131-32cb170970c4) | via Wikidata |
+| VIAF / ISNI / BnF | 7575974 / 0000000063085938 / 13921553r | via Wikidata |
 | Born / died | 24 Dec 1924, Kotla Sultan Singh, Punjab / 31 Jul 1980, Bombay | [Wikipedia](https://en.wikipedia.org/wiki/Mohammed_Rafi) |
 | Active | 1944–1980 (first recording 1941, Punjabi film) | [Wikipedia](https://en.wikipedia.org/wiki/Mohammed_Rafi), [Dawn review of *Geet Gata Chal*](https://www.dawn.com/news/amp/1890805) |
 | Name variants | Mohd. Rafi, Md. Rafi, Mohammad Rafi, محمد رفیع, मोहम्मद रफ़ी | |
 
-Namesakes ruled out: none checked yet.
+Namesakes ruled out:
+
+- Q6893273: Indian footballer, born 1982
+- Q109473241: Indian businessperson, born 1959 (son of a Mohamed Rafi)
+- Q55469236, Q56480322, Q62664128: a politician and two researchers with similar names
 
 ## Career and roles
 
@@ -62,7 +68,9 @@ The 25,000–28,000 figures Rafi himself gave (BBC 1977; Guinness 1984) are not 
 | Atul's Song A Day | Per-song essays, picturisation | Careful secondary | atul | Crawlable | Prose | Facts yes, text no |
 | Songs of Yore | Essays, esteem | Careful secondary | songsofyore | Crawlable | Prose | Facts yes, text no |
 | Wikipedia song lists | Partial lists | Aggregator | wiki | Crawlable | Semi | Yes (CC BY-SA) |
-| Wikidata, MusicBrainz | Partial, IDs | Aggregator | wiki / musicbrainz | API | Structured | Yes (CC0) |
+| Wikidata | [Q156815](https://www.wikidata.org/wiki/Q156815) | maestro-identify |
+| MusicBrainz | [28365249-f3fd-44db-8131-32cb170970c4](https://musicbrainz.org/artist/28365249-f3fd-44db-8131-32cb170970c4) | via Wikidata |
+| VIAF / ISNI / BnF | 7575974 / 0000000063085938 / 13921553r | via Wikidata |
 
 ## Registers
 
@@ -81,6 +89,5 @@ The 25,000–28,000 figures Rafi himself gave (BBC 1977; Guinness 1984) are not 
 
 ## Open questions
 
-- Confirm Wikidata, MusicBrainz and VIAF IDs (blocked in the cloud session; run `maestro-identify` locally).
 - Is a copy of HFGK available to digitise, and which volumes?
 - What does the 7,405 count include?
