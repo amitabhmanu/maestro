@@ -307,13 +307,48 @@ def chapman(n1: int, n2: int, m: int) -> float:
     return (n1 + 1) * (n2 + 1) / (m + 1) - 1
 
 
+def _lineage_spans(units: dict[int, Unit]) -> dict[str, tuple[int, int]]:
+    spans: dict[str, tuple[int, int]] = {}
+    for u in units.values():
+        if u.year is None or u.pending_match:
+            continue
+        for lin in u.lineages:
+            lo, hi = spans.get(lin, (u.year, u.year))
+            spans[lin] = (min(lo, u.year), max(hi, u.year))
+    return spans
+
+
+def _covers(span: tuple[int, int] | None, year: int | None) -> bool:
+    """Whether a lineage seeing units over `span` could have seen a unit of `year`. A unit of unknown
+    year is assumed visible to every lineage: leaving it out would hide the very units one source
+    alone found, which drive the estimate."""
+    return span is None or year is None or span[0] <= year <= span[1]
+
+
+def _estimate(group: list[Unit], lineages: list[str]) -> tuple[float, str] | None:
+    """Chapman for two lineages, Chao1 for three or more; None when not estimable."""
+    if len(lineages) < 2:
+        return None
+    if len(lineages) == 2:
+        a, b = lineages
+        n1 = sum(1 for u in group if a in u.lineages)
+        n2 = sum(1 for u in group if b in u.lineages)
+        m = sum(1 for u in group if {a, b} <= u.lineages)
+        return (chapman(n1, n2, m), "chapman") if m else None
+    f1 = sum(1 for u in group if len(u.lineages & set(lineages)) == 1)
+    f2 = sum(1 for u in group if len(u.lineages & set(lineages)) == 2)
+    return chao1(len(group), f1, f2), "chao1"
+
+
 def estimate_tiers(store: Store, units: dict[int, Unit]) -> dict[str, Any]:
-    """Estimated totals per tier. Two lineages: Chapman; three or more: Chao1.
+    """Estimated totals per tier. Two lineages: Chapman; three or more: Chao1. Units are first
+    split by the lineages whose years cover them, each part estimated on its own, and summed.
 
     Both assume the sources find units independently. Sources that favour the same (popular) units
     make the estimate too low, so read it as a floor.
     """
     out = {}
+    spans = _lineage_spans(units)
     for tier, spec in store.pack.tiers.items():
         tier_units = [u for u in units.values() if u.tier == tier and not u.pending_match]
         s = len(tier_units)
@@ -332,18 +367,33 @@ def estimate_tiers(store: Store, units: dict[int, Unit]) -> dict[str, Any]:
             est["meets_target"] = None
             out[tier] = est
             continue
-        if len(lineages) == 2:
-            a, b = lineages
-            n1, n2 = est["by_lineage"][a], est["by_lineage"][b]
-            m = sum(1 for u in tier_units if {a, b} <= u.lineages)
-            if m == 0:
-                est.update(estimate=None, meets_target=None, method="chapman",
-                           note="not estimable: the two lineages share no units yet")
-                out[tier] = est
-                continue
-            total, est["method"] = chapman(n1, n2, m), "chapman"
-        else:
-            total, est["method"] = chao1(s, f1, f2), "chao1"
+        # Stratify by which lineages could have seen a unit: a source that covers only some years
+        # (a label's ledgers, 1944-54) cannot have missed what was recorded outside them.
+        strata: dict[frozenset, list[Unit]] = defaultdict(list)
+        for u in tier_units:
+            strata[frozenset(lin for lin in lineages
+                             if lin in u.lineages or _covers(spans.get(lin), u.year))].append(u)
+        total, methods, parts, unestimable = 0.0, set(), [], 0
+        for lins, group in sorted(strata.items(), key=lambda kv: sorted(kv[0])):
+            got = _estimate(group, sorted(lins))
+            parts.append({"lineages": sorted(lins), "observed": len(group),
+                          "estimate": round(got[0], 1) if got else None, "method": got[1] if got else None})
+            if got:
+                total += got[0]
+                methods.add(got[1])
+            else:
+                total += len(group)
+                unestimable += len(group)
+        if not methods:
+            est.update(estimate=None, meets_target=None,
+                       note="not estimable: the lineages share no units yet")
+            out[tier] = est
+            continue
+        est["method"] = methods.pop() if len(methods) == 1 and len(parts) == 1 else "stratified"
+        if len(parts) > 1:
+            est["strata"] = parts
+        if unestimable:
+            est["note"] = f"{unestimable} units in strata no two lineages cover are counted as found, with nothing missing"
         est["estimate"] = round(total, 1)
         est["missing_share"] = round(max(0.0, 1 - s / total), 4) if total else 0.0
         target = spec["target_missing"]
@@ -391,7 +441,15 @@ def render_markdown(report: dict[str, Any]) -> str:
                   f"cover; by lineage: {', '.join(f'{k} {v}' for k, v in un['by_lineage'].items())}). "
                   "They need placing before the estimates can count them."]
     lines += ["", "Estimates: two lineages use Chapman's estimator, three or more Chao1. Both assume the sources "
-              "are independent; sources that favour the same popular units make the estimate a floor."]
+              "are independent; sources that favour the same popular units make the estimate a floor. "
+              "Units are split by the lineages whose years cover them and each part is estimated on its own."]
+    for tier, t in report["tiers"].items():
+        if tier == "unassigned" or not t.get("strata"):
+            continue
+        parts = "; ".join(f"{'+'.join(p['lineages'])}: {p['observed']} seen"
+                          + (f", about {p['estimate']:g} ({p['method']})" if p["estimate"] is not None else ", not estimable")
+                          for p in t["strata"])
+        lines.append(f"- Tier {tier}: {parts}.")
     lines += ["", "## Published counts", "", "| Scope | Published | Observed | Difference | Status |", "|---|---|---|---|---|"]
     for c in report["checksums"]:
         lines.append(f"| {c['scope']} | {c['published']} | {c.get('observed', '-')} | "

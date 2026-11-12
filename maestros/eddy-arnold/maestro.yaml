@@ -18,6 +18,7 @@ canon_model:
   container: session
   container_has_full_listing: true
   match_titles_across_containers: true  # MusicBrainz knows releases, not sessions
+  kind_tiers: {issued_recording: A, unissued_recording: B}  # DAHR marks masters issued or not
   _why:
     reason: >-
       A 60-year RCA career with re-recordings of his own hits makes the recording, not the song,
@@ -54,7 +55,8 @@ sources:
   - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api}
   - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable}
   - {id: praguefrank, kind: semi, lineage: ruppli, reliability: 0.85, access: unavailable, url: https://countrydiscography.blogspot.com}
-  - {id: dahr, kind: structured, lineage: victor_ledgers, reliability: 0.95, access: crawlable, url: https://adp.library.ucsb.edu/names/100566}
+  # DAHR's firewall refuses cloud machines: Amitabh saves the "View All" page, loaded with maestro-import --extractor dahr.
+  - {id: dahr, kind: structured, lineage: victor_ledgers, reliability: 0.95, access: unavailable, url: https://adp.library.ucsb.edu/names/100566}
 collaborators:
   managers: [Colonel Tom Parker, Joe Csida, Jerry Purcell]
 verification:
