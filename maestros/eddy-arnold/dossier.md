@@ -57,7 +57,7 @@ Inconsistency to resolve: Wikipedia's prose says 19 No. 1 hits within 57 consecu
 | --- | --- | --- | --- | --- | --- | --- |
 | Freda, *Eddy Arnold Discography 1944–1996* | Every session and release, incl. 104 unreleased | Register | freda | Print | Structured (print) | Facts yes |
 | Bear Family box sets | Complete recordings by period, with notes | Careful secondary | bearfamily | Print / product pages | Semi | Facts yes |
-| Praguefrank's Country Discographies | Arnold in two parts. Part 2 (releases) imported 12 Nov 2026: 140 albums, 32 EPs, 218 singles (1945–2008), 3,235 track listings, about 1,200 distinct titles. Part 1 (sessions) not yet seen | Careful secondary | ruppli | robots.txt blocks crawling; copy pages by hand | Semi | Facts yes |
+| Praguefrank's Country Discographies | Imported 12 Nov 2026. Part 1: 263 sessions 1944–2005, 1,121 takes (955 issued, 165 unissued), about 980 distinct titles. Part 2: 140 albums, 32 EPs, 218 singles | Careful secondary | ruppli | robots.txt blocks crawling; copy pages by hand | Semi | Facts yes |
 | [DAHR (UCSB)](https://adp.library.ucsb.edu/names/100566) | 87 Victor recordings 1944–1953: matrix number, first recording date, title | Label ledgers | victor_ledgers | Crawlable | Structured | Facts yes |
 | Wikipedia discography | Albums, singles, chart peaks | Aggregator | wiki | Crawlable | Semi | Yes (CC BY-SA) |
 | MusicBrainz, Discogs | Releases, tracks | Aggregator | musicbrainz / discogs | API | Structured | MusicBrainz yes (CC0); Discogs check terms |
@@ -78,4 +78,3 @@ Inconsistency to resolve: Wikipedia's prose says 19 No. 1 hits within 57 consecu
 
 ## Open questions
 
-- Praguefrank's Arnold part 1 (sessions: dates, studios, musicians, matrix numbers) is needed to check Freda's session list; part 2 (releases) is already imported.
