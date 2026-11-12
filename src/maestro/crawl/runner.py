@@ -6,6 +6,7 @@ defines `extract(ctx: ExtractContext) -> None` and uses `ctx` to write claims an
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import logging
 from dataclasses import dataclass, field
@@ -42,6 +43,34 @@ def load_extractor(pack_dir: Path, name: str) -> ModuleType:
     if not hasattr(module, "extract"):
         raise AttributeError(f"extractor {path} has no extract(ctx) function")
     return module
+
+
+def import_page(
+    store: Store,
+    extractor: str,
+    url: str,
+    file: Path,
+    cache_dir: Path,
+    options: dict[str, str] | None = None,
+) -> int:
+    """Run an extractor over a page saved by hand (for sites that may not be crawled).
+
+    The file is copied into the raw cache and recorded against `url`, the page it was saved from.
+    Returns the raw_page id.
+    """
+    module = load_extractor(store.pack.path.parent, extractor)
+    body = Path(file).read_bytes()
+    digest = hashlib.sha256(body).hexdigest()
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    path = cache_dir / f"{digest}.html"
+    if not path.exists():
+        path.write_bytes(body)
+    page = Page(url=url, status=200, body=body, sha256=digest, path=path)
+    raw_id = store.record_raw_page(url, 200, digest, str(path))
+    job = {"id": None, "url": url, "extractor": extractor, "purpose": "import"}
+    module.extract(ExtractContext(store, job, page, raw_id, dict(options or {})))
+    return raw_id
 
 
 @dataclass

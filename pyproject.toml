@@ -20,6 +20,7 @@ maestro-mcp = "maestro.mcp_server:main"
 maestro-validate = "maestro.cli:validate_main"
 maestro-identify = "maestro.profiler.identify:main"
 maestro-crawl = "maestro.crawl.cli:main"
+maestro-import = "maestro.crawl.cli:import_main"
 
 [build-system]
 requires = ["hatchling>=1.25"]

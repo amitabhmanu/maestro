@@ -58,11 +58,6 @@ registers:
         permission or a manual export. Replaces Muveen's spreadsheet, which is not available.
       confidence: 0.6
       evidence: ["https://mohdrafi.com/database/index.php?FILM=Non-Filmi+Ghazals&load=film"]
-  - name: Mohd. Rafi Sahab alphabetical song list (Scribd, 17 pages, compiler not stated)
-    tiers: [A, B]
-    access: unavailable
-    role: partial
-    url: https://www.scribd.com/document/44070958/Mohd-Rafi
   - name: Wikipedia list of songs recorded by Mohammed Rafi (non-Hindi film and non-film sections)
     tiers: [B]
     access: crawlable
@@ -75,6 +70,7 @@ sources:
   - {id: hfgk_online, kind: structured, lineage: hfgk, reliability: 0.95, access: crawlable, url: "https://hindi-movies-songs.com/hfgk/"}
   - {id: hindigeetmala, kind: semi, lineage: hfgk, reliability: 0.85, access: crawlable}
   - {id: atulsongaday, kind: prose, lineage: atul, reliability: 0.75, access: crawlable, url: https://atulsongaday.me}
+  - {id: mohdrafi, kind: semi, lineage: mohdrafi, reliability: 0.7, access: unavailable, url: "http://www.mohdrafi.com/database/listtracks.php"}
   - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api, url: https://www.discogs.com}
   - {id: songsofyore, kind: prose, lineage: songsofyore, reliability: 0.75, access: crawlable, url: https://www.songsofyore.com}
 lexicon:
@@ -115,6 +111,4 @@ budget:
   review_hours_per_week: null
 open_questions:
   - Permission from the HFGK Online site master for bulk crawling, or an export of Rafi's songs.
-  - Access to Rafi Sahab's Song Database on mohdrafi.com (robots.txt blocks crawling), by permission or manual export.
-  - A copy of the Scribd alphabetical Rafi song list (needs a Scribd sign-in).
   - Which count of non-Hindi film songs is right, 310 (Shahid Rafi and Sujata Dev) or 112 (unsourced)?

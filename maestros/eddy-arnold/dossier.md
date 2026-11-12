@@ -21,7 +21,7 @@ Namesakes ruled out:
 
 ## Career and roles
 
-Country singer recording for RCA Victor (1944–1972, 1976–2008) and MGM (1973–1976). Pioneer of the Nashville Sound in the 1960s. Also film actor (*Feudin' Rhythm* 1949, *Hoedown* 1950) and TV host (*Eddy Arnold Time* 1955–57, *Ozark Jubilee* guest host 1955–60, *Today on the Farm* 1960–61). Singing is the canon; film and TV are out of scope unless the user wants a Tier C for broadcast performances.
+Country singer recording for RCA Victor (1944–1972, 1976–2008) and MGM (1973–1976). Pioneer of the Nashville Sound in the 1960s. Also film actor (*Feudin' Rhythm* 1949, *Hoedown* 1950) and TV host (*Eddy Arnold Time* 1955–57, *Ozark Jubilee* guest host 1955–60, *Today on the Farm* 1960–61). Singing is the canon. Film and TV performances are out of scope because they are not music contributions (decided 12 Nov 2026).
 
 ## Output structure
 
@@ -57,7 +57,8 @@ Inconsistency to resolve: Wikipedia's prose says 19 No. 1 hits within 57 consecu
 | --- | --- | --- | --- | --- | --- | --- |
 | Freda, *Eddy Arnold Discography 1944–1996* | Every session and release, incl. 104 unreleased | Register | freda | Print | Structured (print) | Facts yes |
 | Bear Family box sets | Complete recordings by period, with notes | Careful secondary | bearfamily | Print / product pages | Semi | Facts yes |
-| Praguefrank's Country Discographies | Session data for many country artists (Arnold coverage unconfirmed) | Careful secondary | ruppli | Crawlable | Semi | Facts yes |
+| Praguefrank's Country Discographies | Imported 12 Nov 2026. Part 1: 263 sessions 1944–2005, 1,121 takes (955 issued, 165 unissued), about 980 distinct titles. Part 2: 140 albums, 32 EPs, 218 singles | Careful secondary | ruppli | robots.txt blocks crawling; copy pages by hand | Semi | Facts yes |
+| [DAHR (UCSB)](https://adp.library.ucsb.edu/names/100566) | 87 Victor recordings 1944–1953: matrix number, first recording date, title | Label ledgers | victor_ledgers | Crawlable | Structured | Facts yes |
 | Wikipedia discography | Albums, singles, chart peaks | Aggregator | wiki | Crawlable | Semi | Yes (CC BY-SA) |
 | MusicBrainz, Discogs | Releases, tracks | Aggregator | musicbrainz / discogs | API | Structured | MusicBrainz yes (CC0); Discogs check terms |
 
@@ -77,5 +78,3 @@ Inconsistency to resolve: Wikipedia's prose says 19 No. 1 hits within 57 consecu
 
 ## Open questions
 
-- Does Praguefrank cover Arnold's sessions?
-- Film and TV performances: Tier C or out of scope?

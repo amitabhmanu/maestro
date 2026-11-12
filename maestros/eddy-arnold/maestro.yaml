@@ -11,7 +11,7 @@ identity:
 roles:
   primary: singer
   in_scope: [singer]
-  out_of_scope: [actor]
+  out_of_scope: [actor]  # film and TV performances are not music contributions (Amitabh, 12 Nov 2026)
 canon_model:
   unit: recording
   version_levels: [work, recording, release]
@@ -25,7 +25,7 @@ canon_model:
 tiers:
   A: {label: "Commercially issued studio recordings", target_missing: 0.01}
   B: {label: "Unissued studio recordings", target_missing: 0.05}
-  C: {label: "Radio transcriptions, TV and live recordings", target_missing: report_only}
+  C: {label: "Radio transcriptions and live recordings", target_missing: report_only}
 registers:
   - name: Eddy Arnold Discography 1944-1996 (Michael D. Freda)
     tiers: [A, B]
@@ -37,12 +37,22 @@ registers:
     access: print
     role: independent_check
     url: https://www.bear-family.com/arnold-eddy-there-s-been-a-change-7-cd-deluxe-box-set.html
+  - name: Discography of American Historical Recordings (UCSB), Victor sessions 1944-1953
+    tiers: [A]
+    access: crawlable
+    role: independent_check
+    url: https://adp.library.ucsb.edu/names/100566
+    _why:
+      reason: 87 Victor recordings 1944-1953 with matrix numbers and first recording dates, from the label ledgers.
+      confidence: 0.8
+      evidence: [https://adp.library.ucsb.edu/names/100566]
 sources:
   - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api}
   - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api}
   - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api}
   - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable}
-  - {id: praguefrank, kind: semi, lineage: ruppli, reliability: 0.85, access: crawlable, url: https://countrydiscography.blogspot.com}
+  - {id: praguefrank, kind: semi, lineage: ruppli, reliability: 0.85, access: unavailable, url: https://countrydiscography.blogspot.com}
+  - {id: dahr, kind: structured, lineage: victor_ledgers, reliability: 0.95, access: crawlable, url: https://adp.library.ucsb.edu/names/100566}
 collaborators:
   managers: [Colonel Tom Parker, Joe Csida, Jerry Purcell]
 verification:
@@ -70,6 +80,4 @@ budget:
   model_spend_usd: null
   review_hours_per_week: null
 open_questions:
-  - Does Praguefrank's country discography cover Eddy Arnold's sessions?
-  - Should his film and TV appearances be in Tier C or out of scope?
   - "Chart No. 1 count: prose says 19, singles tables show 26 A-sides. Reconcile from chart data."

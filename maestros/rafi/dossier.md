@@ -71,8 +71,7 @@ The 25,000–28,000 figures Rafi himself gave (BBC 1977; Guinness 1984) are not 
 | Songs of Yore | Essays, esteem | Careful secondary | songsofyore | Crawlable | Prose | Facts yes, text no |
 | Wikipedia song lists | Partial lists | Aggregator | wiki | Crawlable | Semi | Yes (CC BY-SA) |
 | Discogs | LPs, EPs, 78s, cassettes with label numbers | Secondary | discogs | API | Structured | Facts yes |
-| [Rafi Sahab's Song Database](https://mohdrafi.com/database/index.php?FILM=Non-Filmi+Ghazals&load=film) (mohdrafi.com) | Film and non-film, with categories for non-filmi ghazals, bhajans and songs, and Punjabi, Marathi, Bengali, Gujarati | Fan database | mohdrafi | robots.txt disallows automated access; ask the site or export by hand | Structured | Facts yes |
-| [Mohd. Rafi Sahab song list](https://www.scribd.com/document/44070958/Mohd-Rafi) (Scribd) | 17-page alphabetical list, compiler not stated | Fan compilation | unknown | Scribd sign-in to download; upload a copy | Semi | Facts yes |
+| [Rafi Sahab's Song Database](https://mohdrafi.com/database/index.php?FILM=Non-Filmi+Ghazals&load=film) (mohdrafi.com) | 140 Tier B songs: non-filmi ghazals and Punjabi, Marathi, Sindhi, Bengali, Gujarati, Telugu, Kannada, English pages (bhajan and non-filmi song pages empty) | Fan database | mohdrafi | robots.txt disallows automated access; ask the site or export by hand | Structured | Facts yes |
 | Rafi non-filmy / unreleased songs (YouTube playlist) | 64 tracks | Listening aid | none | Not a register; titles only, no audio kept | None | Titles only |
 
 HFGK Online fields. V1.0 (hindi-movies-songs.com/hfgk) is retired and frozen; V2.0 (hamraaz.org/filmssite) is the maintained copy and the one the extractor reads. V2.0 gives, per film: English and Devanagari title, year (or decade when undated), banner, record company, subject, and cast and crew credits. Per song: position in the film, English and Devanagari first line, singers, lyricist, music director, on-screen artists, and the 78 RPM record number (song page only).
@@ -82,8 +81,9 @@ HFGK Online fields. V1.0 (hindi-movies-songs.com/hfgk) is retired and frozen; V2
 - Tier A: HFGK Online (ground truth, covers to 1985 so includes posthumous releases); print HFGK and Geet Gata Chal as checks.
 - Tier B: no single register exists, so Tier B is built as a union of partial lists and its completeness is estimated by capture-recapture rather than checked against ground truth. Proposed:
   - Non-Hindi film songs (container = the regional film): Wikipedia's song list (about 64 entries: Punjabi ~38, Telugu ~19, others) as the starting list, film credits from MusicBrainz and Wikidata, and the 310 count as checksum.
-  - Non-film songs (no container; group by record or album): Rafi Sahab's Song Database on mohdrafi.com (non-filmi ghazals, bhajans and songs, plus regional categories) as the candidate register, once access is agreed, since its robots.txt blocks crawling; the Scribd alphabetical list as a partial check; HMV/Saregama record numbers to anchor each song; Discogs and MusicBrainz for LPs, EPs and cassettes; Atul's Song A Day NFS category and the Songs of Yore NFS article as independent checks; the 328 count as checksum.
+  - Non-film songs (no container; group by record or album): Rafi Sahab's Song Database on mohdrafi.com (non-filmi ghazals, bhajans and songs, plus regional categories) as the candidate register, once access is agreed, since its robots.txt blocks crawling; HMV/Saregama record numbers to anchor each song; Discogs and MusicBrainz for LPs, EPs and cassettes; Atul's Song A Day NFS category and the Songs of Yore NFS article as independent checks; the 328 count as checksum.
   - Geet Gata Chal (print) as an independent check for both.
+  - Imported 12 Nov 2026 from hand-saved mohdrafi.com pages: 140 songs, of which 47 are non-Hindi film songs (Punjabi 41, Telugu 3, Gujarati 2, Kannada 1) and 93 non-film (54 Hindi ghazals; Bengali 16, Marathi 12, Sindhi 8, English 2, Gujarati 1). Its Non-Filmi Bhajans and Non-Filmi Songs pages are empty. Against the checksums (310 and 328) this covers about 15% and 28%, so Tier B still needs other sources.
 - Tier C: none; report only.
 
 ## Popularity signals
@@ -98,6 +98,4 @@ HFGK Online fields. V1.0 (hindi-movies-songs.com/hfgk) is retired and frozen; V2
 ## Open questions
 
 - Permission from the HFGK Online site master for bulk crawling, or an export of Rafi's songs.
-- Access to Rafi Sahab's Song Database on mohdrafi.com (robots.txt blocks crawling): permission from the site, or a manual export. Muveen's spreadsheet is not available.
-- A copy of the Scribd alphabetical song list (needs a Scribd sign-in).
 - Which count of non-Hindi film songs is right, 310 (Shahid Rafi and Sujata Dev) or 112 (unsourced)?
