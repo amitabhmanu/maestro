@@ -76,3 +76,17 @@ def test_source_default_tier(store_for):
     assert (units[a].tier, units[a].tier_default) == ("A", True)
     assert units[b].tier == "C"
     assert completeness_report(s)["tiers"]["A"]["default_tier"] == 1
+
+
+def test_estimates_are_split_by_the_years_each_lineage_covers():
+    from maestro.completeness import Unit, _lineage_spans, _estimate
+
+    units = {}
+    for i in range(10):  # 1950: three lineages; 1960: a ledger source no longer covers it
+        units[i] = Unit(i, f"u{i}", tier="A", year=1950, lineages={"a", "b", "ledger"} if i < 6 else {"a"})
+    for i in range(10, 20):
+        units[i] = Unit(i, f"u{i}", tier="A", year=1960, lineages={"a", "b"} if i < 18 else {"a"})
+    spans = _lineage_spans(units)
+    assert spans["ledger"] == (1950, 1950)
+    later = [u for u in units.values() if u.year == 1960]
+    assert _estimate(later, ["a", "b"]) == (10.0, "chapman")

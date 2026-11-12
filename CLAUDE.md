@@ -21,8 +21,8 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 - `src/maestro/mcp_server.py`: MCP server exposing the store to Claude Code (configured in `.mcp.json`).
 - `src/maestro/profiler/`: profiler helpers (`identify.py`: Wikidata candidates and external IDs).
 - `src/maestro/resolve.py`: entity resolution (normalise, block, merge across sources, review queue).
-- `src/maestro/completeness.py`: completeness engine (checksums with `filter`, container check, Chao1 per tier).
-- `src/maestro/extractors/`: extractors for sources any maestro can use (`musicbrainz` releases, `musicbrainz_works`, `wikidata_films`, `bnf_works`); a maestro's own extractor of the same name wins.
+- `src/maestro/completeness.py`: completeness engine (checksums with `filter`, container check, Chapman/Chao1 per tier, split by the years each lineage covers).
+- `src/maestro/extractors/`: extractors for sources any maestro can use (`musicbrainz` releases, `musicbrainz_works`, `wikidata_films`, `bnf_works`, `dahr`); a maestro's own extractor of the same name wins.
 - `src/maestro/crawl/`: polite fetcher (robots.txt, per-domain rate limit, raw cache in `data/<slug>/raw`) and the job runner that calls a maestro's extractors (`maestros/<slug>/extractors/<name>.py`, function `extract(ctx)`).
 - `.claude/skills/profile-maestro/`: the `/profile-maestro` skill (research a maestro, propose its pack).
 - `maestros/<slug>/`: pack, profiler dossier, and maestro-specific lexicons, extractors and gold data.
@@ -33,7 +33,7 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 - Validate packs: `uv run maestro-validate`
 - Identity lookup: `uv run maestro-identify "<name>"` (needs access to wikidata.org)
 - Crawl: `uv run maestro-crawl --pack maestros/rafi --dsn ... --seed <url> --extractor hamraaz --purpose spine [--opt years=1944-1950] [--max-jobs N]`
-- Import a saved or copied page (sites whose robots.txt forbids crawling): `uv run maestro-import --pack maestros/<slug> --dsn ... --extractor <name> --url <page url> [--opt key=value] <file>` (extractors: rafi/mohdrafi, rafi/atul, eddy-arnold/praguefrank)
+- Import a saved or copied page (sites whose robots.txt forbids crawling): `uv run maestro-import --pack maestros/<slug> --dsn ... --extractor <name> --url <page url> [--opt key=value] <file>` (extractors: rafi/mohdrafi, rafi/atul, eddy-arnold/praguefrank, core dahr for saved DAHR name pages)
 - Rebuild a store from the raw cache after an extractor or core fix: `uv run maestro-replay --pack maestros/<slug> --from-dsn <old> --dsn <new empty db>`
 - Resolve entities (merge clear duplicates, queue unclear ones): `uv run maestro-resolve --pack ... --dsn ...`
 - Review queue: `uv run maestro-review` lists open items; `uv run maestro-review <id> merge|distinct|dismiss [--keep ID]` records the user's decision. Only record decisions the user made.

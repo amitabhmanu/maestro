@@ -482,6 +482,38 @@ def catalogue_key(number: str) -> str | None:
     return key if re.search(r"\d", key) and len(key) >= 3 else None
 
 
+def matrix_key(matrix: str) -> str | None:
+    """A master's matrix number reduced for matching: letters and digits only, upper case
+    ("E0-VB-4267" and "E0VB-4267" -> "E0VB4267"; "D4AB-0519" -> "D4AB519"). A trailing take or remake number ("-2") makes the
+    key None: it names one take, which may not be the master another source lists."""
+    if re.search(r"\d-\d{1,2}$", matrix.strip()):
+        return None
+    key = re.sub(r"[^0-9A-Z]", "", fold(matrix).upper())
+    key = re.sub(r"(?<=[A-Z])0+(?=\d)", "", key)  # "D4AB-0519" and "D4-AB-519"
+    return key if re.search(r"\d{3}", key) else None
+
+
+def _merge_by_matrix(store, groups, distinct, stats, unit_recs) -> None:
+    kinds = {r["id"]: r for r in unit_recs}
+    by_key: dict[str, list[int]] = defaultdict(list)
+    for r in store.conn.execute(
+        """SELECT c.entity_id, c.value #>> '{}' AS v FROM claim c JOIN entity e ON e.id = c.entity_id
+           WHERE e.type = %s AND c.field = 'matrix' AND c.status = 'active' ORDER BY c.entity_id""",
+        (store.pack.unit,)).fetchall():
+        key = matrix_key(r["v"] or "")
+        if key and r["entity_id"] in kinds and r["entity_id"] not in by_key[key]:
+            by_key[key].append(r["entity_id"])
+    for key, ids in sorted(by_key.items()):
+        for other in ids[1:]:
+            a, b = groups.find(ids[0]), groups.find(other)
+            if a == b or tuple(sorted((a, b))) in distinct or not groups.can_join(a, b):
+                continue
+            keep, gone = sorted((a, b))
+            store.merge_entities(keep, gone, f"same matrix {key}")
+            groups.union(keep, gone)
+            stats.merged["unit"] += 1
+
+
 def _catalogues_of_units(store: Store) -> dict[int, set[str]]:
     out: dict[int, set[str]] = defaultdict(set)
     for r in store.conn.execute(
@@ -518,6 +550,9 @@ def resolve_units(store: Store, norm: Normaliser, stats: ResolveStats) -> None:
             by_container[container].extend((key, r) for r in block)
     for container, entries in by_container.items():
         _match_titles(store, groups, distinct, stats, entries, {"container": container})
+
+    # The same matrix number (a master's ledger number) from different sources is the same recording.
+    _merge_by_matrix(store, groups, distinct, stats, unit_recs)
 
     # Then the same catalogue number: each issue is a context of its own.
     by_catalogue: dict[str, list[tuple[str, dict]]] = defaultdict(list)
