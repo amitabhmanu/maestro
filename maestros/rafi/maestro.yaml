@@ -64,11 +64,11 @@ registers:
     role: partial
     url: https://en.wikipedia.org/wiki/List_of_songs_recorded_by_Mohammed_Rafi
 sources:
-  - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api}
+  - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api, api_rps: 1, url: "https://query.wikidata.org/sparql"}
   - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api, api_rps: 1, distinct_ids: false, url: "https://musicbrainz.org/ws/2/", sweep: {url: "https://musicbrainz.org/ws/2/release?track_artist=28365249-f3fd-44db-8131-32cb170970c4&limit=100&offset=0&fmt=json&inc=recordings+release-groups+artist-credits", purpose: spine}}
   - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable, url: https://en.wikipedia.org/wiki/List_of_songs_recorded_by_Mohammed_Rafi}
   - {id: hfgk_online, kind: structured, lineage: hfgk, reliability: 0.95, access: crawlable, url: "https://hindi-movies-songs.com/hfgk/", sweep: {url: "https://hamraaz.org/filmssite/public/person.php?id=4357", extractor: hamraaz, purpose: spine}, container_url: "https://hamraaz.org/filmssite/public/film.php?id={xref}"}
-  - {id: hindigeetmala, kind: semi, lineage: hfgk, reliability: 0.85, access: crawlable}
+  - {id: hindigeetmala, kind: semi, lineage: hfgk, reliability: 0.85, access: crawlable, url: "https://www.hindigeetmala.net"}
   - {id: atulsongaday, kind: semi, lineage: atul, reliability: 0.75, access: unavailable, url: https://atulsongaday.me}  # bot challenge on every page: import the saved "List of songs yearwise" page
   - {id: mohdrafi, kind: semi, lineage: mohdrafi, reliability: 0.7, access: unavailable, url: "http://www.mohdrafi.com/database/listtracks.php"}
   - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api, url: https://www.discogs.com}
@@ -103,7 +103,8 @@ taxonomies:
   style: raga
 popularity_signals:
   contemporary: [binaca_geetmala, filmfare]
-  enduring: [youtube, lastfm, jiosaavn]
+  # Built: binaca_geetmala (Wikipedia #1s; full yearly lists 1953-1983 from hindigeetmala_binaca), filmfare, wikipedia_list, wikipedia_articles (core), reissues (derived), atulsongaday (source presence).
+  enduring: [wikipedia_list, reissues, wikipedia_articles, youtube, lastfm, jiosaavn]
   penetration: [covers, reality_shows]
   esteem: [songsofyore, atulsongaday]
 legal:

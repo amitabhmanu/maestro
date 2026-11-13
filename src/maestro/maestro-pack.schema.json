@@ -213,7 +213,14 @@
         "contemporary": {"type": "array", "items": {"type": "string"}},
         "enduring": {"type": "array", "items": {"type": "string"}},
         "penetration": {"type": "array", "items": {"type": "string"}},
-        "esteem": {"type": "array", "items": {"type": "string"}}
+        "esteem": {"type": "array", "items": {"type": "string"}},
+        "weights": {"type": "object", "additionalProperties": false,
+                    "description": "Facet weights for the popularity score (defaults 0.35, 0.3, 0.2, 0.15).",
+                    "properties": {
+                      "contemporary": {"type": "number", "minimum": 0},
+                      "enduring": {"type": "number", "minimum": 0},
+                      "penetration": {"type": "number", "minimum": 0},
+                      "esteem": {"type": "number", "minimum": 0}}}
       }
     },
     "legal": {

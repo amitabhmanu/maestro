@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any
 
 from maestro.completeness import completeness_report, load_units
+from maestro.popularity import resolve_reasons, score_canon, unit_summary
 from maestro.pack import load_pack
 from maestro.resolve import Groups
 from maestro.store import Store
@@ -182,6 +183,21 @@ def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
         out_units.append(unit)
     out_units.sort(key=lambda x: (x["year"] or 9999, x["title"].lower()))
 
+    # Popularity and gems (design doc: popularity and gem scoring).
+    pop = score_canon(store, include_private=include_private)
+    names = {r["id"]: r["label"] for r in store.conn.execute(
+        "SELECT id, label FROM entity WHERE type IN ('person', %s)", (unit_type,)).fetchall()}
+    for unit in out_units:
+        sc = pop["units"].get(unit["id"])
+        summary = unit_summary(sc) if sc else None
+        if summary:
+            for k in ("gem", "lead"):
+                if k in summary:
+                    summary[k]["reasons"] = resolve_reasons(summary[k]["reasons"], names, names)
+            unit["pop"] = summary
+    popularity = {k: pop[k] for k in ("signals", "facets_present", "gems", "listed_without_data",
+                                       "unmatched_mentions")}
+
     # Containers: title, year and facts from every merged record.
     cmembers: dict[int, int] = {}
     for r in store.conn.execute("SELECT id FROM entity WHERE type = 'container'").fetchall():
@@ -262,6 +278,7 @@ def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
         "containers": out_containers,
         "people": out_people,
         "coverage": report,
+        "popularity": popularity,
     }
 
 
