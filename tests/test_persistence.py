@@ -105,6 +105,9 @@ def test_missing_pages_are_found_refilled_and_refetched(tmp_path, store_for):
     raw.path_for(page.sha256).unlink()
     web.pages["https://example.org/a"] = b"<html>A, revised</html>"
     assert refetch(store, raw, fetcher)["changed"] == 1
+    st = status(store, raw).as_dict()
+    assert (st["missing"], st["replaced"]) == (0, 1)       # the old copy is gone, a newer one stands in
+    assert refetch(store, raw, fetcher)["changed"] == 0    # and it is not fetched again
     target = store_for("jean-wiener", pack=pack)
     stats = replay(store, target, raw=raw)
     assert (stats.done, stats.failed) == (2, 0)

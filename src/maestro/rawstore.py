@@ -69,13 +69,16 @@ class RawStore:
 
 @dataclass
 class RawStatus:
+    """`missing`: pages with no file and no later copy of their URL on disk. `replaced`: pages whose
+    original is gone but a later fetch of the same URL is on disk (replay uses that copy)."""
     rows: int = 0
     present: int = 0
     missing: list[dict[str, Any]] = field(default_factory=list)
+    replaced: list[dict[str, Any]] = field(default_factory=list)
 
     def as_dict(self, sample: int = 10) -> dict[str, Any]:
         crawled = sum(1 for m in self.missing if m["origin"] == "crawl")
-        return {"rows": self.rows, "present": self.present, "missing": len(self.missing),
+        return {"rows": self.rows, "present": self.present, "replaced": len(self.replaced), "missing": len(self.missing),
                 "missing_crawled": crawled, "missing_imported": len(self.missing) - crawled,
                 "missing_other": sum(1 for m in self.missing if m["origin"] == "other"),
                 "sample": [{k: m[k] for k in ("id", "url", "origin")} for m in self.missing[:sample]]}
@@ -92,12 +95,18 @@ def _origin_sql() -> str:
 def status(store, raw: RawStore, base: Path | None = None) -> RawStatus:
     """Which raw_page rows have their page on disk."""
     st = RawStatus()
-    for r in store.conn.execute(_origin_sql()).fetchall():
+    rows = store.conn.execute(_origin_sql()).fetchall()
+    on_disk: dict[str, list[int]] = {}
+    gone = []
+    for r in rows:
         st.rows += 1
         if raw.locate(r["sha256"], r["path"], base):
             st.present += 1
+            on_disk.setdefault(r["url"], []).append(r["id"])
         else:
-            st.missing.append(r)
+            gone.append(r)
+    for r in gone:
+        (st.replaced if any(i > r["id"] for i in on_disk.get(r["url"], ())) else st.missing).append(r)
     return st
 
 
@@ -127,7 +136,7 @@ def refetch(store, raw: RawStore, fetcher, *, limit: int | None = None, base: Pa
     from maestro.crawl.fetcher import Disallowed
 
     out = {"restored": 0, "changed": 0, "disallowed": 0, "failed": 0}
-    todo = [m for m in status(store, raw, base).missing if m["origin"] == "crawl"]
+    todo = [m for m in status(store, raw, base).missing if m["origin"] == "crawl"]  # replaced ones are done
     seen: set[str] = set()
     for m in todo[:limit] if limit else todo:
         if m["url"] in seen:
