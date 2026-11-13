@@ -139,6 +139,8 @@
           "api_rps": {"type": "number", "exclusiveMinimum": 0, "description": "For access: api, the API's request limit per second. The fetcher skips robots.txt for an API host and keeps to this rate."},
           "url": {"type": "string"},
           "extractor": {"type": "string"},
+          "sweep": {"type": "object", "required": ["url"], "additionalProperties": false, "description": "Listing pages the orchestrator may fetch unaided: url is a template over {year} (with years) or {page} and {offset} (with pages and page_size).", "properties": {"url": {"type": "string"}, "years": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2}, "pages": {"type": "integer", "minimum": 1}, "page_size": {"type": "integer", "minimum": 1}, "extractor": {"type": "string"}, "purpose": {"enum": ["spine", "container_sweep", "enrich", "gap"]}}},
+          "container_url": {"type": "string", "description": "Template for one container's page in this source, over {xref} (the container's id here) or {xref_q} (URL-quoted). The orchestrator refetches containers whose stored units fall short of this source's count."},
           "publishable": {"type": "boolean", "description": "Whether facts taken from this source may be included in a public release.", "default": true},
           "_why": {"$ref": "#/$defs/evidence"}
         }
