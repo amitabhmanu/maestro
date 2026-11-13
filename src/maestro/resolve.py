@@ -21,7 +21,7 @@ import csv
 import json
 import re
 import unicodedata
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -802,13 +802,26 @@ def resolve(store: Store) -> ResolveStats:
 
 
 def close_settled_reviews(store: Store) -> int:
-    """Close open review items whose subjects have since been merged into one entity."""
+    """Close open review items whose subjects have since been merged into one entity, and items about
+    a floating unit that has since been matched to a unit with a container (the question "which one
+    is it?" is answered; what is left would compare two other units nobody asked about)."""
     groups = Groups(store)
+    contained = {groups.find(r["entity_id"]) for r in store.conn.execute(
+        """SELECT DISTINCT p.entity_id FROM claim p JOIN claim k ON k.entity_id = p.ref_entity_id
+           WHERE p.field = 'part_of' AND p.status = 'active' AND k.field = 'container_kind'
+             AND k.status = 'active' AND k.value #>> '{}' = %s""",
+        (store.pack.data["canon_model"]["container"],)).fetchall()}
     closed = 0
     for item in open_reviews(store, limit=100000):
+        floating = (item["evidence"] or {}).get("floating")
         if len({groups.find(i) for i in item["subject_ids"]}) == 1:
             store.conn.execute(
                 """UPDATE review_item SET status = 'decided', decision = 'merge', note = 'merged by a resolution rule',
+                   decided_at = now() WHERE id = %s""", (item["id"],))
+            closed += 1
+        elif floating is not None and groups.find(floating) in contained:
+            store.conn.execute(
+                """UPDATE review_item SET status = 'dismissed', note = 'the floating unit was matched since',
                    decided_at = now() WHERE id = %s""", (item["id"],))
             closed += 1
     return closed
@@ -877,3 +890,126 @@ def export_reviews(store: Store, limit: int = 100000) -> list[dict[str, Any]]:
         out.append({"id": it["id"], "kind": it["kind"], "priority": it["priority"],
                     "evidence": it["evidence"], "subjects": subjects})
     return out
+
+
+# ---- grouped review ---------------------------------------------------------------
+
+def review_questions(store: Store, limit: int = 100000) -> list[dict[str, Any]]:
+    """Open review items grouped into questions a reviewer can answer safely.
+
+    Merges are transitive: answering "same" to A-B and to A-C also makes B the same as C, which nobody
+    was asked. So items that share a subject (at its merge root) form one question, shown whole:
+    `members` are the distinct subjects, `pairs` the items it covers. When every pair is about the
+    same floating unit (a record with no container of its own matched against several candidates),
+    the question holds just that unit and its candidates, and `floating` names it, so a page can
+    ask "which one is it?" instead.
+    """
+    items = export_reviews(store, limit)
+    groups = Groups(store)
+    # A floating unit's candidates are a question of their own ("which one is it?"): picking one
+    # merges the floater into it and leaves the candidates as they are, so it cannot chain.
+    by_floater: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    others = []
+    for it in items:
+        f = it["evidence"].get("floating")
+        ids = [s["id"] for s in it["subjects"]]
+        if f is not None and len(ids) == 2 and groups.find(f) in ids:
+            by_floater[groups.find(f)].append(it)
+        else:
+            others.append(it)
+    out = [_question(its, floating=f) for f, its in by_floater.items()]
+    items = others
+    parent: dict[int, int] = {}
+
+    def find(x: int) -> int:
+        while parent.get(x, x) != x:
+            x = parent[x]
+        return x
+
+    for it in items:
+        a, *bs = [s["id"] for s in it["subjects"]]
+        for b in bs:
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[rb] = ra
+    comps: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for it in items:
+        comps[find(it["subjects"][0]["id"])].append(it)
+    out += [_question(its) for its in comps.values()]
+    out.sort(key=lambda q: (-q["priority"], q["id"]))
+    return out
+
+
+def _question(its: list[dict[str, Any]], floating: int | None = None) -> dict[str, Any]:
+    members: dict[int, dict[str, Any]] = {}
+    for it in its:
+        for s in it["subjects"]:
+            members.setdefault(s["id"], s)
+    return {
+        "id": min(it["id"] for it in its),
+        "kind": Counter(it["kind"] for it in its).most_common(1)[0][0],
+        "priority": max(it["priority"] for it in its),
+        "floating": floating,
+        "members": sorted(members.values(), key=lambda s: s["id"]),
+        "pairs": [{"item": it["id"], "kind": it["kind"], "subjects": [s["id"] for s in it["subjects"]],
+                   "evidence": it["evidence"]} for it in sorted(its, key=lambda x: x["id"])],
+    }
+
+
+def apply_groups(store: Store, item_ids: list[int], groups: list[list[int]] | None,
+                 note: str | None = None) -> dict[str, int]:
+    """Record a reviewer's answer to one grouped question.
+
+    `item_ids` are the question's review items; `groups` partitions their subjects (any record of a
+    subject's merge group may stand for it) into sets of one entity each, or None to skip. Each item
+    whose subjects share a group is merged, each other item is marked distinct, and members of a group
+    no item connects are merged too. Refuses, writing nothing, when an answer would join two groups
+    through merges already in the store or put entries already marked distinct into one group.
+    """
+    rows = store.conn.execute(
+        "SELECT id, subject_ids, status FROM review_item WHERE id = ANY(%s) ORDER BY id", (item_ids,)).fetchall()
+    missing = set(item_ids) - {r["id"] for r in rows}
+    if missing:
+        raise ValueError(f"no review items {sorted(missing)}")
+    rows = [r for r in rows if r["status"] == "open"]
+    stats: Counter[str] = Counter()
+    if groups is None:
+        for r in rows:
+            decide_review(store, r["id"], "dismiss", note)
+            stats["dismiss"] += 1
+        return dict(stats)
+    g = Groups(store)
+    group_of: dict[int, int] = {}
+    for n, members in enumerate(groups):
+        for m in members:
+            root = g.find(m)
+            if group_of.get(root, n) != n:
+                raise ValueError(f"entity {m} is already merged with an entity in another group")
+            group_of[root] = n
+    roots = {g.find(s) for r in rows for s in r["subject_ids"]}
+    if not roots <= group_of.keys():
+        raise ValueError(f"every subject needs a group; missing {sorted(roots - group_of.keys())}")
+    for a, b in _distinct_pairs(store):
+        ra, rb = g.find(a), g.find(b)
+        if ra in group_of and rb in group_of and group_of[ra] == group_of[rb]:
+            raise ValueError(f"entities {a} and {b} are marked distinct but share a group")
+    size = Counter(g.find(x) for x in list(g.parent))
+    for r in rows:
+        subj = list(r["subject_ids"])
+        if len({group_of[g.find(s)] for s in subj}) == 1:
+            keep = max(subj, key=lambda s: (size[g.find(s)], -s))
+            decide_review(store, r["id"], "merge", note, keep_id=keep)
+            for s in subj:
+                g.union(keep, s)
+            stats["merge"] += 1
+        else:
+            decide_review(store, r["id"], "distinct", note)
+            stats["distinct"] += 1
+    for members in groups:
+        keep = members[0]
+        for m in members[1:]:
+            if g.find(m) != g.find(keep):
+                store.merge_entities(keep, m, f"grouped review: {note or 'same group'}", source_id="user")
+                g.union(keep, m)
+                stats["group_merge"] += 1
+    return dict(stats)

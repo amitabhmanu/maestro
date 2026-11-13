@@ -2,7 +2,16 @@
 
 import pytest
 
-from maestro.resolve import Normaliser, decide_review, export_reviews, fold, open_reviews, resolve
+from maestro.resolve import (
+    Normaliser,
+    apply_groups,
+    decide_review,
+    export_reviews,
+    fold,
+    open_reviews,
+    resolve,
+    review_questions,
+)
 
 
 def person(s, source, xid, name):
@@ -271,3 +280,65 @@ def test_floating_recordings_match_by_title_across_the_canon(store_for):
     units = load_units(s, g)
     assert units[m_call].pending_match and not units[m_other].pending_match
     assert "musicbrainz" in units[call55].lineages or "musicbrainz" in units[g.find(call44)].lineages
+
+    # Grouped review asks "which one is it?" once, and picking one leaves the candidates apart.
+    (q,) = review_questions(s)
+    assert q["floating"] == m_call and {m["id"] for m in q["members"]} == {m_call, g.find(call44), call55}
+    assert apply_groups(s, [p["item"] for p in q["pairs"]], [[m_call, call55], [call44]]) == {"merge": 1, "distinct": 1}
+    g = Groups(s)
+    assert g.find(m_call) == g.find(call55) != g.find(call44)
+    assert open_reviews(s) == []
+
+
+def test_a_floating_unit_matched_since_closes_its_other_questions(store_for):
+    s = store_for("eddy-arnold")
+    me = s.maestro_entity()
+    sessions = []
+    for xid, year in (("s44", 1944), ("s55", 1955)):
+        c = s.find_or_create_by_xref("container", "praguefrank", xid, f"session {xid}")
+        s.upsert_claim(c, "container_kind", value="session", source_id="praguefrank")
+        s.upsert_claim(c, "year", value=year, source_id="praguefrank")
+        r = s.find_or_create_by_xref("recording", "praguefrank", xid + "r", "CATTLE CALL")
+        s.upsert_claim(r, "part_of", ref_entity_id=c, value={"position": 1}, source_id="praguefrank")
+        s.upsert_claim(r, "credit", ref_entity_id=me, value={"role": "singer"}, source_id="praguefrank")
+        sessions.append(r)
+    m = s.find_or_create_by_xref("recording", "musicbrainz", "m", "Cattle Call")
+    s.upsert_claim(m, "credit", ref_entity_id=me, value={"role": "singer"}, source_id="musicbrainz")
+    s.upsert_claim(m, "release_year", value=1990, source_id="musicbrainz")
+    resolve(s)
+    assert len(open_reviews(s)) == 2
+    s.merge_entities(sessions[0], m, "same matrix")  # matched another way before anyone answered
+    resolve(s)
+    assert open_reviews(s) == []
+    from maestro.resolve import Groups
+
+    g = Groups(s)
+    assert g.find(sessions[0]) != g.find(sessions[1])
+
+
+def test_grouped_review_keeps_a_chain_whole_and_refuses_contradictions(store_for):
+    s = store_for("rafi")
+    short = person(s, "hfgk_online", "50", "Krishna")
+    k1 = person(s, "hfgk_online", "51", "Krishna Mukherjee")
+    k2 = person(s, "hfgk_online", "52", "Krishna Ganguli")
+    f = film(s, "hfgk_online", "500", "Film", 1950)
+    titles = ["Aaja Re", "Bahaaron Phool", "Chaudhvin Ka Chand", "Dil Ka Bhanwar", "Ehsan Tera"]
+    for i, who in enumerate([short, k1, k1, k2, k2]):
+        u = song(s, "hfgk_online", f"50{i}", titles[i], f)
+        s.upsert_claim(u, "credit", ref_entity_id=who, value={"role": "singer"}, source_id="hfgk_online")
+    resolve(s)
+    assert len(open_reviews(s, kind="person_near_name")) == 2
+    (q,) = review_questions(s)
+    assert {m["label"] for m in q["members"]} == {"Krishna", "Krishna Mukherjee", "Krishna Ganguli"}
+    items = [p["item"] for p in q["pairs"]]
+    with pytest.raises(ValueError, match="needs a group"):
+        apply_groups(s, items, [[short, k2]])
+    assert apply_groups(s, items, [[short, k2], [k1]]) == {"merge": 1, "distinct": 1}
+    from maestro.resolve import Groups
+
+    g = Groups(s)
+    assert g.find(short) == g.find(k2) != g.find(k1)
+    # An answer that contradicts a recorded "distinct" writes nothing.
+    k3 = person(s, "hfgk_online", "53", "Krishna Goyal")
+    with pytest.raises(ValueError, match="marked distinct"):
+        apply_groups(s, [], [[k1, short, k3]])
