@@ -22,6 +22,7 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 - `src/maestro/profiler/`: profiler helpers (`identify.py`: Wikidata candidates and external IDs).
 - `src/maestro/resolve.py`: entity resolution (normalise, block, merge across sources, review queue).
 - `src/maestro/completeness.py`: completeness engine (checksums with `filter`, container check, Chapman/Chao1 per tier, split by the years each lineage covers).
+- `src/maestro/orchestrate.py`: the orchestrator loop (resolve, report, plan jobs from a source's `sweep` and short containers' `container_url`, list the needs only a person or new code can meet, crawl, repeat).
 - `src/maestro/extractors/`: extractors for sources any maestro can use (`musicbrainz` releases, `musicbrainz_works`, `wikidata_films`, `bnf_works`, `dahr`); a maestro's own extractor of the same name wins.
 - `src/maestro/crawl/`: polite fetcher (robots.txt, per-domain rate limit, raw cache in `data/<slug>/raw`) and the job runner that calls a maestro's extractors (`maestros/<slug>/extractors/<name>.py`, function `extract(ctx)`).
 - `.claude/skills/profile-maestro/`: the `/profile-maestro` skill (research a maestro, propose its pack).
@@ -38,5 +39,6 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 - Resolve entities (merge clear duplicates, queue unclear ones): `uv run maestro-resolve --pack ... --dsn ...`
 - Review queue: `uv run maestro-review` lists open items; `uv run maestro-review <id> merge|distinct|dismiss [--keep ID]` records the user's decision. `uv run maestro-review --export FILE` writes every open item with its evidence and each subject's facts as JSON. For a review page use `--export FILE --grouped` (items that share a subject become one question, a floating unit's candidates one "which one is it?" question) and record answers with `--apply FILE`: merges are transitive, so never ask or apply pairwise "same" answers that chain (A=B and A=C makes B=C). Only record decisions the user made.
 - Completeness report (tier estimates, published counts, container check): `uv run maestro-report [--save]` (`--save` writes `maestros/<slug>/runs/`)
+- Orchestrator: `uv run maestro-run --pack maestros/<slug> --dsn ... [--rounds 3] [--max-jobs N] [--dry-run] [--save]` runs rounds until every tier meets its target or nothing is left to crawl; its needs list says what a person or a new extractor must add.
 - Tests: `uv run pytest` (starts a throwaway Postgres if `pg_ctl` is installed; otherwise set `MAESTRO_TEST_DSN`)
 - Local database: `docker compose up -d`, then `MAESTRO_PACK=maestros/rafi` and `MAESTRO_DSN=...` for the MCP server.

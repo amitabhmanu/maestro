@@ -58,7 +58,7 @@ registers:
 sources:
   # A work known only to one of these, and not a film score, is taken as a concert, stage or published work (A).
   - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api, api_rps: 1, url: "https://query.wikidata.org/sparql"}
-  - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.75, access: api, api_rps: 1, distinct_ids: false, default_tier: A, url: "https://musicbrainz.org/ws/2/"}
+  - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.75, access: api, api_rps: 1, distinct_ids: false, default_tier: A, url: "https://musicbrainz.org/ws/2/", sweep: {url: "https://musicbrainz.org/ws/2/work?artist=ea63b818-07cc-468e-b0e9-8e5e4d3f3200&limit=100&offset=0&fmt=json&inc=artist-rels+work-rels", extractor: musicbrainz_works, purpose: spine}}
   - {id: bnf, kind: structured, lineage: bnf, reliability: 0.9, access: api, api_rps: 1, default_tier: A, url: "https://data.bnf.fr/sparql"}
   - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable, url: https://en.wikipedia.org/wiki/Jean_Wiener}
   - {id: imdb, kind: structured, lineage: imdb, reliability: 0.8, access: api, publishable: false, url: "https://developer.imdb.com/non-commercial-datasets/"}

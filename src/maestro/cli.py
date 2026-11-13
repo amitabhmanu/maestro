@@ -121,6 +121,37 @@ def review_main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def run_main(argv: list[str] | None = None) -> int:
+    """`maestro-run`: the orchestrator loop. Each round resolves, measures, plans and crawls what it
+    can, until every tier meets its target, nothing is left to crawl, or --rounds is reached. Prints
+    (and with --save writes) each round's estimates, the jobs it ran and what it needs from a person."""
+    from maestro.crawl.fetcher import Fetcher, api_hosts
+    from maestro.orchestrate import render_markdown, run_rounds
+
+    p = argparse.ArgumentParser(description=run_main.__doc__)
+    p.add_argument("--rounds", type=int, default=3)
+    p.add_argument("--max-jobs", type=int, help="jobs per round (default and ceiling: the pack's budget)")
+    p.add_argument("--dry-run", action="store_true", help="plan one round without crawling")
+    p.add_argument("--cache-dir", default=None, help="raw page cache (default data/<slug>/raw)")
+    p.add_argument("--json", action="store_true", help="print JSON instead of Markdown")
+    p.add_argument("--save", action="store_true", help="also write maestros/<slug>/runs/<time>-run.{md,json}")
+    args, store = _store(p, argv)
+    pack = store.pack
+    fetcher = Fetcher(Path(args.cache_dir or Path("data") / pack.slug / "raw"),
+                      rps=pack.data["budget"]["per_domain_rps"], api_hosts=api_hosts(pack.data))
+    rounds = run_rounds(store, fetcher, rounds=args.rounds, max_jobs=args.max_jobs, dry_run=args.dry_run)
+    md = render_markdown(pack.slug, rounds)
+    if args.save:
+        runs = pack.path.parent / "runs"
+        runs.mkdir(exist_ok=True)
+        stem = runs / f"{rounds[0]['at'][:16].replace(':', '')}-run"
+        stem.with_suffix(".md").write_text(md, encoding="utf-8")
+        stem.with_suffix(".json").write_text(json.dumps(rounds, indent=2, ensure_ascii=False, default=str), "utf-8")
+    print(json.dumps(rounds, indent=2, ensure_ascii=False, default=str) if args.json else md)
+    store.close()
+    return 0
+
+
 def report_main(argv: list[str] | None = None) -> int:
     """`maestro-report`: completeness report (tiers, published counts, containers, open reviews)."""
     from maestro.completeness import completeness_report, render_markdown
