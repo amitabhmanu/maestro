@@ -23,6 +23,7 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 - `src/maestro/resolve.py`: entity resolution (normalise, block, merge across sources, review queue).
 - `src/maestro/completeness.py`: completeness engine (checksums with `filter`, container check, Chapman/Chao1 per tier, split by the years each lineage covers).
 - `src/maestro/extractors/`: extractors for sources any maestro can use (`musicbrainz` releases, `musicbrainz_works`, `wikidata_films`, `bnf_works`, `dahr`); a maestro's own extractor of the same name wins.
+- `src/maestro/explore.py` and `src/maestro/explorer/index.html`: the canon explorer (snapshot of a finished canon as JSON, and a static page that searches it in plain words, with Ask Claude when published as an Artifact).
 - `src/maestro/crawl/`: polite fetcher (robots.txt, per-domain rate limit, raw cache in `data/<slug>/raw`) and the job runner that calls a maestro's extractors (`maestros/<slug>/extractors/<name>.py`, function `extract(ctx)`).
 - `.claude/skills/profile-maestro/`: the `/profile-maestro` skill (research a maestro, propose its pack).
 - `maestros/<slug>/`: pack, profiler dossier, and maestro-specific lexicons, extractors and gold data.
@@ -38,5 +39,6 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 - Resolve entities (merge clear duplicates, queue unclear ones): `uv run maestro-resolve --pack ... --dsn ...`
 - Review queue: `uv run maestro-review` lists open items; `uv run maestro-review <id> merge|distinct|dismiss [--keep ID]` records the user's decision. `uv run maestro-review --export FILE` writes every open item with its evidence and each subject's facts as JSON. For a review page use `--export FILE --grouped` (items that share a subject become one question, a floating unit's candidates one "which one is it?" question) and record answers with `--apply FILE`: merges are transitive, so never ask or apply pairwise "same" answers that chain (A=B and A=C makes B=C). Only record decisions the user made.
 - Completeness report (tier estimates, published counts, container check): `uv run maestro-report [--save]` (`--save` writes `maestros/<slug>/runs/`)
+- Canon explorer: `uv run maestro-explore --maestro maestros/rafi=<dsn> [--maestro maestros/eddy-arnold=<dsn> ...] --out data/explorer --serve` writes `index.html` plus `canon/<slug>.json` per maestro (publishable claims only unless `--include-private`) and serves it on localhost:8765. Snapshots outlive the database, so keep them when a canon is rebuilt.
 - Tests: `uv run pytest` (starts a throwaway Postgres if `pg_ctl` is installed; otherwise set `MAESTRO_TEST_DSN`)
 - Local database: `docker compose up -d`, then `MAESTRO_PACK=maestros/rafi` and `MAESTRO_DSN=...` for the MCP server.

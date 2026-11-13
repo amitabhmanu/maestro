@@ -1,0 +1,1079 @@
+<meta charset="utf-8">
+<title>Canon Explorer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a catalogue register. Query line on top, facets down the left, ledger rows in the middle,
+   the record card on the right. Mono for everything a cataloguer would type: years, matrices, counts. */
+:root {
+  --bg: #f3f5f7; --panel: #ffffff; --ink: #17202b; --ink-2: #485466; --muted: #737e8f; --line: #dde2e8;
+  --accent: #0b6870; --accent-ink: #ffffff; --accent-soft: #dcefef; --hover: #eef2f5;
+  --good: #2e7d32; --warn: #a76400; --bad: #c0392b;
+  --t-A: #2a78d6; --t-B: #eb6834; --t-C: #1baf7a; --t-D: #eda100; --t-none: #9aa3af;
+  --seq-0: #eef4fc; --seq-1: #cde2fb; --seq-2: #9ec5f4; --seq-3: #5598e7; --seq-4: #256abf; --seq-5: #104281;
+  --f-display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1217; --panel: #151a21; --ink: #e5e9ef; --ink-2: #b2bbc7; --muted: #8590a0; --line: #27303b;
+  --accent: #4db3ba; --accent-ink: #0b1d1f; --accent-soft: #163538; --hover: #1c232c;
+  --good: #6bbf6f; --warn: #e0a030; --bad: #ef6c6c;
+  --t-A: #3987e5; --t-B: #d95926; --t-C: #199e70; --t-D: #c98500; --t-none: #6b7480;
+  --seq-0: #18202a; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #5598e7; --seq-5: #9ec5f4;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e1217; --panel: #151a21; --ink: #e5e9ef; --ink-2: #b2bbc7; --muted: #8590a0; --line: #27303b;
+  --accent: #4db3ba; --accent-ink: #0b1d1f; --accent-soft: #163538; --hover: #1c232c;
+  --good: #6bbf6f; --warn: #e0a030; --bad: #ef6c6c;
+  --t-A: #3987e5; --t-B: #d95926; --t-C: #199e70; --t-D: #c98500; --t-none: #6b7480;
+  --seq-0: #18202a; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #5598e7; --seq-5: #9ec5f4;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.45 var(--f-body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel); }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+
+/* ---- top bar ---- */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 10px; }
+.bar1 { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.brand { font-family: var(--f-display); font-weight: 700; font-size: 17px; letter-spacing: -0.01em; white-space: nowrap; }
+.brand span { color: var(--accent); }
+.maestros { display: flex; gap: 4px; flex-wrap: wrap; }
+.maestros button { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 4px 12px; font-weight: 500; }
+.maestros button[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.views { margin-left: auto; display: flex; gap: 2px; }
+.views a { text-decoration: none; color: var(--ink-2); padding: 5px 10px; border-radius: var(--r); font-weight: 500; }
+.views a[aria-current="page"] { color: var(--ink); background: var(--hover); }
+.ask { margin-top: 10px; display: flex; gap: 8px; align-items: stretch; }
+.ask .field { flex: 1; min-width: 0; position: relative; }
+.ask input { width: 100%; border: 1.5px solid var(--line); background: var(--bg); border-radius: var(--r); padding: 9px 12px; font-size: 15px; }
+.ask input:focus { border-color: var(--accent); outline: none; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: var(--r); padding: 6px 12px; font-weight: 500; white-space: nowrap; }
+.btn:hover { background: var(--hover); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.07); }
+.btn:disabled { opacity: .5; cursor: default; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; min-height: 26px; align-items: center; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--accent-soft); border-radius: 999px; padding: 2px 4px 2px 10px; font-size: 13px; }
+.chip b { font-weight: 600; }
+.chip .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+.chip button { border: 0; background: transparent; width: 20px; height: 20px; border-radius: 50%; line-height: 1; color: var(--ink-2); }
+.chip button:hover { background: var(--hover); }
+.hint { font-size: 12.5px; color: var(--muted); }
+.hint button { border: 0; background: none; color: var(--accent); padding: 0 2px; text-decoration: underline dotted; }
+
+/* ---- main grid ---- */
+main { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px 40px; }
+.browse { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 20px; align-items: start; }
+.browse.has-detail { grid-template-columns: 250px minmax(0, 1fr) 380px; }
+.facets { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 130px); max-height: calc(100vh - 150px); overflow: auto; padding-right: 4px; }
+.facets summary { display: none; }
+.fbody { display: grid; gap: 18px; }
+.facet h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-family: var(--f-body); font-weight: 600; margin-bottom: 6px; }
+.frow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; width: 100%; text-align: left; border: 0; background: none; padding: 3px 6px; border-radius: 4px; position: relative; }
+.frow:hover { background: var(--hover); }
+.frow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; position: relative; z-index: 1; }
+.frow .ct { font-family: var(--f-mono); font-size: 12px; color: var(--muted); position: relative; z-index: 1; }
+.frow .fill { position: absolute; left: 0; top: 2px; bottom: 2px; background: var(--accent-soft); border-radius: 3px; }
+.frow.on { box-shadow: inset 2px 0 0 var(--accent); font-weight: 600; }
+.decades { display: flex; align-items: flex-end; gap: 3px; height: 54px; }
+.decades button { flex: 1; border: 0; padding: 0; background: var(--seq-3); border-radius: 3px 3px 0 0; min-height: 2px; opacity: .85; }
+.decades button:hover, .decades button.on { opacity: 1; background: var(--accent); }
+.dlabels { display: flex; gap: 3px; font-family: var(--f-mono); font-size: 10px; color: var(--muted); }
+.dlabels span { flex: 1; text-align: center; overflow: hidden; }
+
+.list-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.list-head h2 { font-size: 22px; letter-spacing: -0.01em; }
+.list-head .tools { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.list-head select { border: 1px solid var(--line); background: var(--panel); border-radius: var(--r); padding: 4px 8px; }
+.ledger { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.row { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 12px; padding: 9px 14px; border-top: 1px solid var(--line); cursor: pointer; align-items: start; }
+.row:first-child { border-top: 0; }
+.row:hover { background: var(--hover); }
+.row.sel { background: var(--accent-soft); }
+.row .yr { font-family: var(--f-mono); color: var(--ink-2); padding-top: 1px; }
+.row .t { font-weight: 500; overflow-wrap: anywhere; }
+.row .alt { color: var(--muted); font-size: 12.5px; }
+.row .meta { color: var(--ink-2); font-size: 12.5px; margin-top: 2px; overflow-wrap: anywhere; }
+.row .side { display: flex; gap: 8px; align-items: center; }
+.ghead { padding: 10px 14px 6px; background: var(--bg); border-top: 1px solid var(--line); font-family: var(--f-display); font-weight: 600; display: flex; gap: 10px; align-items: baseline; }
+.ghead:first-child { border-top: 0; }
+.ghead .mono { font-size: 12px; color: var(--muted); font-weight: 400; }
+.tier { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 20px; padding: 0 5px; border-radius: 4px; font: 600 12px var(--f-mono); color: #fff; background: var(--t-none); }
+.tier.A { background: var(--t-A); } .tier.B { background: var(--t-B); } .tier.C { background: var(--t-C); } .tier.D { background: var(--t-D); }
+.lin { display: inline-flex; gap: 2px; }
+.lin i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); display: block; }
+.lin i.on { background: var(--accent); }
+.more { display: block; margin: 12px auto 0; }
+.empty { padding: 40px 20px; text-align: center; color: var(--muted); }
+
+/* person card and Claude answer */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; margin-bottom: 14px; }
+.card h3 { font-size: 18px; }
+.pstats { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 8px; }
+.pstats div { display: grid; }
+.pstats b { font-family: var(--f-mono); font-size: 18px; font-weight: 500; }
+.pstats span { font-size: 12px; color: var(--muted); }
+.answer { border-left: 3px solid var(--accent); }
+.answer .who { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); font-weight: 600; display: flex; gap: 8px; align-items: center; }
+.answer .txt { white-space: pre-wrap; margin-top: 6px; max-width: 72ch; }
+.answer .steps { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.linklike { border: 0; background: none; color: var(--accent); padding: 0; text-align: left; }
+.linklike:hover { text-decoration: underline; }
+
+/* detail */
+.detail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 130px); max-height: calc(100vh - 150px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; }
+.detail .x { float: right; }
+.detail h2 { font-size: 20px; line-height: 1.25; margin-right: 40px; overflow-wrap: anywhere; }
+.detail .script { font-size: 15px; color: var(--ink-2); margin-top: 4px; }
+.detail dl { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 6px 12px; margin: 14px 0 0; }
+.detail dt { color: var(--muted); font-size: 12.5px; padding-top: 1px; }
+.detail dd { margin: 0; overflow-wrap: anywhere; }
+.detail h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 18px 0 6px; }
+.detail ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.detail .sib { font-size: 13px; }
+.detail .sib.me { font-weight: 600; }
+.src { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; font-size: 13px; }
+.backdrop { display: none; }
+
+/* insights + coverage */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; min-width: 0; }
+.panel h2 { font-size: 18px; margin-bottom: 4px; }
+.panel .sub { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+.stack { display: grid; gap: 16px; }
+.chart { width: 100%; overflow-x: auto; }
+.chart svg { display: block; }
+.chart text { fill: var(--muted); font: 10.5px var(--f-mono); }
+.chart .gl { stroke: var(--line); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); margin-top: 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.tip { position: fixed; z-index: 20; pointer-events: none; background: var(--ink); color: var(--panel); padding: 6px 9px; border-radius: 5px; font-size: 12.5px; max-width: 280px; }
+.heat { display: grid; gap: 2px; font-size: 12.5px; overflow-x: auto; }
+.heat .c { height: 24px; border-radius: 3px; border: 0; padding: 0; }
+.heat .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 6px; align-self: center; text-align: left; border: 0; background: none; }
+.heat .hd { font: 10.5px var(--f-mono); color: var(--muted); text-align: center; align-self: end; }
+.tiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+.tcard h3 { font-size: 16px; display: flex; gap: 8px; align-items: center; }
+.tcard .lbl { color: var(--ink-2); font-size: 13px; margin-top: 2px; min-height: 2.9em; }
+.big { display: flex; gap: 18px; margin-top: 10px; flex-wrap: wrap; }
+.big div { display: grid; }
+.big b { font-family: var(--f-mono); font-size: 22px; font-weight: 500; }
+.big span { font-size: 12px; color: var(--muted); }
+.track { height: 10px; background: var(--hover); border-radius: 5px; margin-top: 12px; position: relative; overflow: hidden; }
+.track .obs { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 5px; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 1px 9px; border: 1px solid currentColor; white-space: nowrap; }
+.pill.good { color: var(--good); } .pill.warn { color: var(--warn); } .pill.bad { color: var(--bad); } .pill.info { color: var(--muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; }
+th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.n, th.n { text-align: right; font-family: var(--f-mono); }
+.tablewrap { overflow-x: auto; }
+.lbars { display: grid; gap: 4px; margin-top: 10px; font-size: 12.5px; }
+.lbars div { display: grid; grid-template-columns: 110px minmax(0, 1fr) 44px; gap: 8px; align-items: center; }
+.lbars .b { height: 8px; background: var(--seq-3); border-radius: 0 4px 4px 0; }
+.lbars .n { font-family: var(--f-mono); text-align: right; color: var(--ink-2); }
+.dropzone { max-width: 560px; margin: 60px auto; text-align: center; }
+.dropzone h1 { font-size: 30px; margin-bottom: 8px; }
+.dropzone p { color: var(--ink-2); }
+
+@media (max-width: 1180px) {
+  .browse.has-detail { grid-template-columns: 250px minmax(0, 1fr); }
+  .detail { position: fixed; right: 0; top: 0; bottom: 0; width: min(420px, 100%); max-height: none; z-index: 30; border-radius: 0;
+    padding-top: calc(16px + env(safe-area-inset-top, 0px)); padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); box-shadow: -8px 0 30px rgba(0,0,0,.18); }
+  .backdrop.on { display: block; position: fixed; inset: 0; z-index: 25; background: rgba(0,0,0,.25); }
+}
+@media (max-width: 760px) {
+  .browse, .browse.has-detail { grid-template-columns: minmax(0, 1fr); }
+  .top { position: static; }
+  .facets { position: static; max-height: none; overflow: visible; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; }
+  .facets[open] summary { margin-bottom: 12px; }
+  .facets summary { display: block; font-weight: 600; cursor: pointer; }
+  .views { margin-left: 0; }
+  .row { grid-template-columns: 44px minmax(0, 1fr); }
+  .row .side { grid-column: 2; }
+}
+@media (prefers-reduced-motion: no-preference) { .row, .frow, .btn { transition: background-color .12s; } }
+</style>
+
+<header class="top">
+  <div class="bar1">
+    <div class="brand">maestro <span>canon</span></div>
+    <nav class="maestros" id="maestros" aria-label="Maestro"></nav>
+    <nav class="views" aria-label="View">
+      <a href="#browse" id="v-browse">Browse</a>
+      <a href="#insights" id="v-insights">Insights</a>
+      <a href="#coverage" id="v-coverage">Coverage</a>
+    </nav>
+  </div>
+  <form class="ask" id="askform" autocomplete="off">
+    <div class="field"><input id="q" type="search" aria-label="Search the canon" placeholder="Try: duets with Asha Bhosle composed by O. P. Nayyar in the late 1950s"></div>
+    <button class="btn primary" id="askbtn" type="button" hidden>Ask Claude</button>
+    <button class="btn" id="clearbtn" type="button">Clear</button>
+  </form>
+  <div class="chips" id="chips"></div>
+</header>
+<main id="main"></main>
+<div class="backdrop" id="backdrop"></div>
+<div class="tip" id="tip" hidden></div>
+<input type="file" id="file" accept=".json,application/json" hidden>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------- text helpers
+const STOP = new Set(("a an the of all show me list find give any some his her their its by what which who were was are is did do does " +
+  "sing sang sung sings recorded record recordings recording songs song tracks track works work pieces piece numbers number " +
+  "from in on at for to with and or that this those these he she they it maestro how many much").split(" "));
+const SQUASH = [["oo", "u"], ["ee", "i"], ["q", "k"], ["w", "v"], ["ph", "f"], ["aye", "ae"], ["ay", "ai"], ["ai", "e"], ["au", "o"]];
+function fold(s) {
+  return String(s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase()
+    .replace(/['"‘’`]/g, "").replace(/[^\p{L}\p{N}\p{M}\s]/gu, " ").replace(/\s+/g, " ").trim();
+}
+function squash(s) { for (const [a, b] of SQUASH) s = s.split(a).join(b); return s.replace(/(.)\1+/g, "$1"); }
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const plural = (n, w) => `${n.toLocaleString()} ${w}${n === 1 ? "" : "s"}`;
+const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+const roleName = r => ({ on_screen: "on screen", assistant_composer: "assistant composer" }[r] || String(r).replace(/_/g, " "));
+const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+
+// ---------------------------------------------------------------- state
+const S = { index: [], snaps: {}, slug: null, d: null, f: blank(), view: "browse", limit: 150, sel: null, group: "none", answer: null, sample: null, busy: null };
+function blank() { return { text: "", yFrom: null, yTo: null, tiers: [], people: [], containers: [], langs: [], perf: null, minLin: null, maxLin: null, live: false, noTier: false, noYear: false, sort: "year" }; }
+
+// ---------------------------------------------------------------- loading
+async function boot() {
+  try {
+    const r = await fetch("canon/index.json");
+    if (!r.ok) throw new Error(r.status);
+    S.index = (await r.json()).maestros || [];
+  } catch { S.index = []; }
+  if (!S.index.length) return renderDrop();
+  const want = lsGet("maestro") ;
+  await selectMaestro(S.index.some(m => m.slug === want) ? want : S.index[0].slug);
+}
+async function selectMaestro(slug) {
+  S.slug = slug; lsSet("maestro", slug);
+  if (!S.snaps[slug]) {
+    const m = S.index.find(x => x.slug === slug);
+    renderMaestros();
+    document.getElementById("main").innerHTML = `<div class="empty">Loading ${esc(m.name)}'s canon…</div>`;
+    try {
+      const r = await fetch(m.file);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      S.snaps[slug] = prep(await r.json());
+    } catch (e) {
+      document.getElementById("main").innerHTML = `<div class="empty">Could not load ${esc(m.file)} (${esc(e.message)}). Run maestro-explore again to rewrite it.</div>`;
+      return;
+    }
+  }
+  S.d = S.snaps[slug]; S.f = blank(); S.sel = null; S.answer = null; S.limit = 150;
+  const q = document.getElementById("q"); q.value = "";
+  q.placeholder = examples(S.d)[0] ? "Try: " + examples(S.d)[0] : "Search titles, people, years…";
+  renderMaestros(); render();
+}
+function addSnapshot(json) {
+  const d = prep(json), m = d.maestro;
+  S.snaps[m.slug] = d;
+  S.index = S.index.filter(x => x.slug !== m.slug).concat([{ slug: m.slug, name: m.name, unit: m.unit, units: d.units.length, file: null }]);
+  selectMaestro(m.slug);
+}
+
+// Derived fields the page searches and groups on.
+function prep(d) {
+  const M = d.maestro, me = M.person_id;
+  d.unitWord = M.unit; d.contWord = M.container;
+  // The role that tells solo from duet: the maestro's own role when it is a performing one.
+  const perfRoles = ["singer", "instrumentalist", "performer", "vocalist"];
+  d.perfRole = perfRoles.includes(M.roles.primary) ? M.roles.primary : (M.roles.in_scope || []).find(r => perfRoles.includes(r)) || null;
+  d.P = d.people; d.C = d.containers;
+  const roleCount = {}; // person -> role -> count
+  const titleWords = {};
+  for (const u of d.units) {
+    const c = u.container != null ? d.C[u.container] : null;
+    u._c = c;
+    u._lang = (u.language && u.language[0]) || (c && c.language && c.language[0]) || null;
+    const titles = [u.title, ...(u.alt_titles || [])];
+    u._key = squash(titles.map(fold).join(" | "));
+    u._script = (u.title_alt_script || []).map(fold).join(" | ");
+    u._ckey = c ? squash(fold([c.title, ...(c.alt_titles || []), ...(c.personnel || [])].join(" "))) : "";
+    u._perf = d.perfRole ? (u.credits[d.perfRole] || []).length : null;
+    u._lin = u.lineages.length;
+    for (const [role, ids] of Object.entries(u.credits)) for (const p of ids) if (p !== me) {
+      (roleCount[p] ||= {})[role] = (roleCount[p][role] || 0) + 1;
+    }
+    for (const p of u.on_screen || []) (roleCount[p] ||= {}).on_screen = (roleCount[p].on_screen || 0) + 1;
+    if (c && c.credits) for (const [role, ids] of Object.entries(c.credits)) for (const p of ids) {
+      if (!u.credits[role]) { roleCount[p] ||= {}; roleCount[p]["film_" + role] = (roleCount[p]["film_" + role] || 0) + 1; }
+    }
+    for (const w of new Set(fold(u.title).split(" "))) titleWords[w] = (titleWords[w] || 0) + 1;
+  }
+  d.roleCount = roleCount; d.titleWords = titleWords;
+  // Name vocabulary for the query parser.
+  const names = new Map(); // folded full name -> [ids]
+  const tokens = new Map(); // single name token -> [ids]
+  const weight = id => Object.entries(roleCount[id] || {}).reduce((s, [r, n]) => s + (r.startsWith("film_") ? 0 : n), 0);
+  for (const [id, p] of Object.entries(d.P)) {
+    const pid = +id; if (pid === me || !weight(pid)) continue;
+    for (const nm of [p.name, ...(p.aliases || [])]) {
+      const k = fold(nm); if (!k || k.length < 3) continue;
+      (names.get(k) || names.set(k, []).get(k)).push(pid);
+      for (const t of k.split(" ")) if (t.length >= 3) (tokens.get(t) || tokens.set(t, []).get(t)).push(pid);
+    }
+  }
+  const byWeight = ids => [...new Set(ids)].sort((a, b) => weight(b) - weight(a));
+  for (const [k, v] of names) names.set(k, byWeight(v));
+  for (const [k, v] of tokens) tokens.set(k, byWeight(v));
+  d.names = names; d.tokens = tokens; d.weight = weight;
+  const conts = new Map(), contCount = {};
+  for (const u of d.units) if (u.container != null) contCount[u.container] = (contCount[u.container] || 0) + 1;
+  for (const [id, c] of Object.entries(d.C)) {
+    if (!contCount[id]) continue;
+    for (const t of [c.title, ...(c.alt_titles || [])]) {
+      const k = fold(t); if (k.length >= 3) (conts.get(k) || conts.set(k, []).get(k)).push(+id);
+    }
+  }
+  d.conts = conts; d.contCount = contCount;
+  d.selfWords = new Set([M.name, ...(M.variants || [])].flatMap(n => fold(n).split(" ")).filter(w => w.length > 2));
+  d.selfWords.add(fold(M.name).split(" ").slice(-1)[0] + "s");
+  d.langs = [...new Set(d.units.map(u => u._lang).filter(Boolean))];
+  const yrs = d.units.map(u => u.year).filter(Boolean);
+  d.yMin = Math.min(...yrs); d.yMax = Math.max(...yrs);
+  d.tierKeys = Object.keys(d.tiers);
+  d.tierWords = tierWords(d.tiers, d);
+  d.byId = new Map(d.units.map(u => [u.id, u]));
+  return d;
+}
+// Words that pick out one tier: a word that appears in no other tier's label.
+function tierWords(tiers, d) {
+  const generic = new Set([d.unitWord, "film", "song", "work", "recording", "piece"].flatMap(w => [fold(w), fold(w) + "s"]));
+  const sets = Object.fromEntries(Object.entries(tiers).map(([k, t]) => [k, new Set(fold(t.label).split(" ").filter(w => w.length >= 3 && !STOP.has(w) && !generic.has(w) && !/^\d+$/.test(w)))]));
+  const out = {};
+  for (const [k, ws] of Object.entries(sets)) for (const w of ws) {
+    if (Object.entries(sets).every(([k2, ws2]) => k2 === k || !ws2.has(w))) out[w] = k;
+  }
+  return out;
+}
+const pname = id => (S.d.P[id] || {}).name || `#${id}`;
+
+// ---------------------------------------------------------------- query parser
+const ROLE_CUES = [
+  [["lyrics by", "lyric by", "written by", "words by", "penned by", "lyricist", "lyricists"], "lyricist"],
+  [["composed by", "music by", "music director", "tuned by", "composer", "composers", "compositions of", "scored by"], "composer"],
+  [["directed by", "director"], "director"],
+  [["picturised on", "picturized on", "filmed on", "on screen", "onscreen", "starring", "featuring actor"], "on_screen"],
+  [["duets with", "duet with", "together with", "alongside", "along with", "featuring", "feat", "ft", "with", "and"], "co"],
+  [["arranged by", "arranger"], "arranger"],
+  [["conducted by", "leader", "orchestra"], "leader"],
+  [["by"], null],
+];
+const CONT_CUES = ["from the film", "from film", "in the film", "in film", "from the movie", "from movie", "from the album", "from album",
+  "on the album", "from the session", "session", "from", "film", "movie", "album", "in"];
+const NUMWORDS = { twenties: 20, thirties: 30, forties: 40, fifties: 50, sixties: 60, seventies: 70, eighties: 80, nineties: 90 };
+
+function century(d2, d) { // "50s" -> 1950, unless the maestro's years say 2050
+  const lo = d.yMin || 1900; const c = Math.floor(lo / 100) * 100;
+  return c + d2 >= lo - 10 ? c + d2 : c + 100 + d2;
+}
+function parseQuery(raw, d) {
+  const f = blank(); let s = " " + raw.toLowerCase().replace(/[–—]/g, "-") + " ";
+  const take = (re, fn) => { s = s.replace(re, (...m) => { fn(m); return " "; }); };
+  const part = (word, start) => word === "early" ? [start, start + 3] : word === "mid" ? [start + 3, start + 6] : [start + 6, start + 9];
+  take(/\b(?:between|from)\s+(\d{4})\s+(?:and|to|-)\s+(\d{4})\b/g, m => { f.yFrom = +m[1]; f.yTo = +m[2]; });
+  take(/\b(\d{4})\s*-\s*(\d{2,4})\b/g, m => { f.yFrom = +m[1]; f.yTo = m[2].length === 2 ? Math.floor(+m[1] / 100) * 100 + +m[2] : +m[2]; });
+  take(/\b(early|mid|late)[\s-]+(\d{4})s\b/g, m => { [f.yFrom, f.yTo] = part(m[1], +m[2]); });
+  take(/\b(early|mid|late)[\s-]+'?(\d0)s\b/g, m => { [f.yFrom, f.yTo] = part(m[1], century(+m[2], d)); });
+  take(/\b(early|mid|late)[\s-]+(twenties|thirties|forties|fifties|sixties|seventies|eighties|nineties)\b/g, m => { [f.yFrom, f.yTo] = part(m[1], century(NUMWORDS[m[2]], d)); });
+  take(/\b(\d{4})s\b/g, m => { f.yFrom = +m[1]; f.yTo = +m[1] + 9; });
+  take(/(?:^|\s)'?(\d0)s\b/g, m => { const y = century(+m[1], d); f.yFrom = y; f.yTo = y + 9; });
+  take(/\b(twenties|thirties|forties|fifties|sixties|seventies|eighties|nineties)\b/g, m => { const y = century(NUMWORDS[m[1]], d); f.yFrom = y; f.yTo = y + 9; });
+  take(/\b(?:before|until|till|up to|pre)\s+(\d{4})\b/g, m => { f.yTo = +m[1] - (/(before|pre)/.test(m[0]) ? 1 : 0); });
+  take(/\b(?:after|since|post|from)\s+(\d{4})\b/g, m => { f.yFrom = +m[1] + (/(after|post)/.test(m[0]) ? 1 : 0); });
+  take(/\b(?:in\s+|of\s+|year\s+)?(1[89]\d\d|20\d\d)\b/g, m => { f.yFrom = f.yTo = +m[1]; });
+  take(/\btier\s+([a-z])\b/g, m => { const t = m[1].toUpperCase(); if (d.tiers[t] && !f.tiers.includes(t)) f.tiers.push(t); });
+  take(/\b(?:no|without|missing)\s+tier\b|\bunassigned\b/g, () => { f.noTier = true; });
+  take(/\b(?:no|without|missing|undated|unknown)\s+(?:year|date)s?\b|\bundated\b/g, () => { f.noYear = true; });
+  take(/\b(?:only\s+(?:in\s+)?one\s+source|single[\s-]source|one\s+source|single[\s-]lineage|unconfirmed|not\s+confirmed|weakly\s+confirmed|uncorroborated)\b/g, () => { f.maxLin = 1; });
+  take(/\b(?:confirmed|cross[\s-]checked|corroborated|in\s+(?:two|2|several|multiple)\s+sources)\b/g, () => { f.minLin = 2; });
+  take(/\b(?:newest|latest|most\s+recent|recent)\s*(?:first)?\b/g, () => { f.sort = "year-desc"; });
+  take(/\b(?:oldest|earliest)\s*(?:first)?\b/g, () => { f.sort = "year"; });
+  take(/\b(?:alphabetical(?:ly)?|a\s*-\s*z|by\s+title)\b/g, () => { f.sort = "title"; });
+  if (d.perfRole) {
+    take(/\bsolos?\b/g, () => { f.perf = "solo"; });
+    take(/\bduets?\b/g, m => { f.perf = "duet"; s = s.replace(/^\s*with\b/, " with "); });
+    take(/\b(?:trios?|three\s+(?:singers|voices|performers))\b/g, () => { f.perf = "trio"; });
+    take(/\b(?:group|chorus|ensemble|qawwali)\s*(?:songs?|numbers?)?\b/g, () => { f.perf = "group"; });
+  }
+  take(/\blive\b/g, () => { f.live = true; });
+
+  let toks = fold(s).split(" ").filter(Boolean);
+  const rest = [];
+  const tierW = d.tierWords;
+  for (let i = 0; i < toks.length;) {
+    const t = toks[i];
+    // language names
+    const lang = d.langs.find(l => fold(l) === t);
+    if (lang) { if (!f.langs.includes(lang)) f.langs.push(lang); i++; continue; }
+    // a tier's own word ("unissued", "non-film")
+    if (tierW[t]) { if (!f.tiers.includes(tierW[t])) f.tiers.push(tierW[t]); i++; continue; }
+    // cue + name
+    let cueRole, cueLen = 0, contCue = false;
+    for (const [cues, role] of ROLE_CUES) for (const c of cues) {
+      const cw = c.split(" ");
+      if (cw.length > cueLen && cw.every((w, k) => toks[i + k] === w)) { cueRole = role; cueLen = cw.length; }
+    }
+    for (const c of CONT_CUES) {
+      const cw = c.split(" ");
+      if (cw.length > cueLen && cw.every((w, k) => toks[i + k] === w)) { cueLen = cw.length; contCue = true; cueRole = undefined; }
+    }
+    const j = i + cueLen;
+    const hasCue = cueLen > 0;
+    const pm = matchPerson(toks, j, d, hasCue && !contCue);
+    const cm = matchContainer(toks, j, d, contCue);
+    if (pm && (!cm || pm.len >= cm.len) && !contCue) {
+      let role = hasCue ? cueRole : null;
+      if (role === "co") role = d.perfRole || null;
+      if (!f.people.some(p => p.id === pm.id && p.role === role)) f.people.push({ id: pm.id, role });
+      i = j + pm.len; continue;
+    }
+    if (cm) { if (!f.containers.includes(cm.id)) f.containers.push(cm.id); i = j + cm.len; continue; }
+    if (pm) { f.people.push({ id: pm.id, role: null }); i = j + pm.len; continue; }
+    if (hasCue) { i = j; continue; } // a cue with nothing after it is filler
+    if (!STOP.has(t) && !d.selfWords.has(t) && t !== fold(d.unitWord) + "s" && t !== fold(d.contWord) + "s") rest.push(t);
+    i++;
+  }
+  f.text = rest.join(" ");
+  return f;
+}
+function matchPerson(toks, i, d, cued) {
+  for (let n = Math.min(5, toks.length - i); n >= 1; n--) {
+    const k = toks.slice(i, i + n).join(" ");
+    const ids = d.names.get(k);
+    if (ids && (n > 1 || cued || (d.titleWords[k] || 0) < 15)) return { id: ids[0], len: n };
+  }
+  const t = toks[i];
+  if (!t || t.length < 3 || STOP.has(t) || d.selfWords.has(t)) return null;
+  const ids = d.tokens.get(t);
+  if (ids && d.weight(ids[0]) >= 3 && (cued || (d.titleWords[t] || 0) < 15)) {
+    // "Lata Mangeshkar" typed in full is handled above; a first or last name alone picks the most frequent namesake
+    let len = 1;
+    const nm = fold(pname(ids[0])).split(" ");
+    while (toks[i + len] && nm.includes(toks[i + len])) len++;
+    return { id: ids[0], len };
+  }
+  return null;
+}
+function matchContainer(toks, i, d, cued) {
+  for (let n = Math.min(8, toks.length - i); n >= 1; n--) {
+    const k = toks.slice(i, i + n).join(" ");
+    const ids = d.conts.get(k);
+    if (!ids) continue;
+    if (n === 1 && !cued && ((d.titleWords[k] || 0) >= 15 || STOP.has(k) || k.length < 4)) continue;
+    return { id: ids.sort((a, b) => (d.contCount[b] || 0) - (d.contCount[a] || 0))[0], len: n };
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------- filtering
+function hasPerson(u, p, d) {
+  if (p.role === "on_screen") return (u.on_screen || []).includes(p.id);
+  if (p.role) {
+    if ((u.credits[p.role] || []).includes(p.id)) return true;
+    const cc = u._c && u._c.credits && u._c.credits[p.role];
+    return !u.credits[p.role] && !!cc && cc.includes(p.id);
+  }
+  for (const ids of Object.values(u.credits)) if (ids.includes(p.id)) return true;
+  if ((u.on_screen || []).includes(p.id)) return true;
+  if (u._c && u._c.credits) for (const ids of Object.values(u._c.credits)) if (ids.includes(p.id)) return true;
+  return false;
+}
+function textMatch(u, words) {
+  for (const w of words) {
+    if (!u._key.includes(w.sq) && !(u._script && u._script.includes(w.raw))) {
+      if (!u._ckey.includes(w.sq)) return false;
+    }
+  }
+  return true;
+}
+function applyFilter(d, f) {
+  const words = fold(f.text).split(" ").filter(Boolean).map(w => ({ raw: w, sq: squash(w) }));
+  const out = [];
+  for (const u of d.units) {
+    if (f.tiers.length && !f.tiers.includes(u.tier)) continue;
+    if (f.noTier && u.tier) continue;
+    if (f.noYear && u.year) continue;
+    if (f.yFrom != null && !(u.year >= f.yFrom)) continue;
+    if (f.yTo != null && !(u.year && u.year <= f.yTo)) continue;
+    if (f.containers.length && !f.containers.includes(u.container)) continue;
+    if (f.langs.length && !f.langs.includes(u._lang)) continue;
+    if (f.live && !u.live) continue;
+    if (f.minLin != null && u._lin < f.minLin) continue;
+    if (f.maxLin != null && u._lin > f.maxLin) continue;
+    if (f.perf && u._perf != null) {
+      const n = u._perf;
+      if (f.perf === "solo" ? n !== 1 : f.perf === "duet" ? n !== 2 : f.perf === "trio" ? n !== 3 : n < 3) continue;
+    }
+    if (f.people.some(p => !hasPerson(u, p, d))) continue;
+    if (words.length && !textMatch(u, words)) continue;
+    out.push(u);
+  }
+  const by = {
+    "year": (a, b) => (a.year || 9999) - (b.year || 9999) || a.title.localeCompare(b.title),
+    "year-desc": (a, b) => (b.year || 0) - (a.year || 0) || a.title.localeCompare(b.title),
+    "title": (a, b) => a.title.localeCompare(b.title),
+    "lineages": (a, b) => a._lin - b._lin || (a.year || 9999) - (b.year || 9999),
+  }[f.sort] || ((a, b) => 0);
+  out.sort(by);
+  if (words.length && f.sort === "year") { // titles that start with the words come first
+    const lead = words.map(w => w.sq).join(" ");
+    out.sort((a, b) => (b._key.startsWith(lead) ? 1 : 0) - (a._key.startsWith(lead) ? 1 : 0));
+  }
+  return out;
+}
+function isBlank(f) { return JSON.stringify({ ...f, sort: "year" }) === JSON.stringify(blank()); }
+
+// ---------------------------------------------------------------- chips
+function chipList(f, d) {
+  const c = [];
+  const roleLabel = r => r === null ? "any role" : r === d.perfRole ? `co-${roleName(r)}` : roleName(r);
+  if (f.yFrom != null || f.yTo != null) {
+    const v = f.yFrom === f.yTo ? `${f.yFrom}` : f.yFrom == null ? `up to ${f.yTo}` : f.yTo == null ? `${f.yFrom} on` : `${f.yFrom}–${f.yTo}`;
+    c.push(["years", v, g => { g.yFrom = g.yTo = null; }]);
+  }
+  for (const t of f.tiers) c.push(["tier", `${t} · ${d.tiers[t] ? d.tiers[t].label : ""}`, g => { g.tiers = g.tiers.filter(x => x !== t); }]);
+  for (const p of f.people) c.push([roleLabel(p.role), pname(p.id), g => { g.people = g.people.filter(x => !(x.id === p.id && x.role === p.role)); }]);
+  for (const id of f.containers) c.push([d.contWord, (d.C[id] || {}).title || id, g => { g.containers = g.containers.filter(x => x !== id); }]);
+  for (const l of f.langs) c.push(["language", l, g => { g.langs = g.langs.filter(x => x !== l); }]);
+  if (f.perf) c.push([roleName(d.perfRole) + "s", { solo: "solo", duet: "duet (2)", trio: "trio (3)", group: "3 or more" }[f.perf], g => { g.perf = null; }]);
+  if (f.maxLin != null) c.push(["sources", "one lineage only", g => { g.maxLin = null; }]);
+  if (f.minLin != null) c.push(["sources", `${f.minLin}+ lineages`, g => { g.minLin = null; }]);
+  if (f.live) c.push(["kind", "live", g => { g.live = false; }]);
+  if (f.noTier) c.push(["tier", "none assigned", g => { g.noTier = false; }]);
+  if (f.noYear) c.push(["year", "unknown", g => { g.noYear = false; }]);
+  if (f.text) c.push(["words", f.text, g => { g.text = ""; }]);
+  if (f.sort !== "year") c.push(["sort", { "year-desc": "newest first", title: "A–Z", lineages: "least confirmed first" }[f.sort], g => { g.sort = "year"; }]);
+  return c;
+}
+function renderChips() {
+  const el = document.getElementById("chips");
+  const chips = chipList(S.f, S.d);
+  if (!chips.length) {
+    el.innerHTML = `<span class="hint">Ask in plain words. Examples: ${examples(S.d).map(e => `<button type="button" data-ex="${esc(e)}">${esc(e)}</button>`).join(" · ")}</span>`;
+    el.querySelectorAll("[data-ex]").forEach(b => b.onclick = () => { document.getElementById("q").value = b.dataset.ex; runQuery(); });
+    return;
+  }
+  el.innerHTML = chips.map(([k, v], i) => `<span class="chip"><span class="k">${esc(k)}</span><b>${esc(v)}</b><button type="button" aria-label="Remove ${esc(k)} ${esc(v)}" data-i="${i}">×</button></span>`).join("");
+  el.querySelectorAll("button[data-i]").forEach(b => b.onclick = () => {
+    chips[+b.dataset.i][2](S.f); document.getElementById("q").value = ""; S.limit = 150; render();
+  });
+}
+// Example questions built from this canon's own most frequent collaborators and busiest decade.
+function examples(d) {
+  const top = role => { const c = {}; for (const u of d.units) for (const p of u.credits[role] || []) if (p !== d.maestro.person_id) c[p] = (c[p] || 0) + 1;
+    const best = Object.entries(c).sort((a, b) => b[1] - a[1])[0]; return best ? pname(+best[0]) : null; };
+  const dec = {}; for (const u of d.units) if (u.year) dec[Math.floor(u.year / 10) * 10] = (dec[Math.floor(u.year / 10) * 10] || 0) + 1;
+  const busiest = Object.entries(dec).sort((a, b) => b[1] - a[1])[0];
+  const out = [];
+  const co = d.perfRole && top(d.perfRole), comp = top("composer"), lyr = top("lyricist");
+  if (co && comp && busiest) out.push(`duets with ${co} composed by ${comp} in the ${busiest[0]}s`);
+  else if (comp && busiest) out.push(`composed by ${comp} in the ${busiest[0]}s`);
+  else if (busiest) out.push(`${d.unitWord}s from the ${busiest[0]}s`);
+  if (lyr) out.push(`lyrics by ${lyr}`);
+  const otherTier = d.tierKeys.find(t => t !== d.tierKeys[0]);
+  if (otherTier) out.push(`tier ${otherTier} newest first`);
+  out.push("only in one source");
+  return out.slice(0, 4);
+}
+
+// ---------------------------------------------------------------- rendering
+function renderMaestros() {
+  const el = document.getElementById("maestros");
+  el.innerHTML = S.index.map(m => `<button type="button" data-s="${esc(m.slug)}" aria-pressed="${m.slug === S.slug}">${esc(m.name)}</button>`).join("")
+    + `<button type="button" id="openfile" title="Open a canon snapshot file">+ Open…</button>`;
+  el.querySelectorAll("[data-s]").forEach(b => b.onclick = () => selectMaestro(b.dataset.s));
+  document.getElementById("openfile").onclick = () => document.getElementById("file").click();
+}
+function setView() {
+  const v = (location.hash || "#browse").slice(1);
+  S.view = ["browse", "insights", "coverage"].includes(v) ? v : "browse";
+  for (const k of ["browse", "insights", "coverage"]) {
+    const a = document.getElementById("v-" + k);
+    if (k === S.view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  }
+}
+function render() {
+  if (!S.d) return;
+  setView(); renderChips();
+  const res = applyFilter(S.d, S.f);
+  S.res = res;
+  if (S.view === "browse") renderBrowse(res);
+  else if (S.view === "insights") renderInsights(res);
+  else renderCoverage();
+  wireAnswer();
+  document.getElementById("backdrop").classList.toggle("on", S.view === "browse" && !!S.sel && innerWidth <= 1180);
+}
+
+function counts(list, key) { const c = new Map(); for (const u of list) for (const k of key(u)) c.set(k, (c.get(k) || 0) + 1); return [...c].sort((a, b) => b[1] - a[1]); }
+function rolesIn(d, list) {
+  const c = {}; for (const u of list) for (const [r, ids] of Object.entries(u.credits)) if (ids.some(p => p !== d.maestro.person_id)) c[r] = (c[r] || 0) + 1;
+  return Object.keys(c).sort((a, b) => (b === d.perfRole) - (a === d.perfRole) || c[b] - c[a]);
+}
+function facetRows(entries, total, onKey, isOn, label) {
+  const max = entries.length ? entries[0][1] : 1;
+  return entries.map(([k, n]) => `<button type="button" class="frow${isOn(k) ? " on" : ""}" data-k="${esc(k)}" data-f="${onKey}">
+    <span class="fill" style="width:${(n / max * 100).toFixed(1)}%"></span><span class="nm">${esc(label(k))}</span><span class="ct">${n.toLocaleString()}</span></button>`).join("");
+}
+function renderFacets(res) {
+  const d = S.d, me = d.maestro.person_id, f = S.f;
+  let h = "";
+  // decades
+  const dec = {}; for (const u of res) if (u.year) { const k = Math.floor(u.year / 10) * 10; dec[k] = (dec[k] || 0) + 1; }
+  const lo = Math.floor(d.yMin / 10) * 10, hi = Math.floor(d.yMax / 10) * 10, ds = [];
+  for (let y = lo; y <= hi; y += 10) ds.push(y);
+  const dmax = Math.max(1, ...Object.values(dec));
+  if (ds.length > 1 && isFinite(lo)) h += `<div class="facet"><h3>Decade</h3><div class="decades">${ds.map(y => `<button type="button" data-dec="${y}" class="${f.yFrom === y && f.yTo === y + 9 ? "on" : ""}" style="height:${Math.max(2, (dec[y] || 0) / dmax * 100)}%" title="${y}s: ${(dec[y] || 0).toLocaleString()}" aria-label="${y}s, ${dec[y] || 0}"></button>`).join("")}</div><div class="dlabels">${ds.map(y => `<span>${String(y).slice(2)}s</span>`).join("")}</div></div>`;
+  const tiers = counts(res, u => [u.tier || "—"]);
+  h += `<div class="facet"><h3>Tier</h3>${facetRows(tiers, res.length, "tier", k => f.tiers.includes(k) || (k === "—" && f.noTier), k => k === "—" ? "No tier yet" : `${k} · ${d.tiers[k] ? d.tiers[k].label : ""}`)}</div>`;
+  if (d.perfRole) {
+    const pc = counts(res, u => u._perf ? [u._perf === 1 ? "solo" : u._perf === 2 ? "duet" : u._perf === 3 ? "trio" : "group"] : []);
+    if (pc.length > 1) h += `<div class="facet"><h3>${esc(cap(roleName(d.perfRole)))}s on the ${esc(d.unitWord)}</h3>${facetRows(pc, res.length, "perf", k => f.perf === k, k => ({ solo: "Solo", duet: "Two", trio: "Three", group: "Four or more" }[k]))}</div>`;
+  }
+  for (const r of rolesIn(d, res).slice(0, 4)) {
+    const top = counts(res, u => (u.credits[r] || []).filter(p => p !== me)).slice(0, 8);
+    if (!top.length) continue;
+    h += `<div class="facet"><h3>${r === d.perfRole ? "With " + esc(roleName(r)) + "s" : esc(cap(roleName(r))) + "s"}</h3>${facetRows(top, res.length, "p:" + r, k => f.people.some(p => p.id === +k && p.role === r), k => pname(+k))}</div>`;
+  }
+  const conts = counts(res, u => u.container != null ? [u.container] : []).slice(0, 8);
+  if (conts.length) h += `<div class="facet"><h3>${esc(cap(d.contWord))}s</h3>${facetRows(conts, res.length, "cont", k => f.containers.includes(+k), k => (d.C[k] || {}).title || k)}</div>`;
+  const langs = counts(res, u => u._lang ? [u._lang] : []);
+  if (langs.length) h += `<div class="facet"><h3>Language</h3>${facetRows(langs, res.length, "lang", k => f.langs.includes(k), k => k)}</div>`;
+  const lin = counts(res, u => [u._lin >= 2 ? "2" : String(u._lin)]).sort((a, b) => a[0].localeCompare(b[0]));
+  h += `<div class="facet"><h3>Confirmed by</h3>${facetRows(lin, res.length, "lin", k => (k === "1" && f.maxLin === 1) || (k === "2" && f.minLin === 2), k => k === "0" ? "No listing source" : k === "1" ? "One source lineage" : "Two or more lineages")}</div>`;
+  return h;
+}
+function onFacet(kind, k) {
+  const f = S.f;
+  const toggle = (arr, v) => arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v];
+  if (kind === "tier") { if (k === "—") f.noTier = !f.noTier; else f.tiers = toggle(f.tiers, k); }
+  else if (kind === "perf") f.perf = f.perf === k ? null : k;
+  else if (kind === "cont") f.containers = toggle(f.containers, +k);
+  else if (kind === "lang") f.langs = toggle(f.langs, k);
+  else if (kind === "lin") { if (k === "1") { f.maxLin = f.maxLin === 1 ? null : 1; f.minLin = null; } else if (k === "2") { f.minLin = f.minLin === 2 ? null : 2; f.maxLin = null; } }
+  else if (kind.startsWith("p:")) {
+    const role = kind.slice(2), id = +k;
+    f.people = f.people.some(p => p.id === id && p.role === role) ? f.people.filter(p => !(p.id === id && p.role === role)) : [...f.people, { id, role }];
+  }
+  S.limit = 150; render();
+}
+function unitMeta(u, d) {
+  const me = d.maestro.person_id, bits = [];
+  if (u._c) bits.push(esc(u._c.title));
+  for (const r of ["composer", "lyricist"]) if (u.credits[r]) bits.push(`<span class="muted">${r === "composer" ? "music" : "lyrics"}</span> ${esc(u.credits[r].map(pname).join(", "))}`);
+  if (d.perfRole) { const co = (u.credits[d.perfRole] || []).filter(p => p !== me); if (co.length) bits.push(`<span class="muted">with</span> ${esc(co.slice(0, 4).map(pname).join(", "))}${co.length > 4 ? " +" + (co.length - 4) : ""}`); }
+  if (!u._c) { const cat = (u.catalogue || u.matrix || [])[0]; if (cat) bits.push(`<span class="mono">${esc(cat)}</span>`); }
+  if (u._lang) bits.push(esc(u._lang));
+  return bits.join(" · ");
+}
+function linDots(n, max = 3) { let s = ""; for (let i = 0; i < max; i++) s += `<i class="${i < n ? "on" : ""}"></i>`; return `<span class="lin" title="Seen by ${n} independent source lineage${n === 1 ? "" : "s"}">${s}</span>`; }
+function rowHtml(u, d) {
+  const alt = (u.title_alt_script || [])[0];
+  return `<div class="row${S.sel === u.id ? " sel" : ""}" data-u="${u.id}" tabindex="0" role="button">
+    <div class="yr">${u.year || "—"}</div>
+    <div style="min-width:0"><div class="t">${esc(u.title)}${alt ? ` <span class="alt">${esc(alt)}</span>` : ""}</div><div class="meta">${unitMeta(u, d)}</div></div>
+    <div class="side">${linDots(u._lin)}<span class="tier ${esc(u.tier || "")}" title="${esc(u.tier ? "Tier " + u.tier + ": " + (d.tiers[u.tier] || {}).label : "No tier yet")}">${esc(u.tier || "–")}</span></div></div>`;
+}
+function renderBrowse(res) {
+  const d = S.d, main = document.getElementById("main");
+  const shown = res.slice(0, S.limit);
+  let rows = "";
+  if (S.group === "container" || S.group === "year") {
+    let last;
+    for (const u of shown) {
+      const g = S.group === "year" ? (u.year || "Year unknown") : (u._c ? u._c.title : `No ${d.contWord}`);
+      const key = S.group === "year" ? g : u.container;
+      if (key !== last) {
+        const n = res.filter(x => S.group === "year" ? (x.year || "Year unknown") === g : x.container === u.container).length;
+        const extra = S.group === "container" && u._c ? [u._c.year, u._c.listed ? `${u._c.listed} listed` : null].filter(Boolean).join(" · ") : "";
+        rows += `<div class="ghead">${esc(g)} <span class="mono">${plural(n, d.unitWord)}${extra ? " · " + esc(extra) : ""}</span></div>`;
+        last = key;
+      }
+      rows += rowHtml(u, d);
+    }
+  } else rows = shown.map(u => rowHtml(u, d)).join("");
+  const sel = S.sel != null ? d.byId.get(S.sel) : null;
+  const total = d.units.length;
+  main.innerHTML = `<div class="browse${sel ? " has-detail" : ""}">
+    <details class="facets" id="facets" ${innerWidth > 760 || lsGet("facets") === "open" ? "open" : ""}><summary>Filters</summary><div class="fbody">${renderFacets(res)}</div></details>
+    <section style="min-width:0">
+      ${answerHtml()}
+      ${personCard(res)}
+      <div class="list-head"><h2>${plural(res.length, d.unitWord)}</h2>
+        <span class="muted">${res.length === total ? `the whole canon of ${esc(d.maestro.name)}` : `of ${total.toLocaleString()} in the canon`}</span>
+        <div class="tools">
+          <label class="muted" for="grp">Group</label><select id="grp"><option value="none">none</option><option value="container">by ${esc(d.contWord)}</option><option value="year">by year</option></select>
+          <label class="muted" for="sort">Sort</label><select id="sort"><option value="year">oldest first</option><option value="year-desc">newest first</option><option value="title">A–Z</option><option value="lineages">least confirmed first</option></select>
+        </div></div>
+      <div class="ledger">${rows || `<div class="empty">Nothing in the canon matches. Remove a filter above, or ask Claude to read the question differently.</div>`}</div>
+      ${res.length > S.limit ? `<button class="btn more" id="more" type="button">Show ${Math.min(300, res.length - S.limit)} more</button>` : ""}
+    </section>
+    ${sel ? `<aside class="detail" id="detail" aria-label="${esc(d.unitWord)} details">${detailHtml(sel, d)}</aside>` : ""}
+  </div>`;
+  document.getElementById("grp").value = S.group;
+  document.getElementById("sort").value = S.f.sort;
+  document.getElementById("grp").onchange = e => { S.group = e.target.value; lsSet("group", S.group); render(); };
+  document.getElementById("sort").onchange = e => { S.f.sort = e.target.value; render(); };
+  const more = document.getElementById("more"); if (more) more.onclick = () => { S.limit += 300; render(); };
+  wireMain(main);
+}
+function wireMain(main) {
+  main.querySelectorAll(".frow").forEach(b => b.onclick = () => onFacet(b.dataset.f, b.dataset.k));
+  main.querySelectorAll("[data-dec]").forEach(b => b.onclick = () => { const y = +b.dataset.dec; if (S.f.yFrom === y && S.f.yTo === y + 9) S.f.yFrom = S.f.yTo = null; else { S.f.yFrom = y; S.f.yTo = y + 9; } S.limit = 150; render(); });
+  main.querySelectorAll(".row").forEach(r => { r.onclick = () => openUnit(+r.dataset.u); r.onkeydown = e => { if (e.key === "Enter") openUnit(+r.dataset.u); }; });
+  main.querySelectorAll("[data-person]").forEach(b => b.onclick = () => { const role = b.dataset.role || null; S.f = blank(); S.f.people = [{ id: +b.dataset.person, role: role === "any" ? null : role }]; S.sel = null; document.getElementById("q").value = ""; location.hash = "#browse"; render(); });
+  main.querySelectorAll("[data-cont]").forEach(b => b.onclick = () => { S.f = blank(); S.f.containers = [+b.dataset.cont]; S.group = "none"; S.sel = null; document.getElementById("q").value = ""; location.hash = "#browse"; render(); });
+  main.querySelectorAll("[data-unit]").forEach(b => b.onclick = () => openUnit(+b.dataset.unit));
+  const x = document.getElementById("closedetail"); if (x) x.onclick = () => { S.sel = null; render(); };
+  const fd = document.getElementById("facets"); if (fd) fd.ontoggle = () => { if (innerWidth <= 760) lsSet("facets", fd.open ? "open" : "closed"); };
+  main.querySelectorAll("[data-apply]").forEach(b => b.onclick = () => { S.f = JSON.parse(b.dataset.apply); location.hash = "#browse"; render(); });
+}
+function openUnit(id) { S.sel = id; if (S.view !== "browse") location.hash = "#browse"; render(); const el = document.getElementById("detail"); if (el) el.scrollTop = 0; }
+
+function detailHtml(u, d) {
+  const me = d.maestro.person_id;
+  const dl = [];
+  const add = (k, v) => { if (v != null && v !== "" && !(Array.isArray(v) && !v.length)) dl.push(`<dt>${esc(k)}</dt><dd>${v}</dd>`); };
+  add("Year", u.year ? `<span class="mono">${u.year}</span>` : null);
+  add("Tier", u.tier ? `<span class="tier ${esc(u.tier)}">${esc(u.tier)}</span> ${esc((d.tiers[u.tier] || {}).label)}${u.tier_basis ? ` <span class="muted">(from the ${u.tier_basis === "container" ? esc(d.contWord) : "source"})</span>` : ""}` : `<span class="muted">not assigned yet</span>`);
+  if (u._c) add(cap(d.contWord), `<button class="linklike" data-cont="${u.container}">${esc(u._c.title)}</button>${u._c.year ? ` <span class="mono muted">${u._c.year}</span>` : ""}${u.position ? ` <span class="muted">· no. ${esc(u.position)}</span>` : ""}`);
+  const roles = Object.keys(u.credits).sort((a, b) => (b === d.perfRole) - (a === d.perfRole));
+  for (const r of roles) add(cap(roleName(r)) + (u.credits[r].length > 1 ? "s" : ""), u.credits[r].map(p => p === me ? `<b>${esc(pname(p))}</b>` : `<button class="linklike" data-person="${p}" data-role="${esc(r)}">${esc(pname(p))}</button>`).join(", "));
+  for (const c of u.credits_unlinked || []) add(cap(roleName(c.role)), esc(c.name));
+  if (u._c && u._c.credits) for (const [r, ids] of Object.entries(u._c.credits)) if (!u.credits[r] && ["director", "composer", "lyricist", "producer"].includes(r)) add(cap(roleName(r)) + ` (${esc(d.contWord)})`, ids.map(p => `<button class="linklike" data-person="${p}" data-role="any">${esc(pname(p))}</button>`).join(", "));
+  add("On screen", (u.on_screen || []).map(p => `<button class="linklike" data-person="${p}" data-role="on_screen">${esc(pname(p))}</button>`).join(", "));
+  add("Language", esc(u._lang));
+  for (const [k, lbl] of [["date", "Recorded"], ["recorded_year", "Recorded"], ["release_year", "Released"], ["catalogue", "Catalogue"], ["matrix", "Matrix"], ["label", "Label"], ["issues", "Issued on"], ["description", "Description"], ["work_type", "Form"], ["kind", "Kind"], ["category", "Category"], ["performer", "Performer"], ["artist_credit", "Credited as"], ["full_title", "Full title"]])
+    if (u[k]) add(lbl, `<span class="${["catalogue", "matrix", "date"].includes(k) ? "mono" : ""}">${esc(u[k].map(x => roleName(String(x))).join(" · "))}</span>`);
+  if (u._c && u._c.kind && u._c.kind.includes("session")) { add("Place", esc((u._c.place || []).join(" · "))); add("Personnel", esc((u._c.personnel || []).join(" · "))); }
+  const srcs = (u.sources || []).map(s => { const src = d.sources[s] || {}; return `<li class="src"><span>${esc(s)} <span class="muted">· ${esc(src.lineage || "")} lineage</span></span></li>`; }).join("");
+  const links = (u.links || []).map(l => `<li class="src"><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.url.replace(/^https?:\/\/(www\.)?/, "").slice(0, 60))}</a><span class="muted">${esc(l.source)}</span></li>`).join("");
+  let sibs = "";
+  if (u.container != null) {
+    const s = d.units.filter(x => x.container === u.container).sort((a, b) => (+a.position || 99) - (+b.position || 99));
+    if (s.length > 1) sibs = `<h4>Also in this ${esc(d.contWord)} (${s.length} in the canon${u._c && u._c.listed ? `, ${u._c.listed} listed in all` : ""})</h4><ul>${s.map(x => `<li class="sib${x.id === u.id ? " me" : ""}">${x.id === u.id ? esc(x.title) : `<button class="linklike" data-unit="${x.id}">${esc(x.title)}</button>`}</li>`).join("")}</ul>`;
+  }
+  return `<button class="btn x" id="closedetail" type="button" aria-label="Close">×</button>
+    <h2>${esc(u.title)}</h2>
+    ${(u.title_alt_script || []).map(t => `<div class="script">${esc(t)}</div>`).join("")}
+    ${u.alt_titles ? `<div class="muted" style="margin-top:6px;font-size:13px">Also listed as: ${esc(u.alt_titles.join(" · "))}</div>` : ""}
+    <dl>${dl.join("")}</dl>
+    <h4>Evidence · ${linDots(u._lin)} ${u._lin} independent lineage${u._lin === 1 ? "" : "s"}</h4>
+    <ul>${srcs}</ul>
+    ${links ? `<h4>Source pages</h4><ul>${links}</ul>` : ""}
+    ${sibs}`;
+}
+function personCard(res) {
+  const d = S.d, f = S.f;
+  if (f.people.length !== 1) return "";
+  const id = f.people[0].id, p = d.P[id] || {}, rc = d.roleCount[id] || {};
+  const all = d.units.filter(u => hasPerson(u, { id, role: null }, d));
+  const yrs = all.map(u => u.year).filter(Boolean);
+  const roles = Object.entries(rc).filter(([r]) => !r.startsWith("film_")).sort((a, b) => b[1] - a[1]);
+  // their most frequent partner in each other role
+  const partners = [];
+  for (const r of ["composer", "lyricist", d.perfRole].filter(Boolean)) {
+    const top = counts(all, u => (u.credits[r] || []).filter(x => x !== id && x !== d.maestro.person_id))[0];
+    if (top) partners.push(`${r === d.perfRole ? "most often with" : "most often " + roleName(r)} <button class="linklike" data-person="${top[0]}" data-role="${esc(r)}">${esc(pname(+top[0]))}</button> (${top[1]})`);
+  }
+  return `<div class="card"><h3>${esc(p.name)}</h3>
+    ${p.aliases ? `<div class="muted" style="font-size:12.5px">also credited as ${esc(p.aliases.slice(0, 5).join(", "))}</div>` : ""}
+    <div class="pstats"><div><b>${all.length.toLocaleString()}</b><span>${esc(d.unitWord)}s with ${esc(d.maestro.name)}</span></div>
+      ${yrs.length ? `<div><b>${Math.min(...yrs)}–${Math.max(...yrs)}</b><span>years together</span></div>` : ""}
+      ${roles.slice(0, 3).map(([r, n]) => `<div><b>${n.toLocaleString()}</b><span>as ${esc(r === d.perfRole ? "co-" + roleName(r) : roleName(r))}</span></div>`).join("")}</div>
+    ${partners.length ? `<div style="margin-top:8px;font-size:13px">${partners.join(" · ")}</div>` : ""}</div>`;
+}
+
+// ---------------------------------------------------------------- insights
+const tip = document.getElementById("tip");
+function showTip(e, html) { tip.innerHTML = html; tip.hidden = false; const x = Math.min(e.clientX + 12, innerWidth - 290); tip.style.left = x + "px"; tip.style.top = (e.clientY + 14) + "px"; }
+function hideTip() { tip.hidden = true; }
+function renderInsights(res) {
+  const d = S.d, main = document.getElementById("main"), me = d.maestro.person_id;
+  const scope = isBlank(S.f) ? `the whole canon (${plural(res.length, d.unitWord)})` : `the ${plural(res.length, d.unitWord)} that match your search`;
+  const roles = rolesIn(d, res).slice(0, 3);
+  const heatRole = S.heatRole && roles.includes(S.heatRole) ? S.heatRole : roles[0];
+  main.innerHTML = `<div class="stack">
+    ${answerHtml()}
+    <div class="panel"><h2>${esc(cap(d.unitWord))}s per year</h2><div class="sub">For ${scope}, coloured by tier. Click a bar to filter to that year.</div>
+      <div class="chart" id="yearchart"></div><div class="legend">${[...d.tierKeys, null].map(t => `<span><i style="background:var(--t-${t || "none"})"></i>${t ? esc(t + " · " + d.tiers[t].label) : "No tier yet"}</span>`).join("")}</div></div>
+    ${heatRole ? `<div class="panel"><h2>Who, and when</h2><div class="sub">The twelve most frequent ${esc(heatRole === d.perfRole ? "co-" + roleName(heatRole) : roleName(heatRole))}s in ${scope}, by five-year span. Darker means more ${esc(d.unitWord)}s.</div>
+      <div style="margin-bottom:10px"><label class="muted" for="heatrole">Role </label><select id="heatrole">${roles.map(r => `<option value="${esc(r)}"${r === heatRole ? " selected" : ""}>${esc(r === d.perfRole ? "co-" + roleName(r) : roleName(r))}</option>`).join("")}</select></div>
+      <div id="heat"></div></div>` : ""}
+    <div class="grid2">${roles.map(r => {
+      const top = counts(res, u => (u.credits[r] || []).filter(p => p !== me)).slice(0, 12);
+      const max = top.length ? top[0][1] : 1;
+      return `<div class="panel"><h2>${r === d.perfRole ? "Fellow " + esc(roleName(r)) + "s" : esc(cap(roleName(r))) + "s"}</h2><div class="sub">Most frequent in ${scope}. Click a name to browse.</div>
+        <div class="lbars">${top.map(([p, n]) => `<div><button class="linklike" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-person="${p}" data-role="${esc(r)}">${esc(pname(+p))}</button><span class="b" style="width:${(n / max * 100).toFixed(1)}%"></span><span class="n">${n}</span></div>`).join("") || `<span class="muted">None credited</span>`}</div></div>`;
+    }).join("")}</div>
+  </div>`;
+  drawYears(res);
+  if (heatRole) drawHeat(res, heatRole);
+  const hr = document.getElementById("heatrole"); if (hr) hr.onchange = e => { S.heatRole = e.target.value; render(); };
+  wireMain(main);
+}
+function drawYears(res) {
+  const d = S.d, el = document.getElementById("yearchart");
+  const ys = res.map(u => u.year).filter(Boolean);
+  if (!ys.length) { el.innerHTML = `<div class="empty">No dated ${esc(d.unitWord)}s in this selection.</div>`; return; }
+  const lo = Math.min(...ys), hi = Math.max(...ys), tiers = [...d.tierKeys, null];
+  const by = {}; for (const u of res) if (u.year) { (by[u.year] ||= {}); const t = d.tierKeys.includes(u.tier) ? u.tier : null; by[u.year][t] = (by[u.year][t] || 0) + 1; }
+  const tot = y => Object.values(by[y] || {}).reduce((a, b) => a + b, 0);
+  const max = Math.max(...Object.keys(by).map(tot));
+  const nice = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500].find(s => max / s <= 5) || 1000;
+  const top = Math.ceil(max / nice) * nice;
+  const n = hi - lo + 1, W = Math.max(n * 14 + 50, Math.min(el.clientWidth || 800, 1100, n * 36 + 50)), H = 220, L = 40, B = 24, T = 8;
+  const bw = (W - L - 8) / n, sy = v => H - B - (v / top) * (H - B - T);
+  let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(d.unitWord)}s per year">`;
+  for (let v = 0; v <= top; v += nice) svg += `<line class="gl" x1="${L}" x2="${W - 4}" y1="${sy(v)}" y2="${sy(v)}" /><text x="${L - 6}" y="${sy(v) + 3}" text-anchor="end">${v}</text>`;
+  for (let y = lo; y <= hi; y++) {
+    const x = L + (y - lo) * bw; let acc = 0;
+    if (y % (n > 40 ? 5 : n > 15 ? 2 : 1) === 0) svg += `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle">${y}</text>`;
+    const segs = tiers.filter(t => (by[y] || {})[t]);
+    segs.forEach((t, i) => {
+      const v = by[y][t], y0 = sy(acc), y1 = sy(acc + v); acc += v;
+      const h = Math.max(0, y0 - y1 - (i < segs.length - 1 ? 1 : 0));
+      const isTop = i === segs.length - 1, r = isTop ? Math.min(3, bw / 2 - 1, h) : 0;
+      const w = Math.max(1, bw - 2), x0 = x + 1;
+      svg += isTop && r > 0 ? `<path fill="var(--t-${t || "none"})" d="M${x0},${y0} V${y1 + r} Q${x0},${y1} ${x0 + r},${y1} H${x0 + w - r} Q${x0 + w},${y1} ${x0 + w},${y1 + r} V${y0} Z" />` : `<rect fill="var(--t-${t || "none"})" x="${x0}" y="${y1}" width="${w}" height="${h}" />`;
+    });
+    svg += `<rect data-y="${y}" x="${x}" y="${T}" width="${bw}" height="${H - B - T}" fill="transparent" style="cursor:pointer" />`;
+  }
+  svg += `<line x1="${L}" x2="${W - 4}" y1="${H - B}" y2="${H - B}" stroke="var(--muted)" /></svg>`;
+  el.innerHTML = svg;
+  el.querySelectorAll("rect[data-y]").forEach(r => {
+    const y = +r.dataset.y;
+    r.onmousemove = e => showTip(e, `<b>${y}</b> · ${plural(tot(y), d.unitWord)}<br>${tiers.filter(t => (by[y] || {})[t]).map(t => `${t ? "Tier " + t : "No tier"}: ${by[y][t]}`).join("<br>")}`);
+    r.onmouseleave = hideTip;
+    r.onclick = () => { hideTip(); S.f.yFrom = S.f.yTo = y; location.hash = "#browse"; render(); };
+  });
+}
+function drawHeat(res, role) {
+  const d = S.d, el = document.getElementById("heat"), me = d.maestro.person_id;
+  const top = counts(res, u => (u.credits[role] || []).filter(p => p !== me)).slice(0, 12).map(x => +x[0]);
+  const ys = res.map(u => u.year).filter(Boolean);
+  if (!top.length || !ys.length) { el.innerHTML = `<div class="empty">Nobody else is credited in this role here.</div>`; return; }
+  const lo = Math.floor(Math.min(...ys) / 5) * 5, hi = Math.floor(Math.max(...ys) / 5) * 5, bins = [];
+  for (let y = lo; y <= hi; y += 5) bins.push(y);
+  const m = {}; let max = 1;
+  for (const u of res) if (u.year) for (const p of u.credits[role] || []) if (top.includes(p)) { const k = p + ":" + Math.floor(u.year / 5) * 5; m[k] = (m[k] || 0) + 1; max = Math.max(max, m[k]); }
+  const shade = v => v ? `var(--seq-${Math.min(5, 1 + Math.floor(v / max * 4.999))})` : "var(--seq-0)";
+  let h = `<div class="heat" style="grid-template-columns: minmax(110px, 170px) repeat(${bins.length}, minmax(26px, 1fr)); min-width:${140 + bins.length * 28}px"><span></span>${bins.map(b => `<span class="hd">${b % 10 === 0 ? b : ""}</span>`).join("")}`;
+  for (const p of top) {
+    h += `<button class="lbl linklike" data-person="${p}" data-role="${esc(role)}">${esc(pname(p))}</button>`;
+    for (const b of bins) { const v = m[p + ":" + b] || 0; h += `<button class="c" type="button" style="background:${shade(v)}" data-hp="${p}" data-hb="${b}" data-v="${v}" aria-label="${esc(pname(p))}, ${b}–${b + 4}: ${v}"></button>`; }
+  }
+  el.innerHTML = h + "</div>";
+  el.querySelectorAll(".c").forEach(c => {
+    c.onmousemove = e => showTip(e, `<b>${esc(pname(+c.dataset.hp))}</b><br>${c.dataset.hb}–${+c.dataset.hb + 4}: ${plural(+c.dataset.v, d.unitWord)}`);
+    c.onmouseleave = hideTip;
+    c.onclick = () => { hideTip(); const b = +c.dataset.hb; S.f.people = [...S.f.people.filter(x => !(x.id === +c.dataset.hp && x.role === role)), { id: +c.dataset.hp, role }]; S.f.yFrom = b; S.f.yTo = b + 4; location.hash = "#browse"; render(); };
+  });
+}
+
+// ---------------------------------------------------------------- coverage
+function renderCoverage() {
+  const d = S.d, cov = d.coverage || {}, main = document.getElementById("main");
+  const pct = x => (x * 100).toFixed(x < 0.1 ? 1 : 0) + "%";
+  const tiers = Object.entries(cov.tiers || {}).filter(([k]) => d.tiers[k]);
+  const tierCards = tiers.map(([k, t]) => {
+    const target = d.tiers[k].target_missing;
+    const est = t.estimate, miss = t.missing_share;
+    const pill = target === "report_only" ? `<span class="pill info">report only</span>` : t.meets_target ? `<span class="pill good">✓ meets target</span>` : est == null ? `<span class="pill info">no estimate yet</span>` : `<span class="pill ${miss > 0.15 ? "bad" : "warn"}">! ${pct(miss)} missing, target ${pct(target)}</span>`;
+    const bl = Object.entries(t.by_lineage || {}).sort((a, b) => b[1] - a[1]); const blmax = bl.length ? bl[0][1] : 1;
+    return `<div class="panel tcard"><h3><span class="tier ${esc(k)}">${esc(k)}</span> Tier ${esc(k)} ${pill}</h3><div class="lbl">${esc(d.tiers[k].label)}</div>
+      <div class="big"><div><b>${(t.observed || 0).toLocaleString()}</b><span>found</span></div>${est != null ? `<div><b>~${Math.round(est).toLocaleString()}</b><span>estimated in all</span></div><div><b>${Math.max(0, Math.round(est - t.observed)).toLocaleString()}</b><span>likely missing</span></div>` : ""}</div>
+      ${est != null ? `<div class="track" title="${t.observed} of about ${Math.round(est)}"><span class="obs" style="width:${Math.min(100, t.observed / est * 100).toFixed(1)}%"></span></div>` : ""}
+      <div class="lbars">${bl.map(([l, n]) => `<div><span>${esc(l)}</span><span class="b" style="width:${(n / blmax * 100).toFixed(1)}%"></span><span class="n">${n}</span></div>`).join("")}</div>
+      ${t.method ? `<div class="muted" style="font-size:12px;margin-top:8px">Estimate: ${esc(t.method)}${t.note ? ". " + esc(t.note) : ""}</div>` : ""}
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-apply='${esc(JSON.stringify({ ...blank(), tiers: [k] }))}'>Browse tier ${esc(k)}</button>
+      <button class="btn" data-apply='${esc(JSON.stringify({ ...blank(), tiers: [k], maxLin: 1 }))}'>Seen by one lineage only (${d.units.filter(u => u.tier === k && u._lin <= 1).length})</button></div></div>`;
+  }).join("");
+  const un = cov.tiers && cov.tiers.unassigned;
+  const checks = (cov.checksums || []).map(c => {
+    const cls = c.status === "ok" || c.status === "match" ? "good" : c.status === "under" ? "warn" : c.status === "over" ? "warn" : "info";
+    return `<tr><td>${esc(c.scope)}${c.source ? ` <a href="${esc(c.source)}" target="_blank" rel="noopener noreferrer" class="muted">source</a>` : ""}</td><td class="n">${c.published ?? "–"}</td><td class="n">${c.observed ?? "–"}</td><td class="n">${c.difference != null ? (c.difference > 0 ? "+" : "") + c.difference : "–"}</td><td><span class="pill ${cls}">${esc(c.status || "")}</span></td></tr>`;
+  }).join("");
+  const cont = cov.containers;
+  const lin = [0, 1, 2, 3].map(n => d.units.filter(u => (n === 3 ? u._lin >= 3 : u._lin === n)).length);
+  const reviews = Object.entries(cov.open_reviews || {});
+  main.innerHTML = `<div class="stack">
+    <div class="panel"><h2>How complete is ${esc(d.maestro.name)}'s canon?</h2><div class="sub">Snapshot taken ${esc((d.generated_at || "").replace("T", " ").replace("+00:00", " UTC"))}. Estimates compare what independent source lineages found (capture-recapture); a tier is done when its estimated missing share is under its target.</div>
+      <div class="pstats"><div><b>${d.units.length.toLocaleString()}</b><span>${esc(d.unitWord)}s in the canon</span></div>
+        ${lin.map((n, i) => n ? `<div><b>${n.toLocaleString()}</b><span>${["no listing source", "one lineage", "two lineages", "three or more"][i]}</span></div>` : "").join("")}
+        ${un && un.observed ? `<div><b>${un.observed.toLocaleString()}</b><span>no tier yet <button class="linklike" data-apply='${esc(JSON.stringify({ ...blank(), noTier: true }))}'>browse</button></span></div>` : ""}
+        ${reviews.length ? `<div><b>${reviews.reduce((s, [, n]) => s + n, 0)}</b><span>open review questions</span></div>` : ""}</div></div>
+    <div class="tiers">${tierCards}</div>
+    ${checks ? `<div class="panel"><h2>Published totals</h2><div class="sub">Counts from books and articles, compared with the canon.</div><div class="tablewrap"><table><thead><tr><th>Scope</th><th class="n">Published</th><th class="n">In canon</th><th class="n">Diff</th><th>Status</th></tr></thead><tbody>${checks}</tbody></table></div></div>` : ""}
+    ${cont ? `<div class="panel"><h2>${esc(cap(d.contWord))} listings</h2><div class="sub">${cont.containers_with_count.toLocaleString()} ${esc(d.contWord)}s list how many ${esc(d.unitWord)}s they hold; ${cont.mismatched} hold a different number than listed.</div>
+      ${cont.examples && cont.examples.length ? `<div class="tablewrap"><table><thead><tr><th>${esc(cap(d.contWord))}</th><th class="n">Listed</th><th class="n">Stored</th></tr></thead><tbody>${cont.examples.map(e => `<tr><td>${d.C[e.container] ? `<button class="linklike" data-cont="${e.container}">${esc(e.label)}</button>` : esc(e.label)}</td><td class="n">${e.listed}</td><td class="n">${e.stored}</td></tr>`).join("")}</tbody></table></div>` : ""}
+      ${Object.keys(cont.outside_check || {}).length ? `<h3 style="font-size:14px;margin:14px 0 6px">Other sources inside listed ${esc(d.contWord)}s</h3><div class="tablewrap"><table><thead><tr><th>Source</th><th class="n">Records</th><th class="n">Matched</th><th class="n">Unmatched</th></tr></thead><tbody>${Object.entries(cont.outside_check).map(([s, o]) => `<tr><td>${esc(s)}</td><td class="n">${o.in_listed_containers}</td><td class="n">${o.matched}</td><td class="n">${o.unmatched}</td></tr>`).join("")}</tbody></table></div>` : ""}</div>` : ""}
+    ${reviews.length ? `<div class="panel"><h2>Waiting for review</h2><div class="sub">Close calls the resolver could not settle. Run <span class="mono">maestro-review</span> to answer them.</div><div class="tablewrap"><table><tbody>${reviews.map(([k, n]) => `<tr><td>${esc(k.replace(/_/g, " "))}</td><td class="n">${n}</td></tr>`).join("")}</tbody></table></div></div>` : ""}
+  </div>`;
+  wireMain(main);
+}
+
+// ---------------------------------------------------------------- Ask Claude (sample capability)
+function answerHtml() {
+  const a = S.answer; if (!a) return "";
+  return `<div class="card answer"><div class="who">Claude <button class="linklike" id="closeans" style="margin-left:auto;font-size:12px;text-transform:none;letter-spacing:0">Dismiss</button></div>
+    <div class="txt" id="anstxt">${esc(a.text || (a.busy ? "Thinking…" : ""))}</div>${a.steps && a.steps.length ? `<div class="steps">${esc(a.steps.join(" · "))}</div>` : ""}</div>`;
+}
+function wireAnswer() { const c = document.getElementById("closeans"); if (c) c.onclick = () => { if (S.busy) S.busy.abort(); S.answer = null; render(); }; }
+
+function filterFromTool(x) {
+  const d = S.d, f = blank();
+  if (!x || typeof x !== "object") return f;
+  const num = v => (v === null || v === undefined || v === "" || isNaN(+v)) ? null : +v;
+  f.text = typeof x.title_contains === "string" ? x.title_contains : "";
+  f.yFrom = num(x.year_from); f.yTo = num(x.year_to);
+  f.tiers = (Array.isArray(x.tiers) ? x.tiers : []).map(String).filter(t => d.tiers[t]);
+  const notFound = [];
+  for (const p of Array.isArray(x.people) ? x.people : []) {
+    if (!p || typeof p.name !== "string") continue;
+    const id = findPersonId(p.name);
+    if (id == null) { notFound.push(p.name); continue; }
+    let role = typeof p.role === "string" && p.role ? p.role : null;
+    if (role === "co_performer" || role === "co") role = d.perfRole;
+    f.people.push({ id, role });
+  }
+  for (const c of Array.isArray(x.containers) ? x.containers : []) { const id = findContainerId(String(c)); if (id != null) f.containers.push(id); else notFound.push(String(c)); }
+  f.langs = (Array.isArray(x.languages) ? x.languages : []).filter(l => d.langs.includes(l));
+  if (["solo", "duet", "trio", "group"].includes(x.performers)) f.perf = x.performers;
+  f.maxLin = num(x.max_lineages); f.minLin = num(x.min_lineages);
+  if (x.no_tier === true) f.noTier = true;
+  if (["year", "year-desc", "title", "lineages"].includes(x.sort)) f.sort = x.sort;
+  f._notFound = notFound;
+  return f;
+}
+function findPersonId(name) {
+  const d = S.d, k = fold(name);
+  if (d.names.has(k)) return d.names.get(k)[0];
+  const m = matchPerson(k.split(" "), 0, d, true);
+  return m ? m.id : null;
+}
+function findContainerId(name) { const d = S.d, k = fold(name); if (d.conts.has(k)) return d.conts.get(k)[0]; const m = matchContainer(k.split(" "), 0, d, true); return m ? m.id : null; }
+function brief(u) {
+  const d = S.d, me = d.maestro.person_id, c = {};
+  for (const [r, ids] of Object.entries(u.credits)) { const o = ids.filter(p => p !== me).map(pname); if (o.length) c[r] = o; }
+  return { title: u.title, year: u.year, tier: u.tier, [d.contWord]: u._c ? u._c.title : null, credits: c, lineages: u._lin };
+}
+const FILTER_SCHEMA = {
+  type: "object", properties: {
+    title_contains: { type: "string", description: "words that must appear in the title (transliteration-tolerant)" },
+    year_from: { type: "integer" }, year_to: { type: "integer" },
+    tiers: { type: "array", items: { type: "string" } },
+    people: { type: "array", items: { type: "object", properties: { name: { type: "string" }, role: { type: "string", description: "a credit role such as composer, lyricist, director, on_screen, or co_performer; omit for any role" } }, required: ["name"] } },
+    containers: { type: "array", items: { type: "string" }, description: "container titles (films, sessions, albums)" },
+    languages: { type: "array", items: { type: "string" } },
+    performers: { type: "string", enum: ["solo", "duet", "trio", "group"] },
+    min_lineages: { type: "integer" }, max_lineages: { type: "integer" }, no_tier: { type: "boolean" },
+    sort: { type: "string", enum: ["year", "year-desc", "title", "lineages"] },
+  },
+};
+async function askClaude() {
+  const d = S.d, q = document.getElementById("q").value.trim();
+  if (!q || !S.sample) return;
+  if (S.busy) S.busy.abort();
+  const ctl = new AbortController(); S.busy = ctl;
+  S.answer = { text: "", busy: true, steps: [] };
+  render();
+  const me = d.maestro.person_id;
+  const topBy = role => counts(d.units, u => (u.credits[role] || []).filter(p => p !== me)).slice(0, 25).map(([p, n]) => `${pname(+p)} (${n})`).join(", ");
+  const roles = rolesIn(d, d.units).slice(0, 4);
+  const context = {
+    maestro: d.maestro.name, unit: d.unitWord, container: d.contWord, performing_role: d.perfRole,
+    tiers: Object.fromEntries(Object.entries(d.tiers).map(([k, t]) => [k, t.label])),
+    years: [d.yMin, d.yMax], languages: d.langs, units_in_canon: d.units.length,
+    frequent_collaborators: Object.fromEntries(roles.map(r => [r, topBy(r)])),
+    current_filter: chipList(S.f, d).map(([k, v]) => `${k}: ${v}`),
+  };
+  const step = s => { S.answer.steps.push(s); const el = document.querySelector(".answer .steps"); if (el) el.textContent = S.answer.steps.join(" · "); else render(); };
+  const tools = [
+    { name: "find_units", description: `Search ${d.maestro.name}'s canon of ${d.unitWord}s. Returns the count and up to 30 matches.`, inputSchema: FILTER_SCHEMA,
+      execute: x => { const f = filterFromTool(x); const r = applyFilter(d, f); step(`searched: ${chipList(f, d).map(c => c[1]).join(", ") || "everything"} → ${r.length}`); return { count: r.length, names_not_found: f._notFound, matches: r.slice(0, 30).map(brief) }; } },
+    { name: "count_by", description: "Count matching units grouped by a field: year, decade, tier, language, container, or a credit role (composer, lyricist, co_performer, director, on_screen). Returns the top 30 groups.",
+      inputSchema: { type: "object", properties: { filter: FILTER_SCHEMA, by: { type: "string" } }, required: ["by"] },
+      execute: x => {
+        const f = filterFromTool(x.filter || {}); const r = applyFilter(d, f); let by = String(x.by || "year");
+        if (by === "co_performer") by = d.perfRole || by;
+        const key = by === "year" ? u => u.year ? [u.year] : [] : by === "decade" ? u => u.year ? [Math.floor(u.year / 10) * 10 + "s"] : [] : by === "tier" ? u => [u.tier || "none"] : by === "language" ? u => u._lang ? [u._lang] : []
+          : by === "container" || by === d.contWord ? u => u._c ? [u._c.title] : [] : by === "on_screen" ? u => (u.on_screen || []).map(pname)
+          : u => (u.credits[by] || (u._c && u._c.credits && u._c.credits[by]) || []).filter(p => p !== me).map(pname);
+        step(`counted by ${by}`);
+        return { total: r.length, groups: counts(r, key).slice(0, 30) };
+      } },
+    { name: "lookup_person", description: "Find people in this canon by (part of) a name, with how often they are credited in each role.",
+      inputSchema: { type: "object", properties: { name: { type: "string" } }, required: ["name"] },
+      execute: x => { const k = fold(x.name || ""); const hits = Object.entries(d.P).filter(([id, p]) => d.roleCount[id] && [p.name, ...(p.aliases || [])].some(n => fold(n).includes(k))).slice(0, 15); return hits.map(([id, p]) => ({ name: p.name, also: p.aliases, roles: d.roleCount[id] })); } },
+    { name: "show_results", description: "Show a filtered list of units to the user in the explorer. Call this once at the end whenever your answer is a set of units.",
+      inputSchema: { type: "object", properties: { filter: FILTER_SCHEMA }, required: ["filter"] },
+      execute: x => { const f = filterFromTool(x.filter || {}); delete f._notFound; S.f = f; S.limit = 150; const n = applyFilter(d, f).length; step(`showing ${n}`); setTimeout(render, 0); return { shown: n }; } },
+  ];
+  const prompt = `You help a music researcher explore the canon of ${d.maestro.name}: every ${d.unitWord} in a sourced database. Use the tools to look things up; never answer from memory about what the canon holds. Names in tool input should be written as the canon spells them (see frequent_collaborators, or use lookup_person). When the answer is a set of ${d.unitWord}s, call show_results with the filter so the list appears on the page. Then answer in 1 to 4 plain sentences with the numbers you found. If the canon lacks the data to answer (for example popularity, ragas or lyrics), say so briefly.
+
+Canon context (JSON):
+${JSON.stringify(context)}
+
+Question: ${q}`;
+  try {
+    const r = await S.sample(prompt, { tools, signal: ctl.signal, onText: ({ text }) => { S.answer.text = text.split(/\n\n/).slice(-1)[0] || text; const el = document.getElementById("anstxt"); if (el) el.textContent = S.answer.text; } });
+    S.answer.text = (r.text || "").trim().split(/\n\n(?=\S)/).slice(-2).join("\n\n");
+  } catch (e) {
+    if (e && e.code === "cancelled") return;
+    S.answer.text = e && e.code === "not_granted" ? "Claude is turned off for this page. Plain-words search still works." :
+      e && e.code === "rate_limited" ? "Claude is busy right now. Try again in a minute." : `Claude could not answer (${(e && (e.message || e.code)) || "error"}).`;
+    if (e && e.code === "not_granted") { S.sample = null; document.getElementById("askbtn").hidden = true; }
+  } finally { if (S.busy === ctl) S.busy = null; S.answer.busy = false; render(); }
+}
+
+// ---------------------------------------------------------------- input wiring
+let tmr;
+function runQuery() {
+  const v = document.getElementById("q").value;
+  S.f = v.trim() ? parseQuery(v, S.d) : blank(); S.limit = 150;
+  render();
+}
+document.getElementById("q").addEventListener("input", () => { clearTimeout(tmr); tmr = setTimeout(runQuery, 160); });
+document.getElementById("askform").addEventListener("submit", e => { e.preventDefault(); clearTimeout(tmr); runQuery(); });
+document.getElementById("askbtn").onclick = askClaude;
+document.getElementById("clearbtn").onclick = () => { document.getElementById("q").value = ""; S.f = blank(); S.answer = null; S.sel = null; render(); };
+document.getElementById("backdrop").onclick = () => { S.sel = null; render(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape" && S.sel != null) { S.sel = null; render(); } if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); document.getElementById("q").focus(); } });
+addEventListener("hashchange", render);
+let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(render, 200); });
+document.getElementById("file").onchange = async e => { const f = e.target.files[0]; if (!f) return; try { addSnapshot(JSON.parse(await f.text())); } catch (err) { alertBox(`That file is not a canon snapshot (${err.message}).`); } };
+addEventListener("dragover", e => e.preventDefault());
+addEventListener("drop", async e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (!f) return; try { addSnapshot(JSON.parse(await f.text())); } catch (err) { alertBox(`That file is not a canon snapshot (${err.message}).`); } });
+function alertBox(msg) { document.getElementById("main").insertAdjacentHTML("afterbegin", `<div class="card" style="border-color:var(--bad)">${esc(msg)}</div>`); }
+function renderDrop() {
+  renderMaestros();
+  document.getElementById("main").innerHTML = `<div class="dropzone"><h1>No canon loaded</h1><p>Write snapshots with <span class="mono">maestro-explore --maestro maestros/&lt;slug&gt;=&lt;dsn&gt;</span> and open this page from that folder, or drop a canon snapshot (<span class="mono">canon/&lt;slug&gt;.json</span>) here.</p><button class="btn primary" type="button" onclick="document.getElementById('file').click()">Open a snapshot…</button></div>`;
+}
+S.group = lsGet("group") || "none";
+
+if (window.claude && typeof window.claude.use === "function") {
+  window.claude.use("sample").then(s => { if (s) { S.sample = s; document.getElementById("askbtn").hidden = false; } }).catch(() => {});
+}
+boot();
+</script>
