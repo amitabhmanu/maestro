@@ -115,9 +115,14 @@ def test_migrations_apply_once(store_for):
     assert store.migrate() == [latest]
 
 
-def test_only_one_session_may_write_decisions(store_for):
+def _dsn(pg_server, store):
+    """The store's DSN with the server's credentials (conn.info.dsn leaves the password out)."""
+    return pg_server.rsplit("/", 1)[0] + "/" + store.conn.info.dbname
+
+
+def test_only_one_session_may_write_decisions(store_for, pg_server):
     store = store_for("rafi")
-    dsn = store.conn.info.dsn
+    dsn = _dsn(pg_server, store)
     other = Store.connect(dsn, store.pack)
     try:
         with store.exclusive():
@@ -170,7 +175,7 @@ def test_real_pg_dump_round_trip(tmp_path, store_for, pg_server):
     store = store_for("rafi")
     eid = store.create_entity("song", "Test song")
     store.upsert_claim(eid, "title", value="Test song", source_id="user")
-    r = backup("rafi", store.conn.info.dsn, tmp_path, raw_root=tmp_path / "none")
+    r = backup("rafi", _dsn(pg_server, store), tmp_path, raw_root=tmp_path / "none")
     with psycopg.connect(pg_server, autocommit=True) as admin:
         admin.execute('DROP DATABASE IF EXISTS "t_restore"')
         admin.execute("CREATE DATABASE t_restore ENCODING 'UTF8' TEMPLATE template0")
