@@ -16,7 +16,10 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 ## Layout
 
 - `src/maestro/maestro-pack.schema.json`: JSON Schema for packs. `pack.py` adds cross-field checks.
-- `src/maestro/schema.sql`: Postgres schema (source, entity, claim, job, raw_page).
+- `src/maestro/schema.sql`: Postgres schema baseline (source, entity, claim, job, raw_page); later changes are numbered files in `src/maestro/migrations/` (see its README), applied by `Store.migrate()`.
+- `src/maestro/config.py`: `.env` loading, per-maestro DSNs (`MAESTRO_DSN_<SLUG>`), the private data folder (`MAESTRO_DATA_DIR`).
+- `src/maestro/rawstore.py`: raw pages kept by SHA-256 under `<data dir>/<slug>/raw`; `maestro-raw` finds and refills missing ones.
+- `src/maestro/ops.py`: `maestro-migrate`, `maestro-doctor`, `maestro-backup`.
 - `src/maestro/store.py`: store API (claims, merges, crawl queue, coverage, gaps).
 - `src/maestro/mcp_server.py`: MCP server exposing the store to Claude Code (configured in `.mcp.json`).
 - `src/maestro/profiler/`: profiler helpers (`identify.py`: Wikidata candidates and external IDs).
@@ -46,4 +49,5 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 - Canon explorer: `uv run maestro-explore --maestro maestros/rafi=<dsn> [--maestro maestros/eddy-arnold=<dsn> ...] --out data/explorer --serve` writes `index.html` plus `canon/<slug>.json` per maestro (publishable claims only unless `--include-private`) and serves it on localhost:8765. Snapshots outlive the database, so keep them when a canon is rebuilt.
 - Orchestrator: `uv run maestro-run --pack maestros/<slug> --dsn ... [--rounds 3] [--max-jobs N] [--dry-run] [--save]` runs rounds until every tier meets its target or nothing is left to crawl; its needs list says what a person or a new extractor must add.
 - Tests: `uv run pytest` (starts a throwaway Postgres if `pg_ctl` is installed; otherwise set `MAESTRO_TEST_DSN`)
-- Local database: `docker compose up -d`, then `MAESTRO_PACK=maestros/rafi` and `MAESTRO_DSN=...` for the MCP server.
+- Persistent stores (see `docs/local-store.md`): one database per maestro, DSNs as `MAESTRO_DSN_<SLUG>` in a git-ignored `.env` (then `--dsn` can be left out). `uv run maestro-doctor --all` checks them, `uv run maestro-migrate --all` updates schemas, `uv run maestro-backup --all` dumps them and copies raw pages, `uv run maestro-raw --pack ... status|fill DIR|refetch` checks and refills raw pages. Resolve, review decisions and `maestro-run` hold a per-canon lock, so two sessions never merge at once.
+- Local database alternative: `docker compose up -d` (pgvector image, localhost only).

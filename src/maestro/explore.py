@@ -328,21 +328,28 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="maestro-explore",
         description="Write the canon explorer (page plus one snapshot per maestro) and optionally serve it.")
-    p.add_argument("--maestro", action="append", default=[], metavar="PACK=DSN",
-                   help="a maestro folder and its store, e.g. maestros/rafi=postgresql://... (repeatable); "
+    p.add_argument("--maestro", action="append", default=[], metavar="PACK[=DSN]",
+                   help="a maestro folder and its store, e.g. maestros/rafi=postgresql://... (repeatable; without "
+                        "=DSN, $MAESTRO_DSN_<SLUG> from the environment or .env); "
                         "with --pack/--dsn or $MAESTRO_PACK/$MAESTRO_DSN for a single maestro")
     p.add_argument("--pack", default=os.environ.get("MAESTRO_PACK"))
-    p.add_argument("--dsn", default=os.environ.get("MAESTRO_DSN"))
+    p.add_argument("--dsn", help="default $MAESTRO_DSN_<SLUG>, then $MAESTRO_DSN")
     p.add_argument("--out", type=Path, default=Path("data/explorer"), help="site folder (default data/explorer)")
     p.add_argument("--include-private", action="store_true", help="also include private claims (never publish these)")
     p.add_argument("--serve", type=int, nargs="?", const=8765, metavar="PORT", help="serve the site on localhost")
     args = p.parse_args(argv)
-    pairs = [m.split("=", 1) for m in args.maestro]
-    if not pairs and args.pack and args.dsn:
+    from maestro import config
+
+    pairs = [m.split("=", 1) if "=" in m else [m, None] for m in args.maestro]
+    if not pairs and args.pack:
         pairs = [[args.pack, args.dsn]]
     snaps = []
     for pack_dir, dsn in pairs:
-        store = Store.connect(dsn, load_pack(pack_dir))
+        pack = load_pack(pack_dir)
+        dsn = config.dsn_for(pack.slug, dsn)
+        if not dsn:
+            p.error(f"no store for {pack.slug}: give {pack_dir}=DSN or set {config.dsn_env_name(pack.slug)}")
+        store = Store.connect(dsn, pack)
         try:
             snaps.append(snapshot(store, include_private=args.include_private))
         finally:

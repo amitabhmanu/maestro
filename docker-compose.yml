@@ -1,12 +1,12 @@
 # Local Postgres for the canon store. One database per maestro, e.g. maestro_rafi.
 services:
   db:
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: maestro
       POSTGRES_PASSWORD: maestro
       POSTGRES_DB: maestro_rafi
-    ports: ["5432:5432"]
+    ports: ["127.0.0.1:5432:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
 volumes:
   pgdata:

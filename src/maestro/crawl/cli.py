@@ -14,6 +14,7 @@ import logging
 import os
 from pathlib import Path
 
+from maestro import config
 from maestro.crawl.fetcher import Fetcher, api_hosts
 from maestro.crawl.runner import import_page, replay, run_jobs
 from maestro.pack import load_pack
@@ -23,28 +24,29 @@ from maestro.store import Store
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--pack", required=True, help="maestro folder, e.g. maestros/rafi")
-    p.add_argument("--dsn", default=os.environ.get("MAESTRO_DSN"), help="Postgres DSN (default $MAESTRO_DSN)")
+    p.add_argument("--dsn", help="Postgres DSN (default $MAESTRO_DSN_<SLUG>, then $MAESTRO_DSN; .env is read)")
     p.add_argument("--seed", action="append", default=[], help="URL to queue before running (repeatable)")
     p.add_argument("--extractor", help="extractor for --seed URLs")
     p.add_argument("--purpose", default="spine", help="purpose for --seed jobs")
     p.add_argument("--opt", action="append", default=[], help="extractor option key=value (repeatable)")
     p.add_argument("--max-jobs", type=int, default=100)
-    p.add_argument("--cache-dir", default=None, help="raw page cache (default data/<slug>/raw)")
+    p.add_argument("--cache-dir", default=None, help="raw page folder (default <MAESTRO_DATA_DIR>/<slug>/raw)")
     args = p.parse_args(argv)
-    if not args.dsn:
-        p.error("--dsn or MAESTRO_DSN is required")
     if args.seed and not args.extractor:
         p.error("--seed needs --extractor")
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     pack = load_pack(args.pack)
+    args.dsn = config.dsn_for(pack.slug, args.dsn)
+    if not args.dsn:
+        p.error(f"--dsn (or {config.dsn_env_name(pack.slug)} or MAESTRO_DSN) is required")
     store = Store.connect(args.dsn, pack)
     store.migrate()
     store.sync_sources()
     for url in args.seed:
         store.enqueue_crawl(url, args.extractor, args.purpose, priority=1000)
 
-    cache = Path(args.cache_dir or Path("data") / pack.slug / "raw")
+    cache = Path(args.cache_dir) if args.cache_dir else config.raw_dir(pack.slug)
     fetcher = Fetcher(cache, rps=pack.data["budget"]["per_domain_rps"], api_hosts=api_hosts(pack.data))
     options = dict(o.split("=", 1) for o in args.opt)
     stats = run_jobs(store, fetcher, max_jobs=args.max_jobs, options=options)
@@ -57,20 +59,21 @@ def import_main(argv: list[str] | None = None) -> int:
     """`maestro-import`: run an extractor over pages saved by hand (sites whose robots.txt forbids crawling)."""
     p = argparse.ArgumentParser(description=import_main.__doc__)
     p.add_argument("--pack", required=True, help="maestro folder, e.g. maestros/rafi")
-    p.add_argument("--dsn", default=os.environ.get("MAESTRO_DSN"), help="Postgres DSN (default $MAESTRO_DSN)")
+    p.add_argument("--dsn", help="Postgres DSN (default $MAESTRO_DSN_<SLUG>, then $MAESTRO_DSN; .env is read)")
     p.add_argument("--extractor", required=True)
     p.add_argument("--url", required=True, help="the URL the page was saved from")
     p.add_argument("--opt", action="append", default=[], help="extractor option key=value (repeatable)")
-    p.add_argument("--cache-dir", default=None, help="raw page cache (default data/<slug>/raw)")
+    p.add_argument("--cache-dir", default=None, help="raw page folder (default <MAESTRO_DATA_DIR>/<slug>/raw)")
     p.add_argument("file", type=Path)
     args = p.parse_args(argv)
-    if not args.dsn:
-        p.error("--dsn or MAESTRO_DSN is required")
     pack = load_pack(args.pack)
+    args.dsn = config.dsn_for(pack.slug, args.dsn)
+    if not args.dsn:
+        p.error(f"--dsn (or {config.dsn_env_name(pack.slug)} or MAESTRO_DSN) is required")
     store = Store.connect(args.dsn, pack)
     store.migrate()
     store.sync_sources()
-    cache = Path(args.cache_dir or Path("data") / pack.slug / "raw")
+    cache = Path(args.cache_dir) if args.cache_dir else config.raw_dir(pack.slug)
     raw_id = import_page(store, args.extractor, args.url, args.file, cache, dict(o.split("=", 1) for o in args.opt))
     print(json.dumps({"raw_page_id": raw_id, "coverage": store.coverage_report()}, indent=2, default=str))
     store.close()
@@ -82,12 +85,13 @@ def replay_main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=replay_main.__doc__)
     p.add_argument("--pack", required=True, help="maestro folder, e.g. maestros/rafi")
     p.add_argument("--from-dsn", required=True, help="store whose fetched and imported pages are replayed")
-    p.add_argument("--dsn", default=os.environ.get("MAESTRO_DSN"), help="target store, normally a new empty database")
+    p.add_argument("--dsn", required=True, help="target store: a new empty database (never the live store)")
     args = p.parse_args(argv)
-    if not args.dsn:
-        p.error("--dsn or MAESTRO_DSN is required")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     pack = load_pack(args.pack)
+    args.dsn = config.dsn_for(pack.slug, args.dsn)
+    if not args.dsn:
+        p.error(f"--dsn (or {config.dsn_env_name(pack.slug)} or MAESTRO_DSN) is required")
     source, target = Store.connect(args.from_dsn, pack), Store.connect(args.dsn, pack)
     target.migrate()
     target.sync_sources()

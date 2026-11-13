@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import time
 import urllib.error
 import urllib.request
@@ -11,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 from urllib.parse import urlsplit
+
+from maestro.rawstore import RawStore
 
 USER_AGENT = "maestro-crawler/0.1 (+https://github.com/amitabhmanu/maestro)"
 
@@ -118,8 +119,5 @@ class Fetcher:
         if not self.allowed(url):
             raise Disallowed(url)
         status, body = self._get(url)
-        digest = hashlib.sha256(body).hexdigest()
-        path = self.cache_dir / f"{digest}.html"
-        if not path.exists():
-            path.write_bytes(body)
+        digest, path = RawStore(self.cache_dir).put(body)
         return Page(url=url, status=status, body=body, sha256=digest, path=path)

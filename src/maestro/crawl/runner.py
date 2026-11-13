@@ -6,7 +6,6 @@ defines `extract(ctx: ExtractContext) -> None` and uses `ctx` to write claims an
 
 from __future__ import annotations
 
-import hashlib
 import importlib.util
 import logging
 from dataclasses import dataclass, field
@@ -17,6 +16,7 @@ from typing import Any
 from psycopg.types.json import Jsonb
 
 from maestro.crawl.fetcher import Disallowed, Fetcher, Page
+from maestro.rawstore import RawStore
 from maestro.store import Store
 
 log = logging.getLogger(__name__)
@@ -72,12 +72,7 @@ def import_page(
     """
     module = load_extractor(store.pack.path.parent, extractor)
     body = Path(file).read_bytes()
-    digest = hashlib.sha256(body).hexdigest()
-    cache_dir = Path(cache_dir)
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    path = cache_dir / f"{digest}.html"
-    if not path.exists():
-        path.write_bytes(body)
+    digest, path = RawStore(cache_dir).put(body)
     page = Page(url=url, status=200, body=body, sha256=digest, path=path)
     raw_id = store.record_raw_page(url, 200, digest, str(path))
     store.conn.execute("INSERT INTO import_log (raw_page_id, extractor, options) VALUES (%s, %s, %s)",
@@ -127,13 +122,30 @@ def run_jobs(store: Store, fetcher: Fetcher, *, max_jobs: int, options: dict[str
     return stats
 
 
-def replay(source: Store, target: Store, *, root: Path | None = None) -> RunStats:
+def _replay_body(source: Store, raw: RawStore, r: dict[str, Any], root: Path | None) -> tuple[bytes, str, Path]:
+    """The page for a replayed row: by hash, else (when it was fetched again and had changed) the newest
+    copy of the same URL that is on disk. Returns body, hash and path."""
+    path = raw.locate(r["sha256"], r["path"], root or Path.cwd())
+    if path is not None:
+        return path.read_bytes(), r["sha256"], path
+    for alt in source.conn.execute(
+            "SELECT sha256, path FROM raw_page WHERE url = %s AND id > %s ORDER BY id DESC", (r["url"], r["raw_page_id"])):
+        path = raw.locate(alt["sha256"], alt["path"], root or Path.cwd())
+        if path is not None:
+            log.warning("replay of %s uses a later copy (%s): the original page is missing", r["url"], alt["sha256"][:12])
+            return path.read_bytes(), alt["sha256"], path
+    raise FileNotFoundError(f"raw page {r['sha256']} for {r['url']} is missing (see maestro-raw status)")
+
+
+def replay(source: Store, target: Store, *, root: Path | None = None, raw: RawStore | None = None) -> RunStats:
     """Re-run extractors over every page `source` has already fetched or imported, writing into `target`.
 
     Use it after an extractor or core fix: the raw cache is re-read, nothing is fetched. Only the latest
     fetch per (url, extractor) is replayed; every distinct imported file is (one page may be pasted in
     parts). Imports keep the options they were loaded with, and follow-up jobs are not queued. `root` resolves relative cache paths (default: the working directory).
+    Pages are looked up by hash in `raw` (default: the target maestro's raw folder) before their recorded path.
     """
+    raw = raw or RawStore.for_slug(target.pack.slug)
     rows = source.conn.execute(
         """SELECT DISTINCT ON (url, extractor, part) * FROM (
                SELECT r.id AS raw_page_id, r.url, r.http_status, r.sha256, r.path, j.extractor,
@@ -152,11 +164,9 @@ def replay(source: Store, target: Store, *, root: Path | None = None) -> RunStat
         try:
             module = extractors.get(r["extractor"]) or load_extractor(pack_dir, r["extractor"])
             extractors[r["extractor"]] = module
-            path = Path(r["path"])
-            if root is not None and not path.is_absolute():
-                path = root / path
-            page = Page(url=r["url"], status=r["http_status"] or 200, body=path.read_bytes(), sha256=r["sha256"], path=path)
-            raw_id = target.record_raw_page(r["url"], page.status, r["sha256"], r["path"])
+            body, sha, path = _replay_body(source, raw, r, root)
+            page = Page(url=r["url"], status=r["http_status"] or 200, body=body, sha256=sha, path=path)
+            raw_id = target.record_raw_page(r["url"], page.status, sha, str(path) if sha != r["sha256"] else r["path"])
             if r["purpose"] == "import":
                 target.conn.execute("INSERT INTO import_log (raw_page_id, extractor, options) VALUES (%s, %s, %s)",
                                     (raw_id, r["extractor"], Jsonb(r["options"])))
