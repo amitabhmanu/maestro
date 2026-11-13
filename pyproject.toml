@@ -25,6 +25,7 @@ maestro-replay = "maestro.crawl.cli:replay_main"
 maestro-resolve = "maestro.cli:resolve_main"
 maestro-review = "maestro.cli:review_main"
 maestro-report = "maestro.cli:report_main"
+maestro-run = "maestro.cli:run_main"
 
 [build-system]
 requires = ["hatchling>=1.25"]

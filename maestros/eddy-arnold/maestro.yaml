@@ -51,7 +51,7 @@ registers:
 sources:
   - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api}
   # MusicBrainz lists released recordings: one it alone knows is issued (A), or live (C).
-  - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api, api_rps: 1, distinct_ids: false, default_tier: A, live_tier: C, url: "https://musicbrainz.org/ws/2/"}
+  - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api, api_rps: 1, distinct_ids: false, default_tier: A, live_tier: C, url: "https://musicbrainz.org/ws/2/", sweep: {url: "https://musicbrainz.org/ws/2/release?track_artist=1c4c789d-06af-42ef-b86c-7d6bf49c652c&limit=100&offset=0&fmt=json&inc=recordings+release-groups+artist-credits+labels", purpose: spine}}
   - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api}
   - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable}
   - {id: praguefrank, kind: semi, lineage: ruppli, reliability: 0.85, access: unavailable, url: https://countrydiscography.blogspot.com}
