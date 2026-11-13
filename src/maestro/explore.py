@@ -191,8 +191,9 @@ def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
         sc = pop["units"].get(unit["id"])
         summary = unit_summary(sc) if sc else None
         if summary:
-            if "gem" in summary:
-                summary["gem"]["reasons"] = resolve_reasons(summary["gem"]["reasons"], names, names)
+            for k in ("gem", "lead"):
+                if k in summary:
+                    summary[k]["reasons"] = resolve_reasons(summary[k]["reasons"], names, names)
             unit["pop"] = summary
     popularity = {k: pop[k] for k in ("signals", "facets_present", "gems", "listed_without_data",
                                        "unmatched_mentions")}

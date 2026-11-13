@@ -817,7 +817,8 @@ function popDetail(u, d) {
   const p = u.pop;
   if (!p) return `<h4>Popularity</h4><div class="muted" style="font-size:13px">No chart, award, article or reissue found for this ${esc(d.unitWord)} yet.</div>`;
   const facets = (d.popularity.facets_present || []).map(f => `<span>${esc(FACET_LABEL[f] || f)}</span><span class="b" style="width:${p.facets[f] || 0}%;${p.facets[f] ? "" : "background:var(--line);width:100%;opacity:.5"}"></span><span class="mono">${p.facets[f] || "–"}</span>`).join("");
-  const gem = p.gem ? `<div style="margin-top:10px"><span class="gem">gem ${p.gem.score}</span><ul class="why">${p.gem.reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul></div>` : "";
+  const gem = p.gem ? `<div style="margin-top:10px"><span class="gem">gem ${p.gem.score}</span><ul class="why">${p.gem.reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul></div>`
+    : p.lead ? `<div style="margin-top:10px"><span class="muted">Worth a listen (no expert word yet)</span><ul class="why">${p.lead.reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul></div>` : "";
   return `<h4>Popularity · <span class="mono">${p.score}</span> of 100</h4>
     <div class="facetbars">${facets}</div>
     <ul class="why" style="margin-top:8px">${p.evidence.map(e => `<li>${e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.note)}</a>` : esc(e.note)} <span class="muted">(${esc(e.source)})</span></li>`).join("")}</ul>${gem}`;
@@ -831,6 +832,7 @@ function renderGems(res) {
   const scope = isBlank(S.f) ? "the whole canon" : "the " + plural(res.length, d.unitWord) + " that match your search";
   const hits = [...res].filter(u => u._pop).sort((a, b) => b._pop - a._pop || b.pop.evidence.length - a.pop.evidence.length).slice(0, 25);
   const gems = [...res].filter(u => u._gem).sort((a, b) => b._gem - a._gem || a._pop - b._pop).slice(0, 40);
+  const leads = [...res].filter(u => u.pop && u.pop.lead).sort((a, b) => b.pop.lead.score - a.pop.lead.score || a._pop - b._pop).slice(0, 25);
   const item = (u, extra) => `<div class="row" data-u="${u.id}" tabindex="0" role="button"><div class="yr">${u.year || "—"}</div>
     <div style="min-width:0"><div class="t">${esc(u.title)}</div><div class="meta">${unitMeta(u, d)}</div>${extra}</div>
     <div class="side">${popMeter(u)}</div></div>`;
@@ -840,9 +842,11 @@ function renderGems(res) {
   main.innerHTML = `<div class="stack">
     ${answerHtml()}
     <div class="grid2">
-      <div class="panel"><h2>Rare gems</h2><div class="sub">In ${scope}: ${esc(d.unitWord)}s with signs of quality but little reach. ${gems.length ? "The reasons are listed under each." : ""}</div>
-        <div class="ledger">${gems.map(u => item(u, `<ul class="why">${u.pop.gem.reasons.slice(0, 3).map(r => `<li>${esc(r)}</li>`).join("")}</ul>`)).join("") || `<div class="empty">No gems here yet. ${P.gems && P.gems.needs ? "Gems need " + esc(P.gems.needs) + "." : "Gems need acclaim, a strong team or a hit beside them, and nothing here has that evidence with little reach."}</div>`}</div>
-        ${d.gemCount > 40 ? `<button class="btn more" type="button" data-apply='${esc(JSON.stringify({ ...S.f, gems: true, sort: "gem" }))}'>Browse all ${d.gemCount.toLocaleString()} gems</button>` : ""}</div>
+      <div class="panel"><h2>Rare gems</h2><div class="sub">In ${scope}: ${esc(d.unitWord)}s that experts single out but few people know. ${gems.length ? "Who praised each is listed under it." : ""}</div>
+        <div class="ledger">${gems.map(u => item(u, `<ul class="why">${u.pop.gem.reasons.slice(0, 3).map(r => `<li>${esc(r)}</li>`).join("")}</ul>`)).join("") || `<div class="empty">No gems here yet. ${P.gems && P.gems.needs ? "Gems need " + esc(P.gems.needs) + "." : "Gems need an expert's word and little reach."}</div>`}</div>
+        ${d.gemCount > 40 ? `<button class="btn more" type="button" data-apply='${esc(JSON.stringify({ ...S.f, gems: true, sort: "gem" }))}'>Browse all ${d.gemCount.toLocaleString()} gems</button>` : ""}
+        ${leads.length ? `<h2 style="margin-top:18px">Worth a listen</h2><div class="sub">No expert word yet, but a strong team, a hit beside them, or reissues without chart success. Leads, not gems.</div>
+        <div class="ledger">${leads.map(u => item(u, `<ul class="why">${u.pop.lead.reasons.slice(0, 2).map(r => `<li>${esc(r)}</li>`).join("")}</ul>`)).join("")}</div>` : ""}</div>
       <div class="panel"><h2>Biggest hits</h2><div class="sub">In ${scope}, by popularity: the share of the canon each ${esc(d.unitWord)} beats on its strongest evidence, plus agreement across kinds of evidence.</div>
         <div class="ledger">${hits.map(u => item(u, `<ul class="why">${u.pop.evidence.slice(0, 2).map(e => `<li>${esc(e.note)}</li>`).join("")}</ul>`)).join("")}</div>
         <button class="btn more" type="button" data-apply='${esc(JSON.stringify({ ...S.f, sort: "popular" }))}'>Browse by popularity</button></div>
@@ -1102,7 +1106,7 @@ async function askClaude() {
       inputSchema: { type: "object", properties: { filter: FILTER_SCHEMA }, required: ["filter"] },
       execute: x => { const f = filterFromTool(x.filter || {}); delete f._notFound; S.f = f; S.limit = 150; const n = applyFilter(d, f).length; step(`showing ${n}`); setTimeout(render, 0); return { shown: n }; } },
   ];
-  const prompt = `You help a music researcher explore the canon of ${d.maestro.name}: every ${d.unitWord} in a sourced database. Use the tools to look things up; never answer from memory about what the canon holds. Names in tool input should be written as the canon spells them (see frequent_collaborators, or use lookup_person). When the answer is a set of ${d.unitWord}s, call show_results with the filter so the list appears on the page. Then answer in 1 to 4 plain sentences with the numbers you found. Popularity (0 to 100, a rank within this canon from charts, awards, articles and reissues) and rare gems (quality evidence but little reach) are in each result when known: sort with popular or gem, or set gems_only. If the canon lacks the data to answer (for example ragas or lyrics), say so briefly.
+  const prompt = `You help a music researcher explore the canon of ${d.maestro.name}: every ${d.unitWord} in a sourced database. Use the tools to look things up; never answer from memory about what the canon holds. Names in tool input should be written as the canon spells them (see frequent_collaborators, or use lookup_person). When the answer is a set of ${d.unitWord}s, call show_results with the filter so the list appears on the page. Then answer in 1 to 4 plain sentences with the numbers you found. Popularity (0 to 100, a rank within this canon from charts, awards, articles and reissues) and rare gems (praised by experts or picked by the user, with little reach) are in each result when known: sort with popular or gem, or set gems_only. If the canon lacks the data to answer (for example ragas or lyrics), say so briefly.
 
 Canon context (JSON):
 ${JSON.stringify(context)}

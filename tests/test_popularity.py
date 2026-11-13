@@ -133,9 +133,41 @@ def test_gems_from_picks_and_shadow(store_for):
     res = score_canon(s)
     u = res["units"]
     assert res["gems"]["reach_known"] and res["gems"]["hit_list_years"] == [1957, 1957]
-    assert u[side].gem and any(r.startswith("sibling:") for r in u[side].gem_reasons)
+    # A hit beside it makes a lead to listen to, not a gem: only experts and picks speak for quality.
+    assert not u[side].gem and u[side].lead and any(r.startswith("sibling:") for r in u[side].lead_reasons)
     assert u[plain[5]].gem and u[plain[5]].gem_reasons[0] == "your pick"
     assert not u[hit].gem
+
+
+def test_gems_come_from_expert_opinion(store_for):
+    s = store_for("rafi")
+    hit, side, plain, f = _canon(s)
+    other = person(s, "hfgk_online", "3", "A Third Composer")
+    rare = song(s, "hfgk_online", "301", "Koi Sagar Dil Ko Behlata Nahin Ab", None, other)
+    listed = song(s, "hfgk_online", "302", "Tasveer Banata Hoon Teri Khoon E Jigar Se", None, other)
+    vetoed = song(s, "hfgk_online", "303", "Mujhe Duniya Walo Sharabi Na Samjho", None, other)
+    # A bigger canon, so that a voice naming four units is a choosy one.
+    for i in range(400):
+        song(s, "hfgk_online", str(1000 + i), f"Filler Song {i} Nobody Wrote About", None, other)
+    c = ctx(s)
+    record_mention(c, "songsofyore", "songsofyore", "Koi Sagar Dil Ko Behlata Nahin Ab", strength=1,
+                   note="a less heard gem", expert="AK", framing="gem")
+    record_mention(c, "songsofyore", "songsofyore", "Tasveer Banata Hoon Teri Khoon E Jigar Se", strength=1,
+                   note="in a best-of list", expert="AK", framing="listed")
+    # An expert's word on a hit does not make it a gem: its reach is too high.
+    record_mention(c, "wikipedia", "binaca_geetmala", "Jinhen Naaz Hai Hind Par", strength=40, container="Pyaasa", note="#1")
+    record_mention(c, "songsofyore", "songsofyore", "Jinhen Naaz Hai Hind Par", strength=1, container="Pyaasa",
+                   note="a masterpiece", expert="AK", framing="gem")
+    s.upsert_claim(vetoed, "pick", value=False, source_id="user", kind="decided")
+    record_mention(c, "songsofyore", "songsofyore", "Mujhe Duniya Walo Sharabi Na Samjho", strength=1,
+                   note="underrated", expert="AK", framing="gem")
+    res = score_canon(s)
+    u = res["units"]
+    assert u[rare].gem and u[rare].gem_reasons == ["a less heard gem"]
+    assert u[rare].quality > u[listed].quality > 0 and not u[listed].gem
+    assert u[hit].quality > 0.6 and not u[hit].gem
+    assert u[vetoed].quality > 0.6 and not u[vetoed].gem  # the user said it is not a gem
+    assert res["gems"]["voices"]["AK"]["units"] == 4
 
 
 def test_snapshot_carries_popularity(store_for):

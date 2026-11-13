@@ -22,17 +22,19 @@ unit is the share of the canon's units it beats on that signal (units without th
 A facet takes its best signal. Popularity is 0.7 x the best facet plus 0.3 x the weighted mean of
 the facets this canon has any data for, so one strong kind of evidence counts and agreement adds.
 
-A **gem** is a unit with quality evidence and little reach. Reach is popularity without the esteem
-facet. Quality is the best of: acclaim (the esteem facet, or the user's own pick), the team (the
-best average popularity among the unit's collaborators' other units) and a hit beside it (the most
-popular other unit in the same film, album or session). Gem score = quality x (1 - reach), for units
-whose reach is under 0.5 and quality at least 0.6. Every gem lists its reasons.
+A **gem** is a unit experts single out that few people know. Quality comes only from expert
+opinion (the esteem facet: critics, curated lists, connoisseurs; see `_expert_quality`) or the
+user's own pick, never from popularity. Reach (popularity without esteem) only filters: a gem's
+reach is under 0.5. Units with no expert word but other signs of worth (a strong team, a hit beside
+them, reissued but never a hit) are **leads**, listed separately. The user's picks and "not a gem"
+marks calibrate how much each expert voice counts. Every gem and lead lists its reasons.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 from collections import defaultdict
@@ -51,6 +53,10 @@ PRESENCE_CAP = 0.4
 
 GEM_MAX_REACH = 0.5
 GEM_MIN_QUALITY = 0.6
+FRAMING = {"gem": 1.0, "praise": 0.6, "listed": 0.25}  # how an expert speaks of a unit
+SELECTIVE_SHARE = 0.01  # a voice naming this share of the canon or less has its full say
+VOICE_MAX = 0.9  # no single voice makes a gem certain
+CALIBRATION_MIN_PICKS = 10  # picks needed before voices are weighted by agreement with the user
 TEAM_MIN_UNITS = 4  # a collaborator needs this many other units in the canon to vouch for a team
 TEAM_SHRINK = 10  # pseudo-units of popularity 0 added to a collaborator's average
 TEAM_WEIGHT = 0.75
@@ -98,6 +104,8 @@ class Evidence:
     source: str
     url: str | None = None
     cap: float = 1.0
+    expert: str | None = None  # esteem: the voice (an author) when a source carries several
+    framing: str | None = None  # esteem: gem, praise or listed (see FRAMING)
 
 
 @dataclass
@@ -111,8 +119,11 @@ class Scored:
     popularity: float = 0.0
     reach: float = 0.0
     picked: bool = False
+    quality: float = 0.0  # expert opinion, 0-1 (1 for the user's pick)
     gem: float = 0.0
     gem_reasons: list[str] = field(default_factory=list)
+    lead: float = 0.0  # worth a listen, no expert word yet
+    lead_reasons: list[str] = field(default_factory=list)
     facet_of: dict[str, str] = field(default_factory=dict, repr=False)
 
 
@@ -284,6 +295,7 @@ def score_canon(store: Store, include_private: bool = False) -> dict[str, Any]:
     rel: dict[int, set[str]] = defaultdict(set)
     cat: dict[int, set[str]] = defaultdict(set)
     picks: set[int] = set()
+    not_gems: set[int] = set()
     by_qid: dict[str, int] = {}
     for r in _unit_facts(store, members, ("title", "on_release", "catalogue", "pick", "film", "xref")):
         uid = members[r["entity_id"]]
@@ -300,8 +312,8 @@ def score_canon(store: Store, include_private: bool = False) -> dict[str, Any]:
             k = catalogue_key(v)
             if k:
                 cat[uid].add(k)
-        elif r["field"] == "pick" and r["source_id"] == "user" and v is not False:
-            picks.add(uid)
+        elif r["field"] == "pick" and r["source_id"] == "user":
+            (not_gems if v is False else picks).add(uid)
 
     def add(uid: int, ev: Evidence) -> None:
         s = scored[uid]
@@ -332,7 +344,7 @@ def score_canon(store: Store, include_private: bool = False) -> dict[str, Any]:
     for sig in sorted(set(facet_of) & pack_sources):
         for uid, sc in scored.items():
             if sig in sc.unit.sources:
-                add(uid, Evidence(sig, 1, f"listed by {sig}", sig, cap=PRESENCE_CAP))
+                add(uid, Evidence(sig, 1, f"listed by {sig}", sig, cap=PRESENCE_CAP, framing="listed"))
 
     matcher = MentionMatcher(scored, norm, _container_titles(store, groups))
     unmatched = []
@@ -356,7 +368,8 @@ def score_canon(store: Store, include_private: bool = False) -> dict[str, Any]:
                               "container": v.get("container"), "note": v.get("note"), "source": m["source_id"]})
             continue
         add(uid, Evidence(v["signal"], float(v.get("strength") or 1), v.get("note") or v["signal"],
-                          m["source_id"], v.get("url") or m["page"], float(v.get("cap") or 1.0)))
+                          m["source_id"], v.get("url") or m["page"], float(v.get("cap") or 1.0),
+                          v.get("expert"), v.get("framing")))
 
     universe = list(scored)
     signals = sorted({sig for s in scored.values() for sig in s.signals})
@@ -378,7 +391,8 @@ def score_canon(store: Store, include_private: bool = False) -> dict[str, Any]:
         s.picked = s.unit.id in picks
         s.facet_of = facet_of
 
-    gems = _score_gems(scored, maestro, present, pack.container, set(pack.data["roles"]["in_scope"]))
+    gems = _score_gems(scored, maestro, present, pack.container, set(pack.data["roles"]["in_scope"]),
+                       facet_of, picks, not_gems)
 
     return {
         "maestro": pack.slug,
@@ -386,10 +400,9 @@ def score_canon(store: Store, include_private: bool = False) -> dict[str, Any]:
                     for sig in signals},
         "facets_present": present,
         "gems": {**gems, "found": sum(1 for s in scored.values() if s.gem),
-                 "needs": None if gems["reach_known"] else
-                 f"hit lists (charts, countdowns) that cover at least {REDISCOVERY_COVERAGE:.0%} of the units "
-                 f"from the years they span; this canon's cover {gems['contemporary_coverage']:.1%}, so only your picks and acclaimed "
-                 "units can be gems"},
+                 "leads": sum(1 for s in scored.values() if s.lead),
+                 "needs": None if any(s.gem for s in scored.values()) else
+                 "expert opinion: critics, curated lists or connoisseurs singling units out (or your own picks)"},
         "listed_without_data": sorted(set(facet_of) - set(signals)),
         "unmatched_mentions": unmatched,
         "ignored_mentions": dict(ignored),
@@ -397,21 +410,84 @@ def score_canon(store: Store, include_private: bool = False) -> dict[str, Any]:
     }
 
 
-def _score_gems(scored: dict[int, Scored], maestro: int, present: list[str], container_kind: str,
-                own_roles: set[str]) -> dict[str, Any]:
-    """Four kinds of gem, each a quality and the reach it is measured against:
+def _voice_of(e: Evidence) -> str:
+    return e.expert or e.source
 
-    * acclaimed: the esteem facet or the user's pick, against reach (popularity without esteem);
-    * rediscovered: the enduring facet (reissues, articles) against the contemporary one, i.e.
-      never a hit at the time but compilers and writers keep coming back to it. Only when the
-      contemporary signals cover at least REDISCOVERY_COVERAGE of the units from the years they span,
-      and only for units from those years, so that missing from them means something (a list of a few #1s says nothing about the rest);
-    * great team: the collaborators' other units are popular, against reach;
-    * in a hit's shadow: the most popular other unit in the same film, album or score (not a
-      recording session, whose tracks share only a date), against reach.
+
+def _expert_quality(scored: dict[int, Scored], facet_of: dict[str, str], picks: set[int]) -> dict[str, Any]:
+    """Quality from expert opinion: each unit's esteem evidence, voice by voice.
+
+    A voice is one expert (an author, or a source that speaks as one). Several posts from one voice
+    count once, at their strongest framing: singling a unit out as rare, underrated or less heard
+    ("gem") counts most, praise ("praise") less, appearing in a long list ("listed") least. A voice
+    that names a large share of the canon says little about any one unit, so its word is scaled by
+    its selectivity. When the user has marked picks, each voice is also weighted by how often it
+    names them compared with its base rate. Quality = 1 - prod(1 - word) over the voices.
     """
+    n = max(1, len(scored))
+    named: dict[str, set[int]] = defaultdict(set)
+    best: dict[int, dict[str, float]] = defaultdict(dict)
+    for uid, s in scored.items():
+        for e in s.evidence:
+            if facet_of.get(e.signal) != "esteem":
+                continue
+            v = _voice_of(e)
+            named[v].add(uid)
+            f = FRAMING.get(e.framing or "listed", FRAMING["listed"])
+            best[uid][v] = max(best[uid].get(v, 0.0), f)
+    voices: dict[str, dict[str, Any]] = {}
+    for v, ids in named.items():
+        share = len(ids) / n
+        sel = max(0.05, min(1.0, math.log(1 / share) / math.log(1 / SELECTIVE_SHARE))) if share < 1 else 0.05
+        weight, agree = 1.0, None
+        if len(picks) >= CALIBRATION_MIN_PICKS:
+            hit = len(ids & picks)
+            agree = hit / len(picks)
+            # Lift over the voice's base rate, smoothed, kept within [0.5, 2].
+            weight = max(0.5, min(2.0, ((hit + 1) / (len(picks) * share + 1)) ** 0.5))
+        voices[v] = {"units": len(ids), "selectivity": round(sel, 3), "weight": round(weight, 3),
+                     **({"names_picks": round(agree, 3)} if agree is not None else {})}
+    for uid, by_voice in best.items():
+        miss = 1.0
+        for v, f in by_voice.items():
+            miss *= 1 - min(VOICE_MAX, f * voices[v]["selectivity"] * voices[v]["weight"])
+        scored[uid].quality = 1 - miss
+    for uid in picks:
+        if uid in scored:
+            scored[uid].quality = 1.0
+    return voices
+
+
+def _score_gems(scored: dict[int, Scored], maestro: int, present: list[str], container_kind: str,
+                own_roles: set[str], facet_of: dict[str, str], picks: set[int], not_gems: set[int]) -> dict[str, Any]:
+    """A gem is a unit experts single out that few people know.
+
+    Quality comes only from expert opinion (`_expert_quality`) or the user's own pick; popularity is
+    never evidence of quality. Reach (popularity without esteem) is a filter: a gem's reach must be
+    under GEM_MAX_REACH. Gem score = quality, less a little for reach, so between equally praised
+    units the less known comes first. A unit the user marked "not a gem" never is one.
+
+    Leads are units worth a listen but with no expert word yet, each with its reason:
+    * great team: the collaborators' other units are popular;
+    * in a hit's shadow: the most popular other unit in the same film, album or score (not a
+      recording session, whose tracks share only a date);
+    * rediscovered: reissued or written about again and again, but never on the hit lists (only when
+      the lists span the unit's year, cover REDISCOVERY_COVERAGE of those years' units and name
+      REDISCOVERY_CAPTURE of the most enduring ones).
+    """
+    voices = _expert_quality(scored, facet_of, picks)
+    for uid, s in scored.items():
+        if uid in not_gems or s.quality < GEM_MIN_QUALITY or s.reach >= GEM_MAX_REACH:
+            continue
+        s.gem = max(0.01, s.quality - 0.1 * s.reach)
+        if s.picked:
+            s.gem_reasons.append("your pick")
+        notes = sorted(((FRAMING.get(e.framing or "listed", 0), e.note) for e in s.evidence
+                        if facet_of.get(e.signal) == "esteem"), reverse=True)
+        s.gem_reasons += list(dict.fromkeys(n for _, n in notes))[:3]
+
     if not present:
-        return {"reach_known": False, "contemporary_coverage": 0.0}
+        return {"reach_known": False, "contemporary_coverage": 0.0, "voices": voices}
     by_person: dict[int, list[int]] = defaultdict(list)
     for uid, s in scored.items():
         for role, ids in s.unit.credits.items():
@@ -459,18 +535,15 @@ def _score_gems(scored: dict[int, Scored], maestro: int, present: list[str], con
     rediscovery = reach_known and "enduring" in present and capture >= REDISCOVERY_CAPTURE
 
     for uid, s in scored.items():
+        if s.gem or uid in not_gems:
+            continue
         known = reach_known and uid in in_era
-        options: list[tuple[float, str]] = []  # (gem score, reason)
-        acclaim = 1.0 if s.picked else s.facets.get("esteem", 0.0)
-        if acclaim >= GEM_MIN_QUALITY and s.reach < GEM_MAX_REACH:
-            notes = [e.note for e in s.evidence if facet_of_evidence(s, e) == "esteem"]
-            why = "your pick" if s.picked else "acclaimed: " + "; ".join(notes[:2])
-            options.append((acclaim * (1 - s.reach), why))
+        options: list[tuple[float, str]] = []  # (lead score, reason)
         if rediscovery and known:
             cont, end = s.facets.get("contemporary", 0.0), s.facets.get("enduring", 0.0)
             if end >= REDISCOVERY_MIN and cont < GEM_MAX_REACH:
                 notes = [e.note for e in s.evidence if e.signal in s.signal_scores
-                         and facet_of_evidence(s, e) == "enduring"]
+                         and s.facet_of.get(e.signal) == "enduring"]
                 options.append((end * (1 - cont), "never a hit, but kept alive: " + "; ".join(notes[:2])))
         team = TEAM_WEIGHT * team_rank.get(uid, 0.0) if known else 0.0
         if team >= GEM_MIN_QUALITY and s.reach < GEM_MAX_REACH and team_raw[uid][1]:
@@ -484,18 +557,11 @@ def _score_gems(scored: dict[int, Scored], maestro: int, present: list[str], con
         if not options:
             continue
         options.sort(reverse=True)
-        # More than one kind of evidence, and any esteem at all (a curator wrote about it), lift a gem.
-        s.gem = min(1.0, options[0][0] + 0.05 * (len(options) - 1) + 0.1 * s.facets.get("esteem", 0.0))
-        s.gem_reasons = [why for _, why in options]
-        if not s.evidence:
-            s.gem_reasons.append("no chart, award, article or reissue found")
+        s.lead = min(1.0, options[0][0] + 0.05 * (len(options) - 1))
+        s.lead_reasons = [why for _, why in options]
     return {"reach_known": reach_known, "contemporary_coverage": round(contemporary_cover, 4),
             "hit_list_years": list(era) if era else None, "rediscovery": rediscovery,
-            "lasting_captured": round(capture, 4)}
-
-
-def facet_of_evidence(s: Scored, e: Evidence) -> str | None:
-    return s.facet_of.get(e.signal)
+            "lasting_captured": round(capture, 4), "voices": voices}
 
 
 def ordered_evidence(s: Scored) -> list[Evidence]:
@@ -514,7 +580,7 @@ def ordered_evidence(s: Scored) -> list[Evidence]:
 
 def unit_summary(s: Scored) -> dict[str, Any] | None:
     """The JSON a snapshot carries for one unit (None when nothing is known)."""
-    if not s.evidence and not s.gem and not s.picked:
+    if not s.evidence and not s.gem and not s.picked and not s.lead:
         return None
     out: dict[str, Any] = {
         "score": round(100 * s.popularity),
@@ -524,8 +590,12 @@ def unit_summary(s: Scored) -> dict[str, Any] | None:
     }
     if s.picked:
         out["picked"] = True
+    if s.quality:
+        out["quality"] = round(100 * s.quality)
     if s.gem:
         out["gem"] = {"score": round(100 * s.gem), "reasons": s.gem_reasons}
+    if s.lead:
+        out["lead"] = {"score": round(100 * s.lead), "reasons": s.lead_reasons}
     return out
 
 
@@ -550,7 +620,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--pack", default=os.environ.get("MAESTRO_PACK"), required=os.environ.get("MAESTRO_PACK") is None)
     p.add_argument("--dsn", default=os.environ.get("MAESTRO_DSN"), required=os.environ.get("MAESTRO_DSN") is None)
     p.add_argument("--top", type=int, default=20, help="how many popular units and gems to list")
-    p.add_argument("--pick", type=int, nargs="+", metavar="UNIT", help="record the user's pick (quality evidence for gems)")
+    p.add_argument("--pick", type=int, nargs="+", metavar="UNIT", help="record the user's pick: a gem (also calibrates the experts)")
+    p.add_argument("--not-gem", type=int, nargs="+", metavar="UNIT", help="record that the user says a unit is not a gem")
     p.add_argument("--json", action="store_true", help="print every scored unit as JSON")
     p.add_argument("--include-private", action="store_true")
     args = p.parse_args(argv)
@@ -561,6 +632,11 @@ def main(argv: list[str] | None = None) -> int:
                 store.upsert_claim(uid, "pick", value=True, source_id="user", kind="decided")
             store.conn.commit()
             print(f"recorded {len(args.pick)} pick(s)")
+        if args.not_gem:
+            for uid in args.not_gem:
+                store.upsert_claim(uid, "pick", value=False, source_id="user", kind="decided")
+            store.conn.commit()
+            print(f"recorded {len(args.not_gem)} not-a-gem mark(s)")
         res = score_canon(store, include_private=args.include_private)
         labels = {r["id"]: r["label"] for r in store.conn.execute("SELECT id, label FROM entity").fetchall()}
     finally:
@@ -571,7 +647,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     print(f"{res['maestro']}: signals {json.dumps(res['signals'])}")
     if res["gems"].get("needs"):
-        print(f"gems are limited: they need {res['gems']['needs']}")
+        print(f"no gems yet: they need {res['gems']['needs']}")
     if res["listed_without_data"]:
         print(f"listed in the pack, no data yet: {', '.join(res['listed_without_data'])}")
     ranked = sorted(units.values(), key=lambda s: -s.popularity)
@@ -584,6 +660,17 @@ def main(argv: list[str] | None = None) -> int:
     for s in gems[:args.top]:
         print(f"  {round(100 * s.gem):3d}  {s.unit.label} ({s.unit.year})  "
               f"{'; '.join(resolve_reasons(s.gem_reasons, labels, labels))}")
+    voices = res["gems"].get("voices") or {}
+    if voices:
+        print("\nExpert voices (units named, selectivity, weight from your picks):")
+        for v, x in sorted(voices.items(), key=lambda kv: -kv[1]["selectivity"]):
+            print(f"  {v}: {x['units']} units, selectivity {x['selectivity']}, weight {x['weight']}"
+                  + (f", names {x['names_picks']:.0%} of your picks" if "names_picks" in x else ""))
+    leads = sorted((s for s in units.values() if s.lead), key=lambda s: -s.lead)
+    print(f"\nLeads, worth a listen but no expert word yet ({len(leads)}, top {args.top}):")
+    for s in leads[:args.top]:
+        print(f"  {round(100 * s.lead):3d}  {s.unit.label} ({s.unit.year})  "
+              f"{'; '.join(resolve_reasons(s.lead_reasons, labels, labels))}")
     if res["unmatched_mentions"]:
         print(f"\nMentions matching no unit ({len(res['unmatched_mentions'])}): possible gaps")
         for m in res["unmatched_mentions"][:args.top]:
