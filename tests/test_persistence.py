@@ -172,7 +172,15 @@ def test_real_pg_dump_round_trip(tmp_path, store_for, pg_server):
 
     if not pg_tool("pg_dump") or not pg_tool("pg_restore"):
         pytest.skip("pg_dump/pg_restore not installed")
+    import re
+    import subprocess
+
     store = store_for("rafi")
+    version = subprocess.run([pg_tool("pg_restore"), "--version"], capture_output=True, text=True).stdout
+    client = int(re.search(r"\)\s*(\d+)", version).group(1))
+    server = int(store.conn.execute("SHOW server_version_num").fetchone()["server_version_num"]) // 10000
+    if client > server:
+        pytest.skip(f"pg_restore {client} writes settings a PostgreSQL {server} server does not know")
     eid = store.create_entity("song", "Test song")
     store.upsert_claim(eid, "title", value="Test song", source_id="user")
     r = backup("rafi", _dsn(pg_server, store), tmp_path, raw_root=tmp_path / "none")
@@ -180,8 +188,6 @@ def test_real_pg_dump_round_trip(tmp_path, store_for, pg_server):
         admin.execute('DROP DATABASE IF EXISTS "t_restore"')
         admin.execute("CREATE DATABASE t_restore ENCODING 'UTF8' TEMPLATE template0")
     dsn = pg_server.rsplit("/", 1)[0] + "/t_restore"
-    import subprocess
-
     subprocess.run([pg_tool("pg_restore"), "--no-owner", "--no-privileges", f"--dbname={dsn}", r["dump"]], check=True)
     restored = Store.connect(dsn, store.pack)
     try:
