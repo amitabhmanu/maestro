@@ -63,6 +63,10 @@ def review_main(argv: list[str] | None = None) -> int:
     maestro-review 12 distinct           they are different entities (never queued again)
     maestro-review 12 dismiss            close the item without a decision
     maestro-review --export items.json   every open item with its evidence, as JSON
+    maestro-review --export q.json --grouped
+                                         the open items grouped into questions that cannot chain
+    maestro-review --apply answers.json  record a reviewer's answers to grouped questions:
+                                         {"answers": [{"items": [...], "groups": [[ids], ...] or null}]}
     """
     from maestro.resolve import decide_review, open_reviews
 
@@ -74,13 +78,36 @@ def review_main(argv: list[str] | None = None) -> int:
     p.add_argument("--kind", help="list only this kind")
     p.add_argument("--limit", type=int, default=30)
     p.add_argument("--export", metavar="FILE", help="write every open item with its evidence as JSON (for a review page)")
+    p.add_argument("--grouped", action="store_true",
+                   help="with --export: group items into questions, so answers to pairs cannot chain")
+    p.add_argument("--apply", metavar="FILE", help="record answers to grouped questions from a JSON file")
     args, store = _store(p, argv)
-    if args.export:
+    if args.export and args.grouped:
+        from maestro.resolve import review_questions
+
+        qs = review_questions(store)
+        Path(args.export).write_text(json.dumps({"maestro": store.pack.slug, "questions": qs}, ensure_ascii=False), "utf-8")
+        print(f"{len(qs)} questions ({sum(len(q['pairs']) for q in qs)} items) written to {args.export}")
+    elif args.export:
         from maestro.resolve import export_reviews
 
         items = export_reviews(store)
         Path(args.export).write_text(json.dumps({"maestro": store.pack.slug, "items": items}, ensure_ascii=False), "utf-8")
         print(f"{len(items)} open items written to {args.export}")
+    elif args.apply:
+        from collections import Counter
+
+        from maestro.resolve import apply_groups
+
+        total: Counter[str] = Counter()
+        failed = 0
+        for a in json.loads(Path(args.apply).read_text("utf-8"))["answers"]:
+            try:
+                total.update(apply_groups(store, a["items"], a.get("groups"), a.get("note") or args.note))
+            except ValueError as e:
+                failed += 1
+                print(f"items {a['items']}: not applied: {e}")
+        print(json.dumps(dict(total)) + (f"; {failed} answers not applied" if failed else ""))
     elif args.item is None:
         for r in open_reviews(store, args.limit, args.kind):
             print(f"#{r['id']} [{r['kind']}, priority {r['priority']}] {r['subject_ids']}: "
