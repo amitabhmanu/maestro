@@ -62,6 +62,7 @@ def review_main(argv: list[str] | None = None) -> int:
     maestro-review 12 merge [--keep ID]  the subjects of item 12 are one entity
     maestro-review 12 distinct           they are different entities (never queued again)
     maestro-review 12 dismiss            close the item without a decision
+    maestro-review --export items.json   every open item with its evidence, as JSON
     """
     from maestro.resolve import decide_review, open_reviews
 
@@ -72,8 +73,15 @@ def review_main(argv: list[str] | None = None) -> int:
     p.add_argument("--note")
     p.add_argument("--kind", help="list only this kind")
     p.add_argument("--limit", type=int, default=30)
+    p.add_argument("--export", metavar="FILE", help="write every open item with its evidence as JSON (for a review page)")
     args, store = _store(p, argv)
-    if args.item is None:
+    if args.export:
+        from maestro.resolve import export_reviews
+
+        items = export_reviews(store)
+        Path(args.export).write_text(json.dumps({"maestro": store.pack.slug, "items": items}, ensure_ascii=False), "utf-8")
+        print(f"{len(items)} open items written to {args.export}")
+    elif args.item is None:
         for r in open_reviews(store, args.limit, args.kind):
             print(f"#{r['id']} [{r['kind']}, priority {r['priority']}] {r['subject_ids']}: "
                   f"{json.dumps(r['evidence'], ensure_ascii=False)}")
