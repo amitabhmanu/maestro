@@ -60,4 +60,6 @@ schtasks /Create /SC DAILY /ST 23:00 /TN "maestro backup" /TR "cmd /c cd /d C:\p
 ```
 
 Test a restore now and then: restore the newest dump into a scratch database and compare
-`maestro-report` with the live store.
+`maestro-report` with the live store. A brand-new database needs `CREATE EXTENSION vector` run by the
+postgres superuser before the restore (the maestro login cannot); without it pg_restore reports two
+harmless errors about the extension.
