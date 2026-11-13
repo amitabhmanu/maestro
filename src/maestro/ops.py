@@ -28,7 +28,8 @@ def _targets(p: argparse.ArgumentParser, args: argparse.Namespace) -> list[tuple
         for d in sorted(Path("maestros").iterdir()):
             if (d / "maestro.yaml").is_file():
                 pack = load_pack(d)
-                dsn = os.environ.get(config.dsn_env_name(pack.slug))
+                name = config.dsn_env_name(pack.slug)
+                dsn = os.environ.get(name) or config.read_env_file().get(name)
                 if dsn:
                     out.append((pack, dsn))
         if not out:

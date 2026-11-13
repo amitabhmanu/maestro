@@ -113,7 +113,7 @@ def test_non_utf8_database_is_refused(pg_server):
 
     with psycopg.connect(pg_server, autocommit=True) as admin:
         admin.execute('DROP DATABASE IF EXISTS "t_ascii"')
-        admin.execute("CREATE DATABASE \"t_ascii\" ENCODING 'SQL_ASCII' TEMPLATE template0")
+        admin.execute("CREATE DATABASE \"t_ascii\" ENCODING 'SQL_ASCII' TEMPLATE template0 LC_COLLATE 'C' LC_CTYPE 'C'")
     try:
         with pytest.raises(StoreError, match="UTF8"):
             Store.connect(pg_server.rsplit("/", 1)[0] + "/t_ascii", load_pack(ROOT / "maestros" / "rafi"))

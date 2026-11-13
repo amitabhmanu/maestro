@@ -21,6 +21,7 @@ from maestro.crawl.fetcher import Fetcher
 
 def test_env_file_and_dsn_lookup(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("MAESTRO_NO_DOTENV")
     for k in ("MAESTRO_DSN", "MAESTRO_DSN_EDDY_ARNOLD", "MAESTRO_DSN_RAFI", "MAESTRO_DATA_DIR"):
         monkeypatch.delenv(k, raising=False)
     (tmp_path / ".env").write_text(
@@ -30,8 +31,17 @@ def test_env_file_and_dsn_lookup(tmp_path, monkeypatch):
     assert config.dsn_env_name("eddy-arnold") == "MAESTRO_DSN_EDDY_ARNOLD"
     assert config.dsn_for("eddy-arnold") == "postgresql://maestro@localhost/arnold"
     assert config.dsn_for("rafi") == "postgresql://from-env/rafi"          # environment wins over .env
-    assert config.dsn_for("jean-wiener") == "postgresql://fallback"         # then MAESTRO_DSN
+    assert config.dsn_for("jean-wiener") == "postgresql://fallback"         # then MAESTRO_DSN in .env
+    # A MAESTRO_DSN set in the environment (as tests and one-off runs do) beats every .env setting.
+    monkeypatch.setenv("MAESTRO_DSN", "postgresql://scratch")
+    assert config.dsn_for("eddy-arnold") == "postgresql://scratch"
+    assert config.dsn_for("rafi") == "postgresql://from-env/rafi"
+    monkeypatch.delenv("MAESTRO_DSN")
+    monkeypatch.setenv("MAESTRO_NO_DOTENV", "1")
+    assert config.dsn_for("eddy-arnold") is None
     assert config.dsn_for("rafi", "postgresql://explicit") == "postgresql://explicit"
+    monkeypatch.delenv("MAESTRO_NO_DOTENV")
+    monkeypatch.delenv("MAESTRO_DATA_DIR", raising=False)
     assert config.raw_dir("rafi") == Path("store-data") / "rafi" / "raw"
 
 

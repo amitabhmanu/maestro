@@ -21,7 +21,9 @@ machine and never go into git.
 
 3. **Credentials.** Put the password in `pgpass.conf` (`%APPDATA%\postgresql\pgpass.conf` on Windows,
    `~/.pgpass` elsewhere: `localhost:5432:*:maestro:<password>`), copy `.env.example` to `.env`, and
-   fill in one `MAESTRO_DSN_<SLUG>` per maestro. Commands then need only `--pack`.
+   fill in one `MAESTRO_DSN_<SLUG>` per maestro. Commands then need only `--pack`. A `--dsn`, or a
+   `MAESTRO_DSN_<SLUG>` / `MAESTRO_DSN` set in the shell, always wins over `.env`; the test suite
+   ignores `.env` and every `MAESTRO_DSN_*`, so `pytest` never touches the live stores.
 4. **Install and migrate:** `uv venv && uv pip install -e ".[dev]"`, then `uv run maestro-migrate --all`.
 5. **Restore a store from a dump** (into the empty database):
    `pg_restore --no-owner --no-privileges -d maestro_rafi rafi-....dump`, then `uv run maestro-migrate --all`.

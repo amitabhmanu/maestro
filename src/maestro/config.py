@@ -7,7 +7,9 @@ repo with one connection string per maestro:
     MAESTRO_DSN_EDDY_ARNOLD=...
     MAESTRO_DATA_DIR=C:/Users/me/maestro-data      (optional; default ./data)
 
-Commands then need only `--pack`. Variables already set in the environment win over the file.
+Commands then need only `--pack`. Anything set in the process environment wins over the file:
+`--dsn`, then MAESTRO_DSN_<SLUG> and MAESTRO_DSN from the environment, then the same two from `.env`.
+Setting MAESTRO_NO_DOTENV=1 (the test suite does) ignores the file altogether.
 """
 
 from __future__ import annotations
@@ -18,14 +20,12 @@ from pathlib import Path
 _loaded: set[Path] = set()
 
 
-def load_env(path: str | Path = ".env") -> dict[str, str]:
-    """Read KEY=VALUE lines from `path` into os.environ without overriding what is already set.
-
-    Returns the values the file holds. Blank lines and `#` comments are skipped; values may be quoted.
-    """
+def read_env_file(path: str | Path = ".env") -> dict[str, str]:
+    """The KEY=VALUE pairs in `path` ({} if absent or MAESTRO_NO_DOTENV is set). Blank lines and `#`
+    comments are skipped; values may be quoted."""
     path = Path(path)
     values: dict[str, str] = {}
-    if not path.is_file():
+    if os.environ.get("MAESTRO_NO_DOTENV") or not path.is_file():
         return values
     for line in path.read_text("utf-8").splitlines():
         line = line.strip()
@@ -37,8 +37,17 @@ def load_env(path: str | Path = ".env") -> dict[str, str]:
         if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
             value = value[1:-1]
         values[key] = value
-        os.environ.setdefault(key, value)
-    _loaded.add(path.resolve())
+    return values
+
+
+def load_env(path: str | Path = ".env") -> dict[str, str]:
+    """Copy `.env` settings other than connection strings into os.environ, without overriding what is
+    already set (connection strings are looked up by `dsn_for`, which ranks the environment first)."""
+    values = read_env_file(path)
+    for key, value in values.items():
+        if not key.startswith("MAESTRO_DSN"):
+            os.environ.setdefault(key, value)
+    _loaded.add(Path(path).resolve())
     return values
 
 
@@ -48,13 +57,17 @@ def dsn_env_name(slug: str) -> str:
 
 
 def dsn_for(slug: str | None, explicit: str | None = None) -> str | None:
-    """The connection string for a maestro: --dsn, else MAESTRO_DSN_<SLUG>, else MAESTRO_DSN."""
+    """The connection string for a maestro: --dsn; else MAESTRO_DSN_<SLUG>, then MAESTRO_DSN, from the
+    process environment; else the same two from `.env`."""
     if explicit:
         return explicit
-    load_env()
-    if slug and os.environ.get(dsn_env_name(slug)):
-        return os.environ[dsn_env_name(slug)]
-    return os.environ.get("MAESTRO_DSN")
+    file = read_env_file()
+    for source in (os.environ, file):
+        if slug and source.get(dsn_env_name(slug)):
+            return source[dsn_env_name(slug)]
+        if source.get("MAESTRO_DSN"):
+            return source["MAESTRO_DSN"]
+    return None
 
 
 def data_dir() -> Path:
