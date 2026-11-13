@@ -132,7 +132,7 @@ def test_gems_from_picks_and_shadow(store_for):
     s.upsert_claim(plain[5], "pick", value=True, source_id="user", kind="decided")
     res = score_canon(s)
     u = res["units"]
-    assert res["gems"]["reach_known"]
+    assert res["gems"]["reach_known"] and res["gems"]["hit_list_years"] == [1957, 1957]
     assert u[side].gem and any(r.startswith("sibling:") for r in u[side].gem_reasons)
     assert u[plain[5]].gem and u[plain[5]].gem_reasons[0] == "your pick"
     assert not u[hit].gem
@@ -159,3 +159,23 @@ def test_wikidata_articles_parse():
     items = {i["qid"]: i for i in mod.parse(data)}
     assert items["Q1"]["links"] == 3 and not items["Q1"]["container"]
     assert items["Q2"]["container"] and items["Q2"]["year"] == 1960
+
+
+BINACA_PAGE = """<meta itemprop="name" content="Binaca Geetmala Annual List for Year 1977 - Page 1 of 5"/>
+<a href="/geetmala/binaca_geetmala_1953.php">1953</a><a href="/geetmala/binaca_geetmala_1977.php?page=2">2</a>
+<table class="w760">
+<tr itemprop="track" itemscope itemtype="https://schema.org/MusicRecording"><td class="w760"><table class="b1"><tr><td rowspan="2"><a href="/song/x.htm"><img alt="x"></a><br><span class="song">2</span></td>
+<td rowspan="2"><a href="/song/x.htm"  itemprop="url"><span itemprop="name">Shabaab Pe Main, Pardaa Hai Pardaa</span></a></td>
+<td class="w150"><span itemprop="byArtist"><a itemprop="url" href="/singer/mohammed_rafi.php"><span itemprop="name">Mohammed Rafi</span></a></span></td>
+<td class="w150"><span itemprop="byArtist"><a itemprop="url" href="/music_director/laxmikant_pyarelal.php"><span itemprop="name">Laxmikant Pyarelal</span></a></span></td>
+<td class="w150"></td></tr>
+<tr><td class="w150 bgee"><span itemprop="inAlbum"><a itemprop="url" href="/movie/amar_akbar_anthony_1977.htm"><span itemprop="name">Amar Akbar Anthony</span> (1977)</a></span></td>
+<td></td><td></td></tr></table></td></tr>
+</table>"""
+
+
+def test_hindigeetmala_binaca_parse():
+    d = load("rafi", "hindigeetmala_binaca").parse(BINACA_PAGE)
+    assert d["year"] == 1977 and d["pages"] == [2] and d["years"] == [1953]
+    assert d["songs"] == [{"rank": 2, "title": "Shabaab Pe Main, Pardaa Hai Pardaa", "singers": ["Mohammed Rafi"],
+                           "composers": ["Laxmikant Pyarelal"], "film": "Amar Akbar Anthony", "film_year": 1977}]

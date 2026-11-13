@@ -56,6 +56,7 @@ TEAM_SHRINK = 10  # pseudo-units of popularity 0 added to a collaborator's avera
 TEAM_WEIGHT = 0.75
 SIBLING_WEIGHT = 0.65
 REDISCOVERY_COVERAGE = 0.05  # contemporary signals must reach this share of the canon
+REDISCOVERY_CAPTURE = 0.4  # ... and name this share of its most enduring units, for "never a hit"
 REDISCOVERY_MIN = 0.85
 SHADOW_CONTAINERS = {"film", "album", "score", "show", "release"}
 
@@ -386,8 +387,8 @@ def score_canon(store: Store, include_private: bool = False) -> dict[str, Any]:
         "facets_present": present,
         "gems": {**gems, "found": sum(1 for s in scored.values() if s.gem),
                  "needs": None if gems["reach_known"] else
-                 f"hit lists (charts, countdowns) that cover at least {REDISCOVERY_COVERAGE:.0%} of the canon; "
-                 f"this canon's cover {gems['contemporary_coverage']:.1%}, so only your picks and acclaimed "
+                 f"hit lists (charts, countdowns) that cover at least {REDISCOVERY_COVERAGE:.0%} of the units "
+                 f"from the years they span; this canon's cover {gems['contemporary_coverage']:.1%}, so only your picks and acclaimed "
                  "units can be gems"},
         "listed_without_data": sorted(set(facet_of) - set(signals)),
         "unmatched_mentions": unmatched,
@@ -403,8 +404,8 @@ def _score_gems(scored: dict[int, Scored], maestro: int, present: list[str], con
     * acclaimed: the esteem facet or the user's pick, against reach (popularity without esteem);
     * rediscovered: the enduring facet (reissues, articles) against the contemporary one, i.e.
       never a hit at the time but compilers and writers keep coming back to it. Only when the
-      contemporary signals cover at least REDISCOVERY_COVERAGE of the canon, so that missing from
-      them means something (a list of a few #1s says nothing about the rest);
+      contemporary signals cover at least REDISCOVERY_COVERAGE of the units from the years they span,
+      and only for units from those years, so that missing from them means something (a list of a few #1s says nothing about the rest);
     * great team: the collaborators' other units are popular, against reach;
     * in a hit's shadow: the most popular other unit in the same film, album or score (not a
       recording session, whose tracks share only a date), against reach.
@@ -439,33 +440,46 @@ def _score_gems(scored: dict[int, Scored], maestro: int, present: list[str], con
         top = avgs[:2]
         team_raw[uid] = (sum(a for a, _ in top) / 2, [p for a, p in top if a > 0])
     team_rank = _rank_scores({u: v[0] for u, v in team_raw.items()}, list(scored))
-    contemporary_cover = sum(1 for s in scored.values() if s.facets.get("contemporary")) / max(1, len(scored))
+    # The hit lists speak only for the years they span (a countdown that began in 1953 says nothing
+    # about a 1949 song), so coverage and "little reach" are judged among units from those years
+    # (and units of unknown year, which may be from them).
+    charted_years = [s.unit.year for s in scored.values() if s.facets.get("contemporary") and s.unit.year]
+    era = (min(charted_years), max(charted_years)) if charted_years else None
+    in_era = {u for u, s in scored.items() if not s.unit.year or (era and era[0] <= s.unit.year <= era[1])}
+    contemporary_cover = (sum(1 for u in in_era if scored[u].facets.get("contemporary")) / len(in_era)
+                          if in_era else 0.0)
     # "Little reach" means something only when the hit lists are deep enough: a canon whose charts
     # name a handful of #1s cannot tell a forgotten song from a hit nobody has listed yet.
     reach_known = "contemporary" in present and contemporary_cover >= REDISCOVERY_COVERAGE
-    rediscovery = reach_known and "enduring" in present
+    # "Never a hit" also needs hit lists long enough to hold most hits: of the units compilers and
+    # writers keep coming back to, the lists must name at least REDISCOVERY_CAPTURE. A yearly top 30
+    # shared by every singer of the day misses most of a prolific singer's lasting songs.
+    lasting = [u for u in in_era if scored[u].facets.get("enduring", 0.0) >= REDISCOVERY_MIN]
+    capture = sum(1 for u in lasting if scored[u].facets.get("contemporary")) / len(lasting) if lasting else 0.0
+    rediscovery = reach_known and "enduring" in present and capture >= REDISCOVERY_CAPTURE
 
     for uid, s in scored.items():
+        known = reach_known and uid in in_era
         options: list[tuple[float, str]] = []  # (gem score, reason)
         acclaim = 1.0 if s.picked else s.facets.get("esteem", 0.0)
         if acclaim >= GEM_MIN_QUALITY and s.reach < GEM_MAX_REACH:
             notes = [e.note for e in s.evidence if facet_of_evidence(s, e) == "esteem"]
             why = "your pick" if s.picked else "acclaimed: " + "; ".join(notes[:2])
             options.append((acclaim * (1 - s.reach), why))
-        if rediscovery:
+        if rediscovery and known:
             cont, end = s.facets.get("contemporary", 0.0), s.facets.get("enduring", 0.0)
             if end >= REDISCOVERY_MIN and cont < GEM_MAX_REACH:
                 notes = [e.note for e in s.evidence if e.signal in s.signal_scores
                          and facet_of_evidence(s, e) == "enduring"]
                 options.append((end * (1 - cont), "never a hit, but kept alive: " + "; ".join(notes[:2])))
-        team = TEAM_WEIGHT * team_rank.get(uid, 0.0) if reach_known else 0.0
+        team = TEAM_WEIGHT * team_rank.get(uid, 0.0) if known else 0.0
         if team >= GEM_MIN_QUALITY and s.reach < GEM_MAX_REACH and team_raw[uid][1]:
             options.append((team * (1 - s.reach), "team:" + ",".join(map(str, team_raw[uid][1]))))
         sib, sib_id = 0.0, None
         for o in by_container.get(s.unit.container, ()) if s.unit.container is not None else ():
             if o != uid and scored[o].popularity > sib:
                 sib, sib_id = scored[o].popularity, o
-        if reach_known and SIBLING_WEIGHT * sib >= GEM_MIN_QUALITY and s.reach < GEM_MAX_REACH and sib_id is not None:
+        if known and SIBLING_WEIGHT * sib >= GEM_MIN_QUALITY and s.reach < GEM_MAX_REACH and sib_id is not None:
             options.append((SIBLING_WEIGHT * sib * (1 - s.reach), f"sibling:{sib_id}"))
         if not options:
             continue
@@ -475,7 +489,9 @@ def _score_gems(scored: dict[int, Scored], maestro: int, present: list[str], con
         s.gem_reasons = [why for _, why in options]
         if not s.evidence:
             s.gem_reasons.append("no chart, award, article or reissue found")
-    return {"reach_known": reach_known, "contemporary_coverage": round(contemporary_cover, 4)}
+    return {"reach_known": reach_known, "contemporary_coverage": round(contemporary_cover, 4),
+            "hit_list_years": list(era) if era else None, "rediscovery": rediscovery,
+            "lasting_captured": round(capture, 4)}
 
 
 def facet_of_evidence(s: Scored, e: Evidence) -> str | None:
@@ -483,10 +499,17 @@ def facet_of_evidence(s: Scored, e: Evidence) -> str | None:
 
 
 def ordered_evidence(s: Scored) -> list[Evidence]:
-    """Strongest first: by facet (charts and awards before reissues), then by how well it ranks."""
+    """Strongest first: by facet (charts and awards before reissues), then by how well it ranks.
+
+    Two sources giving the same fact (a #1 read from Wikipedia and from a full countdown) show once."""
     order = {f: i for i, f in enumerate(FACETS)}
-    return sorted(s.evidence, key=lambda e: (order.get(s.facet_of.get(e.signal), 9),
-                                             -round(s.signal_scores.get(e.signal, 0), 2), -e.strength))
+    out, seen = [], set()
+    for e in sorted(s.evidence, key=lambda e: (order.get(s.facet_of.get(e.signal), 9),
+                                               -round(s.signal_scores.get(e.signal, 0), 2), -e.strength)):
+        if (e.signal, e.note) not in seen:
+            seen.add((e.signal, e.note))
+            out.append(e)
+    return out
 
 
 def unit_summary(s: Scored) -> dict[str, Any] | None:
