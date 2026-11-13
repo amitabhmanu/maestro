@@ -113,6 +113,14 @@ main { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: m
 .ghead .mono { font-size: 12px; color: var(--muted); font-weight: 400; }
 .tier { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 20px; padding: 0 5px; border-radius: 4px; font: 600 12px var(--f-mono); color: #fff; background: var(--t-none); }
 .tier.A { background: var(--t-A); } .tier.B { background: var(--t-B); } .tier.C { background: var(--t-C); } .tier.D { background: var(--t-D); }
+.pop { display: inline-flex; align-items: center; gap: 5px; font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); }
+.pop .bar { width: 34px; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; display: block; }
+.pop .bar i { display: block; height: 100%; background: var(--accent); }
+.gem { font-size: 11px; font-weight: 600; letter-spacing: .02em; color: var(--warn); border: 1px solid currentColor; border-radius: 999px; padding: 0 6px; line-height: 16px; }
+.why { margin: 4px 0 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--ink-2); }
+.why li::before { content: "· "; color: var(--muted); }
+.facetbars { display: grid; grid-template-columns: 96px minmax(0, 1fr) 30px; gap: 4px 8px; align-items: center; font-size: 12.5px; }
+.facetbars .b { height: 6px; border-radius: 3px; background: var(--accent); display: block; }
 .lin { display: inline-flex; gap: 2px; }
 .lin i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); display: block; }
 .lin i.on { background: var(--accent); }
@@ -214,6 +222,7 @@ td.n, th.n { text-align: right; font-family: var(--f-mono); }
     <nav class="maestros" id="maestros" aria-label="Maestro"></nav>
     <nav class="views" aria-label="View">
       <a href="#browse" id="v-browse">Browse</a>
+      <a href="#gems" id="v-gems">Hits &amp; gems</a>
       <a href="#insights" id="v-insights">Insights</a>
       <a href="#coverage" id="v-coverage">Coverage</a>
     </nav>
@@ -251,7 +260,7 @@ const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 
 // ---------------------------------------------------------------- state
 const S = { index: [], snaps: {}, slug: null, d: null, f: blank(), view: "browse", limit: 150, sel: null, group: "none", answer: null, sample: null, busy: null };
-function blank() { return { text: "", yFrom: null, yTo: null, tiers: [], people: [], containers: [], langs: [], perf: null, minLin: null, maxLin: null, live: false, noTier: false, noYear: false, sort: "year" }; }
+function blank() { return { text: "", yFrom: null, yTo: null, tiers: [], people: [], containers: [], langs: [], perf: null, minLin: null, maxLin: null, live: false, noTier: false, noYear: false, gems: false, sort: "year" }; }
 
 // ---------------------------------------------------------------- loading
 async function boot() {
@@ -311,6 +320,8 @@ function prep(d) {
     u._ckey = c ? squash(fold([c.title, ...(c.alt_titles || []), ...(c.personnel || [])].join(" "))) : "";
     u._perf = d.perfRole ? (u.credits[d.perfRole] || []).length : null;
     u._lin = u.lineages.length;
+    u._pop = u.pop ? u.pop.score : 0;
+    u._gem = u.pop && u.pop.gem ? u.pop.gem.score : 0;
     for (const [role, ids] of Object.entries(u.credits)) for (const p of ids) if (p !== me) {
       (roleCount[p] ||= {})[role] = (roleCount[p][role] || 0) + 1;
     }
@@ -354,6 +365,8 @@ function prep(d) {
   d.tierKeys = Object.keys(d.tiers);
   d.tierWords = tierWords(d.tiers, d);
   d.byId = new Map(d.units.map(u => [u.id, u]));
+  d.hasPop = d.units.some(u => u._pop > 0);
+  d.gemCount = d.units.filter(u => u._gem).length;
   return d;
 }
 // Words that pick out one tier: a word that appears in no other tier's label.
@@ -417,6 +430,8 @@ function parseQuery(raw, d) {
     take(/\b(?:group|chorus|ensemble|qawwali)\s*(?:songs?|numbers?)?\b/g, () => { f.perf = "group"; });
   }
   take(/\blive\b/g, () => { f.live = true; });
+  take(/\b(?:(?:rare|hidden|forgotten|overlooked)\s+)?(?:gems?|deep\s+cuts?|underrated|rarities|rare\s+ones?)\b/g, () => { f.gems = true; f.sort = "gem"; });
+  take(/\b(?:most\s+popular|biggest\s+hits?|popular|hits|best\s+known|famous|well[\s-]known)\s*(?:first)?\b/g, () => { f.sort = "popular"; });
 
   let toks = fold(s).split(" ").filter(Boolean);
   const rest = [];
@@ -519,6 +534,7 @@ function applyFilter(d, f) {
     if (f.containers.length && !f.containers.includes(u.container)) continue;
     if (f.langs.length && !f.langs.includes(u._lang)) continue;
     if (f.live && !u.live) continue;
+    if (f.gems && !u._gem) continue;
     if (f.minLin != null && u._lin < f.minLin) continue;
     if (f.maxLin != null && u._lin > f.maxLin) continue;
     if (f.perf && u._perf != null) {
@@ -534,6 +550,8 @@ function applyFilter(d, f) {
     "year-desc": (a, b) => (b.year || 0) - (a.year || 0) || a.title.localeCompare(b.title),
     "title": (a, b) => a.title.localeCompare(b.title),
     "lineages": (a, b) => a._lin - b._lin || (a.year || 9999) - (b.year || 9999),
+    "popular": (a, b) => b._pop - a._pop || (b.pop ? b.pop.evidence.length : 0) - (a.pop ? a.pop.evidence.length : 0) || (a.year || 9999) - (b.year || 9999),
+    "gem": (a, b) => b._gem - a._gem || a._pop - b._pop || (a.year || 9999) - (b.year || 9999),
   }[f.sort] || ((a, b) => 0);
   out.sort(by);
   if (words.length && f.sort === "year") { // titles that start with the words come first
@@ -560,12 +578,14 @@ function chipList(f, d) {
   if (f.maxLin != null) c.push(["sources", "one lineage only", g => { g.maxLin = null; }]);
   if (f.minLin != null) c.push(["sources", `${f.minLin}+ lineages`, g => { g.minLin = null; }]);
   if (f.live) c.push(["kind", "live", g => { g.live = false; }]);
+  if (f.gems) c.push(["only", "rare gems", g => { g.gems = false; if (g.sort === "gem") g.sort = "year"; }]);
   if (f.noTier) c.push(["tier", "none assigned", g => { g.noTier = false; }]);
   if (f.noYear) c.push(["year", "unknown", g => { g.noYear = false; }]);
   if (f.text) c.push(["words", f.text, g => { g.text = ""; }]);
-  if (f.sort !== "year") c.push(["sort", { "year-desc": "newest first", title: "A–Z", lineages: "least confirmed first" }[f.sort], g => { g.sort = "year"; }]);
+  if (f.sort !== "year") c.push(["sort", SORTS[f.sort] || f.sort, g => { g.sort = "year"; }]);
   return c;
 }
+const SORTS = { year: "oldest first", "year-desc": "newest first", title: "A–Z", lineages: "least confirmed first", popular: "most popular first", gem: "best gems first" };
 function renderChips() {
   const el = document.getElementById("chips");
   const chips = chipList(S.f, S.d);
@@ -593,6 +613,7 @@ function examples(d) {
   if (lyr) out.push(`lyrics by ${lyr}`);
   const otherTier = d.tierKeys.find(t => t !== d.tierKeys[0]);
   if (otherTier) out.push(`tier ${otherTier} newest first`);
+  if (d.hasPop) out.splice(1, 0, d.gemCount ? "rare gems" : "most popular first");
   out.push("only in one source");
   return out.slice(0, 4);
 }
@@ -607,8 +628,8 @@ function renderMaestros() {
 }
 function setView() {
   const v = (location.hash || "#browse").slice(1);
-  S.view = ["browse", "insights", "coverage"].includes(v) ? v : "browse";
-  for (const k of ["browse", "insights", "coverage"]) {
+  S.view = ["browse", "gems", "insights", "coverage"].includes(v) ? v : "browse";
+  for (const k of ["browse", "gems", "insights", "coverage"]) {
     const a = document.getElementById("v-" + k);
     if (k === S.view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   }
@@ -619,6 +640,7 @@ function render() {
   const res = applyFilter(S.d, S.f);
   S.res = res;
   if (S.view === "browse") renderBrowse(res);
+  else if (S.view === "gems") renderGems(res);
   else if (S.view === "insights") renderInsights(res);
   else renderCoverage();
   wireAnswer();
@@ -687,12 +709,17 @@ function unitMeta(u, d) {
   return bits.join(" · ");
 }
 function linDots(n, max = 3) { let s = ""; for (let i = 0; i < max; i++) s += `<i class="${i < n ? "on" : ""}"></i>`; return `<span class="lin" title="Seen by ${n} independent source lineage${n === 1 ? "" : "s"}">${s}</span>`; }
+function popMeter(u) {
+  if (!S.d.hasPop) return "";
+  const n = u._pop;
+  return `<span class="pop" title="${n ? `Popularity ${n} of 100: ${esc(u.pop.evidence.slice(0, 3).map(e => e.note).join("; "))}` : "No popularity evidence yet"}"><span class="bar"><i style="width:${n}%"></i></span>${n || "–"}</span>`;
+}
 function rowHtml(u, d) {
   const alt = (u.title_alt_script || [])[0];
   return `<div class="row${S.sel === u.id ? " sel" : ""}" data-u="${u.id}" tabindex="0" role="button">
     <div class="yr">${u.year || "—"}</div>
     <div style="min-width:0"><div class="t">${esc(u.title)}${alt ? ` <span class="alt">${esc(alt)}</span>` : ""}</div><div class="meta">${unitMeta(u, d)}</div></div>
-    <div class="side">${linDots(u._lin)}<span class="tier ${esc(u.tier || "")}" title="${esc(u.tier ? "Tier " + u.tier + ": " + (d.tiers[u.tier] || {}).label : "No tier yet")}">${esc(u.tier || "–")}</span></div></div>`;
+    <div class="side">${u._gem ? `<span class="gem" title="${esc((u.pop.gem.reasons || []).join("; "))}">gem</span>` : ""}${popMeter(u)}${linDots(u._lin)}<span class="tier ${esc(u.tier || "")}" title="${esc(u.tier ? "Tier " + u.tier + ": " + (d.tiers[u.tier] || {}).label : "No tier yet")}">${esc(u.tier || "–")}</span></div></div>`;
 }
 function renderBrowse(res) {
   const d = S.d, main = document.getElementById("main");
@@ -723,7 +750,7 @@ function renderBrowse(res) {
         <span class="muted">${res.length === total ? `the whole canon of ${esc(d.maestro.name)}` : `of ${total.toLocaleString()} in the canon`}</span>
         <div class="tools">
           <label class="muted" for="grp">Group</label><select id="grp"><option value="none">none</option><option value="container">by ${esc(d.contWord)}</option><option value="year">by year</option></select>
-          <label class="muted" for="sort">Sort</label><select id="sort"><option value="year">oldest first</option><option value="year-desc">newest first</option><option value="title">A–Z</option><option value="lineages">least confirmed first</option></select>
+          <label class="muted" for="sort">Sort</label><select id="sort">${Object.entries(SORTS).filter(([k]) => d.hasPop || !["popular", "gem"].includes(k)).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select>
         </div></div>
       <div class="ledger">${rows || `<div class="empty">Nothing in the canon matches. Remove a filter above, or ask Claude to read the question differently.</div>`}</div>
       ${res.length > S.limit ? `<button class="btn more" id="more" type="button">Show ${Math.min(300, res.length - S.limit)} more</button>` : ""}
@@ -778,10 +805,52 @@ function detailHtml(u, d) {
     ${(u.title_alt_script || []).map(t => `<div class="script">${esc(t)}</div>`).join("")}
     ${u.alt_titles ? `<div class="muted" style="margin-top:6px;font-size:13px">Also listed as: ${esc(u.alt_titles.join(" · "))}</div>` : ""}
     <dl>${dl.join("")}</dl>
+    ${popDetail(u, d)}
     <h4>Evidence · ${linDots(u._lin)} ${u._lin} independent lineage${u._lin === 1 ? "" : "s"}</h4>
     <ul>${srcs}</ul>
     ${links ? `<h4>Source pages</h4><ul>${links}</ul>` : ""}
     ${sibs}`;
+}
+const FACET_LABEL = { contemporary: "At the time", enduring: "Since", penetration: "Reach", esteem: "Esteem" };
+function popDetail(u, d) {
+  if (!d.hasPop) return "";
+  const p = u.pop;
+  if (!p) return `<h4>Popularity</h4><div class="muted" style="font-size:13px">No chart, award, article or reissue found for this ${esc(d.unitWord)} yet.</div>`;
+  const facets = (d.popularity.facets_present || []).map(f => `<span>${esc(FACET_LABEL[f] || f)}</span><span class="b" style="width:${p.facets[f] || 0}%;${p.facets[f] ? "" : "background:var(--line);width:100%;opacity:.5"}"></span><span class="mono">${p.facets[f] || "–"}</span>`).join("");
+  const gem = p.gem ? `<div style="margin-top:10px"><span class="gem">gem ${p.gem.score}</span><ul class="why">${p.gem.reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul></div>` : "";
+  return `<h4>Popularity · <span class="mono">${p.score}</span> of 100</h4>
+    <div class="facetbars">${facets}</div>
+    <ul class="why" style="margin-top:8px">${p.evidence.map(e => `<li>${e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.note)}</a>` : esc(e.note)} <span class="muted">(${esc(e.source)})</span></li>`).join("")}</ul>${gem}`;
+}
+function renderGems(res) {
+  const d = S.d, main = document.getElementById("main"), P = d.popularity || {};
+  if (!d.hasPop) {
+    main.innerHTML = `<div class="stack">${answerHtml()}<div class="panel"><h2>No popularity evidence yet</h2><div class="sub">This snapshot has no charts, awards, articles or reissue counts. Run <span class="mono">maestro-score</span> after crawling a popularity source, then <span class="mono">maestro-explore</span> again.</div></div></div>`;
+    return wireMain(main);
+  }
+  const scope = isBlank(S.f) ? "the whole canon" : "the " + plural(res.length, d.unitWord) + " that match your search";
+  const hits = [...res].filter(u => u._pop).sort((a, b) => b._pop - a._pop || b.pop.evidence.length - a.pop.evidence.length).slice(0, 25);
+  const gems = [...res].filter(u => u._gem).sort((a, b) => b._gem - a._gem || a._pop - b._pop).slice(0, 40);
+  const item = (u, extra) => `<div class="row" data-u="${u.id}" tabindex="0" role="button"><div class="yr">${u.year || "—"}</div>
+    <div style="min-width:0"><div class="t">${esc(u.title)}</div><div class="meta">${unitMeta(u, d)}</div>${extra}</div>
+    <div class="side">${popMeter(u)}</div></div>`;
+  const sig = Object.entries(P.signals || {}).map(([k, v]) => `<li><b>${esc(k.replace(/_/g, " "))}</b> <span class="muted">· ${esc(FACET_LABEL[v.facet] || v.facet)} · ${v.units.toLocaleString()} ${esc(d.unitWord)}s</span></li>`).join("");
+  const missing = (P.listed_without_data || []).map(x => x.replace(/_/g, " ")).join(", ");
+  const unm = P.unmatched_mentions || [];
+  main.innerHTML = `<div class="stack">
+    ${answerHtml()}
+    <div class="grid2">
+      <div class="panel"><h2>Rare gems</h2><div class="sub">In ${scope}: ${esc(d.unitWord)}s with signs of quality but little reach. ${gems.length ? "The reasons are listed under each." : ""}</div>
+        <div class="ledger">${gems.map(u => item(u, `<ul class="why">${u.pop.gem.reasons.slice(0, 3).map(r => `<li>${esc(r)}</li>`).join("")}</ul>`)).join("") || `<div class="empty">No gems here yet. ${P.gems && P.gems.needs ? "Gems need " + esc(P.gems.needs) + "." : "Gems need acclaim, a strong team or a hit beside them, and nothing here has that evidence with little reach."}</div>`}</div>
+        ${d.gemCount > 40 ? `<button class="btn more" type="button" data-apply='${esc(JSON.stringify({ ...S.f, gems: true, sort: "gem" }))}'>Browse all ${d.gemCount.toLocaleString()} gems</button>` : ""}</div>
+      <div class="panel"><h2>Biggest hits</h2><div class="sub">In ${scope}, by popularity: the share of the canon each ${esc(d.unitWord)} beats on its strongest evidence, plus agreement across kinds of evidence.</div>
+        <div class="ledger">${hits.map(u => item(u, `<ul class="why">${u.pop.evidence.slice(0, 2).map(e => `<li>${esc(e.note)}</li>`).join("")}</ul>`)).join("")}</div>
+        <button class="btn more" type="button" data-apply='${esc(JSON.stringify({ ...S.f, sort: "popular" }))}'>Browse by popularity</button></div>
+    </div>
+    <div class="panel"><h2>What the scores rest on</h2><div class="sub">Each signal ranks ${esc(d.unitWord)}s within ${esc(d.maestro.name)}'s own canon only.${missing ? ` Listed in the pack but not collected yet: ${esc(missing)}.` : ""}</div><ul class="why">${sig}</ul></div>
+    ${unm.length ? `<div class="panel"><h2>Named by a popularity source, not found in the canon</h2><div class="sub">Possible gaps, or titles spelled too differently to match.</div><div class="tablewrap"><table><thead><tr><th>Title</th><th>${esc(cap(d.contWord))}</th><th>Evidence</th></tr></thead><tbody>${unm.map(m => `<tr><td>${esc(m.title)}</td><td>${esc(m.container || "")}</td><td>${esc(m.note || "")}</td></tr>`).join("")}</tbody></table></div></div>` : ""}
+  </div>`;
+  wireMain(main);
 }
 function personCard(res) {
   const d = S.d, f = S.f;
@@ -962,7 +1031,8 @@ function filterFromTool(x) {
   if (["solo", "duet", "trio", "group"].includes(x.performers)) f.perf = x.performers;
   f.maxLin = num(x.max_lineages); f.minLin = num(x.min_lineages);
   if (x.no_tier === true) f.noTier = true;
-  if (["year", "year-desc", "title", "lineages"].includes(x.sort)) f.sort = x.sort;
+  if (["year", "year-desc", "title", "lineages", "popular", "gem"].includes(x.sort)) f.sort = x.sort;
+  if (x.gems_only === true) f.gems = true;
   f._notFound = notFound;
   return f;
 }
@@ -976,7 +1046,8 @@ function findContainerId(name) { const d = S.d, k = fold(name); if (d.conts.has(
 function brief(u) {
   const d = S.d, me = d.maestro.person_id, c = {};
   for (const [r, ids] of Object.entries(u.credits)) { const o = ids.filter(p => p !== me).map(pname); if (o.length) c[r] = o; }
-  return { title: u.title, year: u.year, tier: u.tier, [d.contWord]: u._c ? u._c.title : null, credits: c, lineages: u._lin };
+  return { title: u.title, year: u.year, tier: u.tier, [d.contWord]: u._c ? u._c.title : null, credits: c, lineages: u._lin,
+    ...(u.pop ? { popularity: u.pop.score, evidence: u.pop.evidence.slice(0, 3).map(e => e.note), ...(u.pop.gem ? { gem: u.pop.gem.reasons } : {}) } : {}) };
 }
 const FILTER_SCHEMA = {
   type: "object", properties: {
@@ -988,7 +1059,8 @@ const FILTER_SCHEMA = {
     languages: { type: "array", items: { type: "string" } },
     performers: { type: "string", enum: ["solo", "duet", "trio", "group"] },
     min_lineages: { type: "integer" }, max_lineages: { type: "integer" }, no_tier: { type: "boolean" },
-    sort: { type: "string", enum: ["year", "year-desc", "title", "lineages"] },
+    gems_only: { type: "boolean", description: "only rare gems: quality evidence but little popularity" },
+    sort: { type: "string", enum: ["year", "year-desc", "title", "lineages", "popular", "gem"], description: "popular = most popular first; gem = best gems first" },
   },
 };
 async function askClaude() {
@@ -1030,7 +1102,7 @@ async function askClaude() {
       inputSchema: { type: "object", properties: { filter: FILTER_SCHEMA }, required: ["filter"] },
       execute: x => { const f = filterFromTool(x.filter || {}); delete f._notFound; S.f = f; S.limit = 150; const n = applyFilter(d, f).length; step(`showing ${n}`); setTimeout(render, 0); return { shown: n }; } },
   ];
-  const prompt = `You help a music researcher explore the canon of ${d.maestro.name}: every ${d.unitWord} in a sourced database. Use the tools to look things up; never answer from memory about what the canon holds. Names in tool input should be written as the canon spells them (see frequent_collaborators, or use lookup_person). When the answer is a set of ${d.unitWord}s, call show_results with the filter so the list appears on the page. Then answer in 1 to 4 plain sentences with the numbers you found. If the canon lacks the data to answer (for example popularity, ragas or lyrics), say so briefly.
+  const prompt = `You help a music researcher explore the canon of ${d.maestro.name}: every ${d.unitWord} in a sourced database. Use the tools to look things up; never answer from memory about what the canon holds. Names in tool input should be written as the canon spells them (see frequent_collaborators, or use lookup_person). When the answer is a set of ${d.unitWord}s, call show_results with the filter so the list appears on the page. Then answer in 1 to 4 plain sentences with the numbers you found. Popularity (0 to 100, a rank within this canon from charts, awards, articles and reissues) and rare gems (quality evidence but little reach) are in each result when known: sort with popular or gem, or set gems_only. If the canon lacks the data to answer (for example ragas or lyrics), say so briefly.
 
 Canon context (JSON):
 ${JSON.stringify(context)}

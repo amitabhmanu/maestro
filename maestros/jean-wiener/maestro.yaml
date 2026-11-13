@@ -78,7 +78,8 @@ taxonomies:
   style: classical_form_and_film_genre
 popularity_signals:
   contemporary: [film_success, press]
-  enduring: [streaming, concert_programming]
+  # Built: wikipedia_articles (core wikidata_articles), reissues (derived).
+  enduring: [wikipedia_articles, reissues, streaming, concert_programming]
   penetration: [recordings_by_others, film_reuse]
   esteem: [musicology]
 legal:

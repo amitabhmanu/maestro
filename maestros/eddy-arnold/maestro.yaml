@@ -49,7 +49,7 @@ registers:
       confidence: 0.8
       evidence: [https://adp.library.ucsb.edu/names/100566]
 sources:
-  - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api}
+  - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api, api_rps: 1, url: "https://query.wikidata.org/sparql"}
   # MusicBrainz lists released recordings: one it alone knows is issued (A), or live (C).
   - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api, api_rps: 1, distinct_ids: false, default_tier: A, live_tier: C, url: "https://musicbrainz.org/ws/2/"}
   - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api}
@@ -70,9 +70,10 @@ checksums:
 taxonomies:
   style: country_subgenre
 popularity_signals:
-  contemporary: [billboard_country, billboard_hot100]
-  enduring: [streaming, lastfm]
-  penetration: [covers, film_tv_use]
+  # Built: billboard_*, single (wikipedia_singles), reissues, remakes (derived), wikipedia_articles (core).
+  contemporary: [billboard_country, billboard_hot100, billboard_ac, single]
+  enduring: [reissues, wikipedia_articles, streaming, lastfm]
+  penetration: [remakes, covers, film_tv_use]
   esteem: [hall_of_fame, critics_lists]
 legal:
   purpose: personal_then_foss
