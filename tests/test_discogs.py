@@ -42,7 +42,7 @@ def test_release_keeps_the_maestros_tracks_and_credits():
 
     nfs = discogs.parse_release(_load("nonfilm.json"), RAFI)
     assert not nfs["soundtrack"] and nfs["master"] is None
-    assert [(t["position"], t["main"]) for t in nfs["tracks"]] == [("1", True), ("3a", True)]  # 2 is Asha's
+    assert [(t["position"], t["title"]) for t in nfs["tracks"]] == [("1", "Ghazal Number One"), ("3", "Medley")]  # 2 is Asha's
     assert [c["name"] for c in nfs["tracks"][0]["credits"]] == ["Khayyam"]
 
 
