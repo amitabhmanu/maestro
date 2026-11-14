@@ -154,6 +154,12 @@ main { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: m
 .detail .sib { font-size: 13px; }
 .detail .sib.me { font-weight: 600; }
 .src { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; font-size: 13px; }
+.media { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.mlink { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; line-height: 1.3; padding: 4px 11px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); text-decoration: none; background: var(--panel); }
+.mlink:hover, .mlink:focus-visible { border-color: currentColor; }
+.mlink .k { font-size: 11px; color: var(--muted); }
+.mlink.search { border-style: dashed; color: var(--ink-2); background: transparent; }
+.medianote { font-size: 12px; color: var(--muted); margin-top: 6px; }
 .backdrop { display: none; }
 
 /* insights + coverage */
@@ -804,12 +810,32 @@ function detailHtml(u, d) {
     <h2>${esc(u.title)}</h2>
     ${(u.title_alt_script || []).map(t => `<div class="script">${esc(t)}</div>`).join("")}
     ${u.alt_titles ? `<div class="muted" style="margin-top:6px;font-size:13px">Also listed as: ${esc(u.alt_titles.join(" · "))}</div>` : ""}
+    ${mediaHtml(u, d)}
     <dl>${dl.join("")}</dl>
     ${popDetail(u, d)}
     <h4>Evidence · ${linDots(u._lin)} ${u._lin} independent lineage${u._lin === 1 ? "" : "s"}</h4>
     <ul>${srcs}</ul>
     ${links ? `<h4>Source pages</h4><ul>${links}</ul>` : ""}
     ${sibs}`;
+}
+const MEDIA_WORD = { watch: ["▶", "Watch on", "Search"], listen: ["♪", "Listen on", "Search"], lyrics: ["¶", "Lyrics on", "Search lyrics"] };
+function searchQuery(u, d, kind) { // short title (film titles quote whole openings), the container, the maestro
+  let t = u.title.replace(/[\s.…]+$/, ""); if (t.length > 40) { const alt = (u.alt_titles || []).filter(x => x.length <= 40)[0]; t = alt || t.split(/[,.!?;]/)[0]; }
+  const parts = [t];
+  if (u._c && kind !== "listen") parts.push(u._c.title);
+  if (kind !== "lyrics") parts.push(d.maestro.name);
+  return encodeURIComponent(parts.join(" ")).replace(/%20/g, "+");
+}
+function mediaHtml(u, d) { // outbound links only: nothing is copied or hosted here
+  const S2 = d.media_search || {}, have = new Set((u.media || []).map(m => m.kind)), out = [];
+  for (const m of u.media || []) { const [ico, w] = MEDIA_WORD[m.kind] || ["↗", "Open on"]; out.push(`<a class="mlink" href="${esc(m.url)}" target="_blank" rel="noopener noreferrer" title="${esc(m.note || m.url)}"><span aria-hidden="true">${ico}</span>${w} ${esc(m.site)}</a>`); }
+  let searches = 0;
+  for (const kind of ["watch", "listen", "lyrics"]) {
+    if (have.has(kind)) continue;
+    for (const s of S2[kind] || []) { const [ico, , w] = MEDIA_WORD[kind]; searches++; out.push(`<a class="mlink search" href="${esc(s.url.replace("{q}", searchQuery(u, d, kind)))}" target="_blank" rel="noopener noreferrer" title="A search on ${esc(s.site)}, not a known match"><span aria-hidden="true">${ico}</span>${kind === "lyrics" ? w : `${w} ${esc(s.site)}`} <span class="k">search</span></a>`); }
+  }
+  if (!out.length) return "";
+  return `<div class="media" aria-label="Watch, listen, lyrics">${out.join("")}</div>${searches ? `<div class="medianote">Dashed links are searches, not known matches.</div>` : ""}`;
 }
 const FACET_LABEL = { contemporary: "At the time", enduring: "Since", penetration: "Reach", esteem: "Esteem" };
 function popDetail(u, d) {
@@ -1051,6 +1077,7 @@ function brief(u) {
   const d = S.d, me = d.maestro.person_id, c = {};
   for (const [r, ids] of Object.entries(u.credits)) { const o = ids.filter(p => p !== me).map(pname); if (o.length) c[r] = o; }
   return { title: u.title, year: u.year, tier: u.tier, [d.contWord]: u._c ? u._c.title : null, credits: c, lineages: u._lin,
+    ...(u.media ? { links: u.media.map(m => `${m.kind} on ${m.site}`) } : {}),
     ...(u.pop ? { popularity: u.pop.score, evidence: u.pop.evidence.slice(0, 3).map(e => e.note), ...(u.pop.gem ? { gem: u.pop.gem.reasons } : {}) } : {}) };
 }
 const FILTER_SCHEMA = {

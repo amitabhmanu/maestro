@@ -84,6 +84,10 @@ def _cross_checks(data: dict[str, Any]) -> list[str]:
     if dupes:
         problems.append(f"duplicate source ids: {sorted(dupes)}")
 
+    for sid in (data.get("media_links") or {}).get("sources", {}):
+        if sid not in ids:
+            problems.append(f"media_links.sources names unknown source {sid!r}")
+
     if data["verification"]["method"] == "voice" and data["roles"]["primary"] != "singer":
         problems.append("verification.method 'voice' only makes sense when the primary role is singer")
 

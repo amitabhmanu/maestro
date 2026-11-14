@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from importlib import resources
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from maestro.completeness import completeness_report, load_units
 from maestro.lyrics import Policy as LyricsPolicy
@@ -78,6 +79,86 @@ def _page_link(url: str | None) -> str | None:
     if not url or "/ws/2/" in url or "api.discogs.com" in url or "query.wikidata.org" in url or "/sparql" in url:
         return None
     return url
+
+
+# ---- where to watch, listen and read ---------------------------------------------------
+# Outbound links only: the explorer never copies lyrics or hosts audio (pack legal.lyrics, legal.audio).
+# A host counts only for pages about one song (a track, a video, a lyrics page), not for lists or charts.
+MEDIA_HOSTS: list[tuple[str, str, str, str]] = [  # (host, path pattern, kind, site)
+    ("youtube.com", r"^/(?:watch|shorts/)", "watch", "YouTube"),
+    ("youtu.be", r"^/[\w-]{6,}", "watch", "YouTube"),
+    ("last.fm", r"^/(?:\w\w/)?music/[^/]+/(?:[^/]+/)?_/[^/]+", "listen", "Last.fm"),
+    ("open.spotify.com", r"^/track/", "listen", "Spotify"),
+    ("music.apple.com", r"/(?:song|album)/", "listen", "Apple Music"),
+    ("jiosaavn.com", r"^/song/", "listen", "JioSaavn"),
+    ("gaana.com", r"^/song/", "listen", "Gaana"),
+    ("archive.org", r"^/details/", "listen", "Internet Archive"),
+    ("loc.gov", r"^/item/jukebox", "listen", "National Jukebox"),
+    ("genius.com", r"-lyrics$", "lyrics", "Genius"),
+    ("musixmatch.com", r"^/lyrics/", "lyrics", "Musixmatch"),
+    ("hindigeetmala.net", r"^/song/", "lyrics", "HindiGeetMala"),
+    ("lyricstranslate.com", r"lyrics", "lyrics", "LyricsTranslate"),
+]
+MEDIA_KINDS = ("watch", "listen", "lyrics")
+DEFAULT_LYRICS_SITES = ["genius.com", "musixmatch.com"]
+
+
+def media_kind(url: str, source: str | None = None, sources: dict[str, str] | None = None) -> tuple[str, str] | None:
+    """(kind, site) when `url` is a page to watch, listen to or read one unit, else None."""
+    if source and sources and source in sources:
+        return sources[source], source
+    parts = urlsplit(url)
+    host = (parts.hostname or "").lower()
+    for h, path, kind, site in MEDIA_HOSTS:
+        if (host == h or host.endswith("." + h)) and re.search(path, parts.path):
+            return kind, site
+    return None
+
+
+def media_search(pack_data: dict[str, Any]) -> dict[str, list[dict[str, str]]]:
+    """Search links the explorer fills in per unit (`{q}`: title, container, maestro) where no page is known."""
+    cfg = pack_data.get("media_links") or {}
+    out = {"watch": [{"site": "YouTube", "url": "https://www.youtube.com/results?search_query={q}"}],
+           "listen": [{"site": "Last.fm", "url": "https://www.last.fm/search/tracks?q={q}"}]}
+    sites = cfg.get("lyrics_sites", DEFAULT_LYRICS_SITES)
+    if sites:
+        out["lyrics"] = [{"site": ", ".join(sites), "url": "https://www.google.com/search?q={q}+lyrics+"
+                          + "+OR+".join(f"site%3A{s}" for s in sites)}]
+    return out
+
+
+def add_media(snap: dict[str, Any], pack_data: dict[str, Any]) -> dict[str, Any]:
+    """Give each unit of a snapshot its `media` (where to watch, listen, read) and the snapshot its searches.
+
+    Reads only the snapshot (source links and popularity evidence, strongest first), so it also
+    refreshes snapshots whose database is gone. One link per site, the best first."""
+    sources = (pack_data.get("media_links") or {}).get("sources") or {}
+    names = {}
+    for unit in snap["units"]:
+        found: dict[tuple[str, str], dict[str, str]] = {}
+        cands = [(x["source"], x["url"], None) for x in unit.get("links", [])]
+        cands += [(e["source"], e["url"], e.get("note")) for e in (unit.get("pop") or {}).get("evidence", []) if e.get("url")]
+        for src, url, note in cands:
+            km = media_kind(url, src, sources)
+            if not km or km in found:
+                continue
+            kind, site = km
+            if site in sources:  # a source id: show its name as the pack gives it
+                site = names.setdefault(site, _site_name(snap, site))
+            found[km] = {"kind": kind, "site": site, "url": url, **({"note": note} if note else {})}
+        media = sorted(found.values(), key=lambda m: MEDIA_KINDS.index(m["kind"]))
+        if media:
+            unit["media"] = media
+        else:
+            unit.pop("media", None)
+    snap["media_search"] = media_search(pack_data)
+    return snap
+
+
+def _site_name(snap: dict[str, Any], source: str) -> str:
+    url = (snap.get("sources", {}).get(source) or {}).get("url")
+    host = urlsplit(url).hostname if url else None
+    return re.sub(r"^www\.", "", host) if host else source
 
 
 def _add(d: dict[str, list], key: str, value: Any) -> None:
@@ -273,7 +354,7 @@ def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
                   for p in sorted(people)}
 
     ident = pack.data["identity"]
-    return {
+    snap = {
         "format": FORMAT,
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "includes_private": include_private,
@@ -293,6 +374,7 @@ def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
         "coverage": report,
         "popularity": popularity,
     }
+    return add_media(snap, pack.data)
 
 
 # ---- CLI ---------------------------------------------------------------------------
@@ -349,6 +431,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--dsn", help="default $MAESTRO_DSN_<SLUG>, then $MAESTRO_DSN")
     p.add_argument("--out", type=Path, default=Path("data/explorer"), help="site folder (default data/explorer)")
     p.add_argument("--include-private", action="store_true", help="also include private claims (never publish these)")
+    p.add_argument("--relink", action="store_true",
+                   help="refresh the watch, listen and lyrics links of the snapshots already in --out from their "
+                        "packs (maestros/<slug>), without a database")
     p.add_argument("--serve", type=int, nargs="?", const=8765, metavar="PORT", help="serve the site on localhost")
     args = p.parse_args(argv)
     from maestro import config
@@ -368,6 +453,18 @@ def main(argv: list[str] | None = None) -> int:
         finally:
             store.close()
         print(f"{snaps[-1]['maestro']['name']}: {len(snaps[-1]['units'])} {snaps[-1]['maestro']['unit']}s")
+    if args.relink:
+        for path in sorted((args.out / "canon").glob("*.json")):
+            if path.name == "index.json":
+                continue
+            snap = json.loads(path.read_text("utf-8"))
+            if any(x["maestro"]["slug"] == snap["maestro"]["slug"] for x in snaps):
+                continue
+            pack = load_pack(Path("maestros") / snap["maestro"]["slug"])
+            add_media(snap, pack.data)
+            path.write_text(json.dumps(snap, ensure_ascii=False, separators=(",", ":"), default=str), "utf-8")
+            n = sum(1 for u in snap["units"] if u.get("media"))
+            print(f"{snap['maestro']['name']}: links for {n} of {len(snap['units'])} {snap['maestro']['unit']}s")
     if not snaps and not (args.out / "canon" / "index.json").exists():
         p.error("give --maestro PACK=DSN (or --pack and --dsn), or --out a folder written earlier")
     if snaps or not (args.out / "index.html").exists():

@@ -210,6 +210,21 @@
       }
     },
     "taxonomies": {"type": "object", "additionalProperties": {"type": "string"}},
+    "media_links": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Outbound links in the canon explorer: where to watch, listen to or read each unit. Links only; nothing is copied or hosted.",
+      "properties": {
+        "lyrics_sites": {
+          "type": "array", "items": {"type": "string", "pattern": "^[a-z0-9.-]+\\.[a-z]+$"}, "uniqueItems": true,
+          "description": "Sites a lyrics search is limited to (default genius.com and musixmatch.com); empty for no lyrics search."
+        },
+        "sources": {
+          "type": "object", "additionalProperties": {"enum": ["watch", "listen", "lyrics"]},
+          "description": "Sources whose per-unit pages are a place to watch, listen or read lyrics, e.g. {atulsongaday: lyrics}."
+        }
+      }
+    },
     "popularity_signals": {
       "type": "object",
       "additionalProperties": false,
