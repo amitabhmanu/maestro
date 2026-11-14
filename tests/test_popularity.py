@@ -313,7 +313,8 @@ def test_youtube_titles_and_pages():
     for t in ["Pyaasa Hindi Movie | Old Classic Songs Collection", "Geet | Mere Mitwa | Full Album",
               "Likhe Jo khat Tuje | LoFi Chill Mix | Kanyadaan", "Original LP Recording | Chaudhvin Ka Chand",
               "Old is Gold | O Mere Dil Ke Chain", "Platinum Song Of The Day | Ruke Ruke Se Qadam",
-              "Dharmputra (1961) - All Songs | Shashi Kapoor", "Makar Sankranti Special | Popular Playlist"]:
+              "Dharmputra (1961) - All Songs | Shashi Kapoor", "Makar Sankranti Special | Popular Playlist",
+              "Dev Anand Top Songs | Evergreen", "Top Independence Day Songs", "Hindi Retro Hits Vol-1"]:
         assert not yt.is_song(t), t
     rafi = ("Mohammed Rafi", "Mohd Rafi", "Md. Rafi")
     assert yt.split_title("Dhund Ke Laoon Kahan Se Main - Manna Dey, Mohammed Rafi, Bahu Begum Song", people=rafi) == ("Dhund Ke Laoon Kahan Se Main", "Bahu Begum")

@@ -56,7 +56,8 @@ NOT_A_SONG = re.compile(r"\b(?:jukebox|best\s+of|top\s+\d+|\d+\s+(?:rare\s+|best
                         r"radio|show|geetmala|season\s+\d+|episode|live\s+(?:concert|performance|in)|concert|recreat(?:ed|ion)|"
                         r"cover|unplugged|tribute|karaoke|instrumental|reprise|trailer|teaser|promo|interview|carvaan|"
                         r"collection|full\s+album|lo-?fi|chill|remix|slowed|reverb|lp\s+recording|old\s+is\s+gold|"
-                        r"songs?\s+of\s+the\s+day|podcast|all\s+songs|playlist|special)\b|#", re.I)
+                        r"songs?\s+of\s+the\s+day|podcast|all\s+songs|playlist|special|top\s+(?:[\w']+\s+){0,3}songs|hits\s+vol)\b|"
+                        r"#|ज्यूकबॉक्स|वॉल्यूम", re.I)
 SINGER_LINE = re.compile(r"^\s*(?:singers?|artists?|vocals?|sung\s+by|voice)\s*[:\-–]\s*(.+)$", re.I | re.M)
 FILM_LINE = re.compile(r"^\s*(?:film|movie|album)(?:\s+name)?\s*[:\-–]\s*(.+?)\s*$", re.I | re.M)
 DEVANAGARI = re.compile(r"[ऀ-ॿ]")
