@@ -293,3 +293,22 @@ def test_count_signal_popular_only_at_the_top():
     assert low_popularity(scored[5], th) and low_popularity(scored[90], th)
     assert not low_popularity(scored[99], th)
     assert not low_popularity(scored[500], th)  # an article is a list: being on it is enough
+
+
+def test_youtube_titles_and_pages():
+    from maestro.extractors import youtube as yt
+    assert yt.split_title("Chahoonga Main Tujhe | Dosti | Mohammed Rafi | Laxmikant-Pyarelal") == ("Chahoonga Main Tujhe", "Dosti")
+    assert yt.split_title("Baharo Phool Barsao - Mohammed Rafi", "Film: Suraj (1966)\nSinger: Mohammed Rafi") == ("Baharo Phool Barsao", "Suraj")
+    assert yt.split_title('Gulabi Aankhen (From "The Train")') == ("Gulabi Aankhen", "The Train")
+    assert yt.split_title("Teri Galiyon Mein (HD) | Mohammed Rafi Hits")[0] == "Teri Galiyon Mein"
+    assert yt.split_title("Dard E Dil with lyrics | दर्द ए दिल गाने के बोल | Karz | Rishi Kapoor") == ("Dard E Dil", "Karz")
+    assert yt.split_title("Kya Hua Tera Wada with lyrics", "Movie: Hum Kisise Kum Nahin (1977)") == ("Kya Hua Tera Wada", "Hum Kisise Kum Nahin")
+    assert yt.split_title("Shishi Bhari Gulab Ki | Full Video")[1] is None
+    for t in ["15 Rare Songs Of O.P Nayyar | Tadapte Hain Machalte", "Top 10 Songs of Shashi Kapoor | Likhe Jo Khat Tujhe",
+              "Best of Mohammad Rafi | Jukebox", "Hindi Retro Party Mix Vol 2 | DJ Tarun Makhijani",
+              "Sonu Nigam Live Concert | Dil Ke Jharoke Mein", "Ameen Sayani's Geetmala | Season 40",
+              "Aajkal Tere Mere Pyar Ke Charche | Old Hindi Song Recreation", "Darr Ke Aage Jeet Hai #JeetengePhirSe"]:
+        assert not yt.is_song(t), t
+    assert yt.is_song("Chahoonga Main Tujhe | Dosti | Mohammed Rafi")
+    assert "forHandle=%40saregamamusic" in yt.channel_url("@saregamamusic")
+    assert "pageToken=T2" in yt.playlist_url("UU1", "T2") and "id=a%2Cb" in yt.videos_url(["a", "b"])
