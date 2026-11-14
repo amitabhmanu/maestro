@@ -54,6 +54,7 @@ GEM_MAX_REACH = 0.5
 GEM_MIN_QUALITY = 0.6
 FRAMING = {"gem": 1.0, "praise": 0.6, "listed": 0.25}  # how an expert speaks of a unit
 LOW_POP_REISSUES = 2  # a low-popularity unit is on at most this many releases or catalogue numbers
+COUNT_SIGNAL_SHARE = 0.2  # an enduring signal naming more of the canon than this is a count (see count_medians)
 LIST_PURITY_MIN = 0.9  # a gem list counts only if this share of its units are low-popularity
 LIST_INTENTS = ("gem_list", "best_of", "themed")
 SELECTIVE_SHARE = 0.01  # a voice naming this share of the canon or less has its full say
@@ -435,15 +436,37 @@ def load_lists(pack) -> dict[str, dict[str, str]]:
     return out
 
 
-def low_popularity(s: Scored) -> bool:
+def low_popularity(s: Scored, medians: dict[str, float] | None = None) -> bool:
     """Positive and absent evidence agree that few people know the unit: no chart, award or hit list
-    (contemporary), no cover or reuse (penetration), no article or stream count (any enduring signal
-    but reissues), and on at most LOW_POP_REISSUES releases."""
-    for sig in s.signals:
+    (contemporary), no cover or reuse (penetration), no article (an enduring list), on at most
+    LOW_POP_REISSUES releases, and, for count signals that name much of the canon (Last.fm listeners,
+    YouTube views; see `count_medians`), no more than the median of the units they name."""
+    medians = medians or {}
+    for sig, strength in s.signals.items():
         f = s.facet_of.get(sig)
-        if f in ("contemporary", "penetration") or (f == "enduring" and sig != "reissues"):
+        if sig == "reissues":
+            if strength > LOW_POP_REISSUES:
+                return False
+        elif sig in medians:
+            if strength > medians[sig]:
+                return False
+        elif f in ("contemporary", "penetration", "enduring"):
             return False
-    return s.signals.get("reissues", 0) <= LOW_POP_REISSUES
+    return True
+
+
+def count_medians(scored: dict[int, Scored], facet_of: dict[str, str]) -> dict[str, float]:
+    """Enduring signals that name more than COUNT_SIGNAL_SHARE of the canon are counts, not lists:
+    having a few Last.fm listeners says nothing, being above the middle of the named units does."""
+    out = {}
+    n = max(1, len(scored))
+    for sig in {x for s in scored.values() for x in s.signals}:
+        if facet_of.get(sig) != "enduring" or sig == "reissues":
+            continue
+        vals = sorted(s.signals[sig] for s in scored.values() if sig in s.signals)
+        if len(vals) / n > COUNT_SIGNAL_SHARE:
+            out[sig] = vals[len(vals) // 2]
+    return out
 
 
 def _voice_of(e: Evidence) -> str:
@@ -451,7 +474,7 @@ def _voice_of(e: Evidence) -> str:
 
 
 def _expert_quality(scored: dict[int, Scored], facet_of: dict[str, str], picks: set[int],
-                    lists: dict[str, dict[str, str]]) -> tuple[dict[str, Any], dict[str, Any]]:
+                    lists: dict[str, dict[str, str]]) -> tuple[dict[str, Any], dict[str, Any], dict[str, float]]:
     """Quality from expert gem lists: each unit's mentions in qualifying lists, voice by voice.
 
     Only `gem_list` lists count (see `load_lists`), and only when at least LIST_PURITY_MIN of the
@@ -463,6 +486,7 @@ def _expert_quality(scored: dict[int, Scored], facet_of: dict[str, str], picks: 
     Independent voices agreeing multiply: quality = 1 - prod(1 - word) over the voices.
     """
     n = max(1, len(scored))
+    medians = count_medians(scored, facet_of)
     per_list: dict[str, dict[str, Any]] = {}
     for uid, s in scored.items():
         for e in s.evidence:
@@ -474,7 +498,7 @@ def _expert_quality(scored: dict[int, Scored], facet_of: dict[str, str], picks: 
     report: dict[str, Any] = {}
     named: dict[str, set[int]] = defaultdict(set)
     for url, L in per_list.items():
-        low = sum(1 for u in L["units"] if low_popularity(scored[u]))
+        low = sum(1 for u in L["units"] if low_popularity(scored[u], medians))
         purity = low / len(L["units"])
         counts = L["intent"] == "gem_list" and purity >= LIST_PURITY_MIN
         report[url] = {"voice": L["voice"], "title": L["title"], "intent": L["intent"], "units": len(L["units"]),
@@ -502,7 +526,7 @@ def _expert_quality(scored: dict[int, Scored], facet_of: dict[str, str], picks: 
     for uid in picks:
         if uid in scored:
             scored[uid].quality = 1.0
-    return voices, report
+    return voices, report, medians
 
 
 def _score_gems(scored: dict[int, Scored], maestro: int, present: list[str], container_kind: str,
@@ -523,11 +547,11 @@ def _score_gems(scored: dict[int, Scored], maestro: int, present: list[str], con
       the lists span the unit's year, cover REDISCOVERY_COVERAGE of those years' units and name
       REDISCOVERY_CAPTURE of the most enduring ones).
     """
-    voices, list_report = _expert_quality(scored, facet_of, picks, lists)
+    voices, list_report, medians = _expert_quality(scored, facet_of, picks, lists)
     counting = {url for url, r in list_report.items() if r["counts"]}
     for uid, s in scored.items():
         # Low popularity is the first, hard filter: a rare gem is a good unit few people know.
-        if uid in not_gems or not low_popularity(s) or s.quality < GEM_MIN_QUALITY:
+        if uid in not_gems or not low_popularity(s, medians) or s.quality < GEM_MIN_QUALITY:
             continue
         s.gem = s.quality
         if s.picked:
