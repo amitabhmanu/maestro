@@ -1,0 +1,233 @@
+<title>Rafi Sound Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a map canvas beside a song panel; verdict strip above. Stacks to one column on phones. */
+:root {
+  --bg: #f3f4f7; --surface: #ffffff; --fg: #1b1f2a; --muted: #5d6475; --line: #dde1e9;
+  --accent: #2f5bd3; --accent-soft: #e5ecfd; --good: #1d7a4d; --weak: #9a6a10; --none: #8a8f9c;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12151c; --surface: #1a1e28; --fg: #e7e9ef; --muted: #9aa1b2; --line: #2b3140;
+  --accent: #7ea2ff; --accent-soft: #1f2a48; --good: #5fcf96; --weak: #e0b25a; --none: #7d8394; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #12151c; --surface: #1a1e28; --fg: #e7e9ef; --muted: #9aa1b2; --line: #2b3140;
+  --accent: #7ea2ff; --accent-soft: #1f2a48; --good: #5fcf96; --weak: #e0b25a; --none: #7d8394; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 32px }
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 16px }
+h1 { font-family: var(--display); font-weight: 700; font-size: 28px; margin: 0; letter-spacing: -0.01em; text-wrap: balance }
+.lede { color: var(--muted); max-width: 72ch; margin: 4px 0 0 }
+.verdict { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px }
+.v { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 4px; align-content: start }
+.v .k { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted) }
+.v .n { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 18px }
+.v .n small { font-size: 12px; color: var(--muted) }
+.v .why { font-size: 12px; color: var(--muted) }
+.pill { display: inline-block; font-size: 11px; padding: 0 7px; border-radius: 99px; font-weight: 600; width: fit-content; justify-self: start; align-self: end; line-height: 18px }
+.pill.good { color: var(--good); border: 1px solid var(--good) } .pill.weak { color: var(--weak); border: 1px solid var(--weak) } .pill.none { color: var(--none); border: 1px solid var(--none) }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface) }
+.seg button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--fg); padding: 5px 10px; cursor: pointer }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface) }
+.seg button:focus-visible, input:focus-visible, a:focus-visible, .nb:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+label.lab { font-size: 12px; color: var(--muted); margin-right: 4px }
+input[type=search] { font: inherit; padding: 5px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); min-width: 0; width: 220px; max-width: 100% }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start }
+@media (max-width: 860px) { .main { grid-template-columns: minmax(0, 1fr) } }
+.mapbox { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; position: relative; aspect-ratio: 4 / 3; max-width: 100%; overflow: hidden }
+canvas { width: 100%; height: 100%; display: block; cursor: crosshair }
+.tip { position: absolute; pointer-events: none; background: var(--fg); color: var(--bg); font-size: 12px; padding: 4px 8px; border-radius: 6px; max-width: 260px }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted) }
+.legend span { display: inline-flex; align-items: center; gap: 5px; cursor: pointer }
+.legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block }
+.legend span.off { opacity: .35 }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; min-width: 0 }
+.panel h2 { font-family: var(--display); font-weight: 500; font-size: 18px; margin: 0; text-wrap: balance }
+.meta { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 13px }
+.meta dt { color: var(--muted) } .meta dd { margin: 0; min-width: 0 }
+.nbs { display: grid; gap: 4px }
+.nb { display: grid; grid-template-columns: 44px 1fr; gap: 8px; padding: 6px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; background: none; text-align: left; font: inherit; color: inherit }
+.nb:hover { background: var(--accent-soft) }
+.nb .s { font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums }
+.nb .t { font-size: 13px } .nb .c { font-size: 11px; color: var(--muted) }
+.chip { font-size: 10px; padding: 0 5px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); margin-left: 4px; white-space: nowrap }
+.empty { color: var(--muted); font-size: 13px }
+a { color: var(--accent) }
+.foot { color: var(--muted); font-size: 12px; max-width: 80ch }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Rafi Sound Map</h1>
+    <p class="lede" id="lede"></p>
+  </header>
+  <section class="verdict" id="verdict" aria-label="Do neighbours share these labels more than chance?"></section>
+  <div class="controls">
+    <span><span class="lab">Model</span><span class="seg" id="model"></span></span>
+    <span><span class="lab">Colour by</span><span class="seg" id="colour"></span></span>
+    <input type="search" id="q" placeholder="Find a song, film or composer" aria-label="Find a song">
+  </div>
+  <div class="main">
+    <div style="display:grid;gap:8px;min-width:0">
+      <div class="mapbox"><canvas id="cv" aria-label="Map of songs placed by sound"></canvas><div class="tip" id="tip" hidden></div></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <aside class="panel" id="panel"><p class="empty">Click a dot to see the song and the eight recordings that sound most like it. Metadata is shown only to judge whether the neighbours make sense: none of it was used to place the dots.</p></aside>
+  </div>
+  <p class="foot" id="foot"></p>
+</div>
+
+<script>
+const DATA = /*MAP_DATA*/null;
+const MODEL_NAMES = { mert: "MERT", clap: "CLAP", craft: "20 features" };
+const PALETTE = ["#4269d0", "#efb118", "#ff725c", "#6cc5b0", "#3ca951", "#ff8ab7", "#a463f2", "#97bbf5", "#9c6b4e", "#e45756"];
+const songs = DATA.songs, maps = DATA.maps;
+const models = Object.keys(maps);
+let model = models[0], colourBy = "composer", sel = null, hover = null, query = "", hidden = new Set();
+
+const colourings = {
+  composer: { label: "Composer", get: s => s.composer },
+  decade: { label: "Decade", get: s => s.decade ? s.decade + "s" : null },
+  solo: { label: "Solo or duet", get: s => s.solo == null ? null : (s.solo ? "Solo" : "With other singers") },
+  group: { label: "Popularity", get: s => ({ gem: "Expert-listed", expert: "Expert-listed", hit: "Chart hit", known: "Well known", ordinary: "Other" })[s.group] },
+};
+function cats() {
+  const get = colourings[colourBy].get, n = {};
+  Object.values(songs).forEach(s => { const v = get(s); if (v) n[v] = (n[v] || 0) + 1; });
+  let keys = Object.keys(n).sort((a, b) => colourBy === "decade" ? a.localeCompare(b) : n[b] - n[a]);
+  const top = keys.slice(0, 9);
+  const col = {}; top.forEach((k, i) => col[k] = PALETTE[i]);
+  return { col, top, other: keys.length > 9, n };
+}
+let C = cats();
+const colOf = s => { const v = colourings[colourBy].get(s); return v && C.col[v] ? C.col[v] : null; };
+const catOf = s => { const v = colourings[colourBy].get(s); return v && C.col[v] ? v : "Other"; };
+
+// verdict strip (summary for the selected model)
+const LABELS = { composer: "Same composer", film: "Same film", decade: "Same decade", solo: "Solo vs duet", lyricist: "Same lyricist", item: "Same upload (artefact)" };
+function verdict() {
+  const s = DATA.summary[model], el = document.getElementById("verdict"); el.innerHTML = "";
+  Object.keys(LABELS).forEach(f => {
+    const r = s[f]; if (!r) return;
+    const a = f === "item" ? r.agree : (r.agree_other_uploads ?? r.agree), c = f === "item" ? r.chance : (r.chance_other_uploads ?? r.chance);
+    const lift = c > 0 ? a / c : 0;
+    const cls = f === "item" ? (lift > 2 ? "weak" : "good") : (a > r.chance95 && lift >= 1.5 ? "good" : a > r.chance95 ? "weak" : "none");
+    const word = f === "item" ? (lift > 2 ? "confound" : "no confound") : (cls === "good" ? "heard" : cls === "weak" ? "faint" : "not heard");
+    el.insertAdjacentHTML("beforeend", `<div class="v"><span class="k">${LABELS[f]}</span>
+      <span class="n">${(a * 100).toFixed(0)}% <small>vs ${(c * 100).toFixed(0)}% by chance</small></span>
+      <span class="pill ${cls}">${word}</span></div>`);
+  });
+  const o = s.outlier_auc, y = s.year_gap;
+  el.insertAdjacentHTML("beforeend", `<div class="v"><span class="k">Year gap to neighbours</span>
+    <span class="n">${y.neighbours.toFixed(1)} <small>vs ${y.random.toFixed(1)} yrs random</small></span>
+    <span class="why">Expert-listed songs as outliers: AUC ${o.expert_vs_ordinary == null ? "n/a" : o.expert_vs_ordinary.toFixed(2)}</span></div>`);
+}
+
+function seg(id, opts, cur, on) {
+  const el = document.getElementById(id); el.innerHTML = "";
+  opts.forEach(([k, label]) => {
+    const b = document.createElement("button"); b.textContent = label; b.setAttribute("aria-pressed", k === cur);
+    b.onclick = () => { on(k); seg(id, opts, k, on); }; el.appendChild(b);
+  });
+}
+
+window.__pts = () => pts;
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d"), tip = document.getElementById("tip");
+let W = 0, pts = [];
+function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function layout() {
+  const r = cv.getBoundingClientRect(), d = devicePixelRatio || 1; W = r.width;
+  cv.width = r.width * d; cv.height = r.height * d; ctx.setTransform(d, 0, 0, d, 0, 0);
+  const pad = 18, xy = maps[model].xy;
+  pts = Object.keys(xy).map(k => ({ k, x: pad + xy[k][0] * (r.width - 2 * pad), y: pad + (1 - xy[k][1]) * (r.height - 2 * pad) }));
+  draw();
+}
+function matches(s) {
+  if (!query) return true;
+  const q = query.toLowerCase();
+  return [s.title, s.film, s.composer, s.lyricist, ...(s.cosingers || [])].some(x => x && x.toLowerCase().includes(q));
+}
+function draw() {
+  const r = cv.getBoundingClientRect(); ctx.clearRect(0, 0, r.width, r.height);
+  const none = css("--none"), fg = css("--fg"), accent = css("--accent");
+  const nbs = sel ? new Set(maps[model].nn[sel].map(x => x[0])) : null;
+  const P = Object.fromEntries(pts.map(p => [p.k, p]));
+  if (sel && P[sel]) {
+    ctx.strokeStyle = accent; ctx.globalAlpha = .45; ctx.lineWidth = 1;
+    maps[model].nn[sel].forEach(([k]) => { const p = P[k]; if (!p) return; ctx.beginPath(); ctx.moveTo(P[sel].x, P[sel].y); ctx.lineTo(p.x, p.y); ctx.stroke(); });
+  }
+  pts.forEach(p => {
+    const s = songs[p.k], c = colOf(s), cat = catOf(s);
+    let a = hidden.has(cat) ? .08 : .85;
+    if (query && !matches(s)) a = .08;
+    if (nbs && !nbs.has(p.k) && p.k !== sel) a = Math.min(a, .25);
+    ctx.globalAlpha = a; ctx.fillStyle = c || none;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.k === sel ? 7 : 4.5, 0, 7); ctx.fill();
+    if (p.k === sel || p.k === hover) { ctx.globalAlpha = 1; ctx.strokeStyle = fg; ctx.lineWidth = 2; ctx.stroke(); }
+  });
+  ctx.globalAlpha = 1;
+}
+function nearest(e) {
+  const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  let best = null, bd = 144;
+  pts.forEach(p => { const d = (p.x - x) ** 2 + (p.y - y) ** 2; if (d < bd) { bd = d; best = p; } });
+  return best;
+}
+cv.addEventListener("mousemove", e => {
+  const p = nearest(e); hover = p ? p.k : null;
+  if (p) { const s = songs[p.k]; tip.hidden = false; tip.textContent = `${s.title} (${s.film || "?"}, ${s.year || "?"})`;
+    const r = cv.getBoundingClientRect(); tip.style.left = Math.min(p.x + 10, r.width - 270) + "px"; tip.style.top = (p.y + 10) + "px"; }
+  else tip.hidden = true;
+  draw();
+});
+cv.addEventListener("mouseleave", () => { hover = null; tip.hidden = true; draw(); });
+cv.addEventListener("click", e => { const p = nearest(e); if (p) select(p.k); });
+
+const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+function select(k) {
+  sel = k; const s = songs[k], panel = document.getElementById("panel");
+  const shared = o => {
+    const out = [];
+    if (o.composer && o.composer === s.composer) out.push("composer");
+    if (o.film_id && o.film_id === s.film_id) out.push("film");
+    if (o.decade === s.decade) out.push("decade");
+    if (o.item === s.item) out.push("same upload");
+    return out.map(x => `<span class="chip">${x}</span>`).join("");
+  };
+  panel.innerHTML = `<h2>${esc(s.title)}</h2>
+    <dl class="meta"><dt>Film</dt><dd>${esc(s.film || "unknown")}, ${esc(s.year || "")}</dd>
+    <dt>Composer</dt><dd>${esc(s.composer || "unknown")}</dd><dt>Lyricist</dt><dd>${esc(s.lyricist || "unknown")}</dd>
+    <dt>With</dt><dd>${s.cosingers && s.cosingers.length ? esc(s.cosingers.join(", ")) : "solo"}</dd>
+    <dt>Listen</dt><dd><a href="${esc(s.listen)}" target="_blank" rel="noopener">Internet Archive</a></dd></dl>
+    <div class="k" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Sounds most like (${MODEL_NAMES[model]})</div>
+    <div class="nbs">${maps[model].nn[k].map(([o, sim]) => { const t = songs[o]; return `<button class="nb" data-k="${o}">
+      <span class="s">${sim.toFixed(2)}</span><span><span class="t">${esc(t.title)}</span><br><span class="c">${esc(t.film || "?")} · ${esc(t.year || "?")} · ${esc(t.composer || "?")}${shared(t)}</span></span></button>`; }).join("")}</div>`;
+  panel.querySelectorAll(".nb").forEach(b => b.onclick = () => select(b.dataset.k));
+  draw();
+}
+function legend() {
+  const el = document.getElementById("legend"); el.innerHTML = "";
+  const items = C.top.map(k => [k, C.col[k], C.n[k]]); if (C.other) items.push(["Other", css("--none"), null]);
+  items.forEach(([k, c, n]) => {
+    const sp = document.createElement("span"); sp.className = hidden.has(k) ? "off" : "";
+    sp.innerHTML = `<i style="background:${c}"></i>${esc(k)}${n ? ` (${n})` : ""}`;
+    sp.onclick = () => { hidden.has(k) ? hidden.delete(k) : hidden.add(k); legend(); draw(); };
+    el.appendChild(sp);
+  });
+}
+
+seg("model", models.map(m => [m, MODEL_NAMES[m] || m]), model, m => { model = m; verdict(); layout(); if (sel) select(sel); });
+seg("colour", Object.entries(colourings).map(([k, v]) => [k, v.label]), colourBy, c => { colourBy = c; hidden.clear(); C = cats(); legend(); draw(); });
+document.getElementById("q").addEventListener("input", e => { query = e.target.value.trim(); draw(); });
+document.getElementById("lede").textContent = `${Object.keys(songs).length} Rafi recordings published by 1965, placed only by how they sound. Nearby dots are recordings a pretrained music model hears as similar. Film, composer and year were added afterwards, to check whether the neighbours make musical sense.`;
+document.getElementById("foot").textContent = `Neighbours are the ${DATA.k} closest recordings in the model's full vector space; the 2D layout (${maps[model].how.toUpperCase()}) only approximates it. "By chance" is the same share with labels shuffled among songs. Uploads on the Internet Archive often hold one transfer of several songs, so composer, film and decade scores leave out neighbours from the same upload. No audio is stored here; listen links go to the Internet Archive.`;
+verdict(); legend();
+new ResizeObserver(layout).observe(cv);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+</script>

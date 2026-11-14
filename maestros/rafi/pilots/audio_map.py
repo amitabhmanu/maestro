@@ -411,6 +411,17 @@ def map_(args):
     print(text)
 
 
+def page(args):
+    """Write a self-contained explorer page from map.json (no audio, publishable titles only)."""
+    d = json.load(open(Path(args.out) / "map.json", encoding="utf-8"))
+    d["summary"] = {v: r for v, r in d["summary"].items() if v in d["maps"]}
+    html = Path(__file__).with_name("audio_map.html").read_text(encoding="utf-8")
+    html = html.replace("/*MAP_DATA*/null", json.dumps(d, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/"))
+    dest = Path(args.page or Path(args.out) / "rafi-sound-map.html")
+    dest.write_text(html, encoding="utf-8")
+    print(dest)
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="step", required=True)
@@ -428,8 +439,11 @@ def main():
     m.add_argument("--k", type=int, default=10)
     m.add_argument("--reps", type=int, default=200)
     m.add_argument("--dup", type=float, default=0.985)
+    p = sub.add_parser("page")
+    p.add_argument("--out", default="data/pilots/audio-map")
+    p.add_argument("--page", help="where to write the page (default: OUT/rafi-sound-map.html)")
     args = ap.parse_args()
-    {"embed": embed, "map": map_}[args.step](args)
+    {"embed": embed, "map": map_, "page": page}[args.step](args)
 
 
 if __name__ == "__main__":
