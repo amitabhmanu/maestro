@@ -217,6 +217,7 @@
         "enduring": {"type": "array", "items": {"type": "string"}},
         "penetration": {"type": "array", "items": {"type": "string"}},
         "esteem": {"type": "array", "items": {"type": "string"}},
+        "lists": {"type": "string", "description": "Pack-relative TSV of expert lists: url, intent (gem_list, best_of or themed), note. Only gem_list lists can make gems."},
         "weights": {"type": "object", "additionalProperties": false,
                     "description": "Facet weights for the popularity score (defaults 0.35, 0.3, 0.2, 0.15).",
                     "properties": {

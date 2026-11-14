@@ -139,35 +139,47 @@ def test_gems_from_picks_and_shadow(store_for):
     assert not u[hit].gem
 
 
-def test_gems_come_from_expert_opinion(store_for):
+GEM_LIST = "https://www.songsofyore.com/some-hidden-gems-of-mohammad-rafi-the-romantic-solos/"  # gem_list in the pack
+BEST_OF = "https://www.songsofyore.com/rafis-best-songs-by-madan-mohan/"  # best_of in the pack
+
+
+def test_gems_come_from_pure_gem_lists(store_for):
     s = store_for("rafi")
     hit, side, plain, f = _canon(s)
     other = person(s, "hfgk_online", "3", "A Third Composer")
     rare = song(s, "hfgk_online", "301", "Koi Sagar Dil Ko Behlata Nahin Ab", None, other)
-    listed = song(s, "hfgk_online", "302", "Tasveer Banata Hoon Teri Khoon E Jigar Se", None, other)
+    praised = song(s, "hfgk_online", "302", "Tasveer Banata Hoon Teri Khoon E Jigar Se", None, other)
     vetoed = song(s, "hfgk_online", "303", "Mujhe Duniya Walo Sharabi Na Samjho", None, other)
-    # A bigger canon, so that a voice naming four units is a choosy one.
-    for i in range(400):
-        song(s, "hfgk_online", str(1000 + i), f"Filler Song {i} Nobody Wrote About", None, other)
+    # A bigger canon, so that a voice naming a few units is a choosy one.
+    fillers = [song(s, "hfgk_online", str(1000 + i), f"Filler Song {i} Nobody Wrote About", None, other) for i in range(400)]
     c = ctx(s)
-    record_mention(c, "songsofyore", "songsofyore", "Koi Sagar Dil Ko Behlata Nahin Ab", strength=1,
-                   note="a less heard gem", expert="AK", framing="gem")
-    record_mention(c, "songsofyore", "songsofyore", "Tasveer Banata Hoon Teri Khoon E Jigar Se", strength=1,
-                   note="in a best-of list", expert="AK", framing="listed")
-    # An expert's word on a hit does not make it a gem: its reach is too high.
-    record_mention(c, "wikipedia", "binaca_geetmala", "Jinhen Naaz Hai Hind Par", strength=40, container="Pyaasa", note="#1")
-    record_mention(c, "songsofyore", "songsofyore", "Jinhen Naaz Hai Hind Par", strength=1, container="Pyaasa",
-                   note="a masterpiece", expert="AK", framing="gem")
+
+    def gem_list(title, url=GEM_LIST, expert="AV", **kw):
+        record_mention(c, "songsofyore", "songsofyore", title, strength=1, note=f"{expert}: a list", expert=expert,
+                       url=url, **kw)
+
+    gem_list("Koi Sagar Dil Ko Behlata Nahin Ab")
+    gem_list("Mujhe Duniya Walo Sharabi Na Samjho")
     s.upsert_claim(vetoed, "pick", value=False, source_id="user", kind="decided")
-    record_mention(c, "songsofyore", "songsofyore", "Mujhe Duniya Walo Sharabi Na Samjho", strength=1,
-                   note="underrated", expert="AK", framing="gem")
+    for i in range(10):
+        gem_list(f"Filler Song {i} Nobody Wrote About")
+    gem_list("Tasveer Banata Hoon Teri Khoon E Jigar Se", url=BEST_OF, expert="AK")  # praise is not a gem claim
+    gem_list("Filler Song 300 Nobody Wrote About", url="https://example.org/unclassified-list", expert="X")
     res = score_canon(s)
-    u = res["units"]
-    assert u[rare].gem and u[rare].gem_reasons == ["a less heard gem"]
-    assert u[rare].quality > u[listed].quality > 0 and not u[listed].gem
-    assert u[hit].quality > 0.6 and not u[hit].gem
+    u, lists = res["units"], res["gems"]["lists"]
+    assert lists[GEM_LIST]["counts"] and lists[GEM_LIST]["purity"] == 1.0
+    assert lists[BEST_OF]["intent"] == "best_of" and not lists[BEST_OF]["counts"]
+    assert lists["https://example.org/unclassified-list"]["intent"] == "unclassified"
+    assert u[rare].gem and u[rare].gem_reasons == ["AV: a list"]
+    assert not u[praised].gem and not u[fillers[300]].gem
     assert u[vetoed].quality > 0.6 and not u[vetoed].gem  # the user said it is not a gem
-    assert res["gems"]["voices"]["AK"]["units"] == 4
+
+    # A gem list that slips in hits fails its purity test, and then none of its units are gems.
+    for title in ["Jinhen Naaz Hai Hind Par"] + [f"Plain Song Number {i} Of The Canon" for i in (11, 12)]:
+        record_mention(c, "wikipedia", "binaca_geetmala", title, strength=30, note="#11")
+        gem_list(title)
+    res = score_canon(s)
+    assert res["gems"]["lists"][GEM_LIST]["purity"] < 0.9 and not res["units"][rare].gem
 
 
 def test_snapshot_carries_popularity(store_for):
