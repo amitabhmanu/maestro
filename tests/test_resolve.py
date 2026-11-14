@@ -225,6 +225,21 @@ def test_recordings_without_a_session_match_through_a_shared_catalogue_number(st
     assert g.find(old) != g.find(new) and g.find(mb_other) == mb_other
 
 
+def test_catalogue_numbers_from_an_enrich_source_do_not_match_units(store_for):
+    # Discogs in enrich mode tags existing units with a compilation's number by title likeness;
+    # that number must not then pull two different songs together.
+    s = store_for("eddy-arnold")
+    assert next(x for x in s.pack.data["sources"] if x["id"] == "discogs")["unit_mode"] == "enrich"
+    a = s.find_or_create_by_xref("recording", "praguefrank", "seq:1", "Mujhe Kitna Pyar Hai")
+    b = s.find_or_create_by_xref("recording", "musicbrainz", "r1", "Kitna Pyara Vada Hai")
+    for r, src in ((a, "praguefrank"), (b, "musicbrainz")):
+        s.upsert_claim(r, "credit", ref_entity_id=s.maestro_entity(), value={"role": "singer"}, source_id=src)
+        s.upsert_claim(r, "catalogue", value="CDF 131011", source_id="discogs")
+    resolve(s)
+    assert not s.conn.execute("SELECT 1 FROM claim WHERE field = 'same_as' AND status = 'active'").fetchall()
+    assert not open_reviews(s)
+
+
 def test_sessions_on_different_days_stay_apart(store_for):
     s = store_for("eddy-arnold")
     a = s.find_or_create_by_xref("container", "praguefrank", "s1", "5 February 1962 RCA Victor Studio, Nashville")
