@@ -537,10 +537,15 @@ def _merge_by_matrix(store, groups, distinct, stats, unit_recs) -> None:
 
 
 def _catalogues_of_units(store: Store) -> dict[int, set[str]]:
+    """Catalogue numbers a unit's own sources give. A source in `unit_mode: enrich` attached its
+    numbers to units by title likeness, so they are no evidence that two units are one song:
+    a compilation's number would let a weak title match through."""
+    enrich = sorted(x["id"] for x in store.pack.data.get("sources", []) if x.get("unit_mode") == "enrich")
     out: dict[int, set[str]] = defaultdict(set)
     for r in store.conn.execute(
         """SELECT c.entity_id, c.value #>> '{}' AS v FROM claim c JOIN entity e ON e.id = c.entity_id
-           WHERE e.type = %s AND c.field = 'catalogue' AND c.status = 'active'""", (store.pack.unit,)
+           WHERE e.type = %s AND c.field = 'catalogue' AND c.status = 'active'
+             AND NOT (c.source_id = ANY(%s))""", (store.pack.unit, enrich)
     ).fetchall():
         key = catalogue_key(r["v"] or "")
         if key:
