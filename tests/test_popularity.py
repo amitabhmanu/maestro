@@ -211,3 +211,15 @@ def test_hindigeetmala_binaca_parse():
     assert d["year"] == 1977 and d["pages"] == [2] and d["years"] == [1953]
     assert d["songs"] == [{"rank": 2, "title": "Shabaab Pe Main, Pardaa Hai Pardaa", "singers": ["Mohammed Rafi"],
                            "composers": ["Laxmikant Pyarelal"], "film": "Amar Akbar Anthony", "film_year": 1977}]
+
+
+def test_expert_post_lines():
+    p = load("rafi", "songsofyore").parse_line
+    assert p("1. Ishq deewana husn bhi ghayal – Sanghursh (1968) – Lyrics: Shakeel Badayuni")["film"] == "Sanghursh"
+    assert p("2. Tasveer banata hun teri – Deewana – 1952 – Naushad – Shakeel Badayuni")["year"] == 1952
+    assert p("3. Music Composer S Mohindar: Hazaaron rang badlega zamana from the film Shiri Farhad (1956), lyrics")["title"] \
+        == "Hazaaron rang badlega zamana"
+    assert p("4. Hue hum jinke liye barbaad from Deedar (1951), lyrics Shakeel Badayuni")["film"] == "Deedar"
+    assert p("5. 1946 – Kah ke bhi na aaye tum – Safar – C Ramachandra – G.S Nepali")["title"] == "Kah ke bhi na aaye tum"
+    assert p("6. Hai kali-kali ke labh par (Lala Rukh, 1957): Lotan. Based on a poem")["film"] == "Lala Rukh"
+    assert p("Not a numbered line") is None
