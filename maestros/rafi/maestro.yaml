@@ -104,6 +104,10 @@ checksums:
   - {scope: "non-film songs (Shahid Rafi and Sujata Dev, 2015)", total: 328, source: "https://en.wikipedia.org/wiki/Mohammed_Rafi", filter: {tiers: [B], contained: false}}
 taxonomies:
   style: raga
+media_links:
+  # Atul's Song A Day posts carry each song's lyrics (and usually its video): link to them, never copy.
+  lyrics_sites: [hindigeetmala.net, atulsongaday.me]
+  sources: {atulsongaday: lyrics}
 popularity_signals:
   contemporary: [binaca_geetmala, filmfare]
   # Built: binaca_geetmala (Wikipedia #1s; full yearly lists 1953-1983 from hindigeetmala_binaca), filmfare, wikipedia_list, wikipedia_articles (core), reissues (derived), atulsongaday (source presence).

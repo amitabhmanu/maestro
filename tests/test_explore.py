@@ -81,3 +81,33 @@ def test_site(store_for, tmp_path):
     # A later run for another maestro keeps the first one listed.
     main(["--out", str(tmp_path)])
     assert len(json.loads((tmp_path / "canon" / "index.json").read_text("utf-8"))["maestros"]) == 1
+
+
+def test_media_links():
+    from maestro.explore import add_media, media_kind
+
+    assert media_kind("https://www.youtube.com/watch?v=abc") == ("watch", "YouTube")
+    assert media_kind("https://www.last.fm/music/Mohammed+Rafi/_/Chaudhvin+Ka+Chand") == ("listen", "Last.fm")
+    assert media_kind("https://www.last.fm/music/Mohammed+Rafi") is None  # the artist, not a track
+    assert media_kind("https://www.hindigeetmala.net/geetmala/binaca_geetmala_1953.php") is None  # a chart, not a song
+    assert media_kind("http://wp.me/phTr2-u4g", "atulsongaday", {"atulsongaday": "lyrics"}) == ("lyrics", "atulsongaday")
+    snap = {"sources": {"atulsongaday": {"url": "https://atulsongaday.me"}}, "units": [
+        {"id": 1, "links": [{"source": "atulsongaday", "url": "http://wp.me/phTr2-u4g"},
+                            {"source": "hfgk_online", "url": "https://hamraaz.org/x"}],
+         "pop": {"evidence": [{"signal": "youtube", "source": "youtube", "note": "9,000 YouTube views",
+                               "url": "https://www.youtube.com/watch?v=best"},
+                              {"signal": "youtube", "source": "youtube", "note": "10 YouTube views",
+                               "url": "https://www.youtube.com/watch?v=other"},
+                              {"signal": "lastfm", "source": "lastfm", "note": "5 listeners",
+                               "url": "https://www.last.fm/music/Mohammed+Rafi/_/Song"}]}},
+        {"id": 2, "media": [{"kind": "watch", "site": "YouTube", "url": "https://youtu.be/stale0"}]}]}
+    pack = {"media_links": {"lyrics_sites": ["hindigeetmala.net"], "sources": {"atulsongaday": "lyrics"}}}
+    add_media(snap, pack)
+    u1, u2 = snap["units"]
+    assert u1["media"] == [
+        {"kind": "watch", "site": "YouTube", "url": "https://www.youtube.com/watch?v=best", "note": "9,000 YouTube views"},
+        {"kind": "listen", "site": "Last.fm", "url": "https://www.last.fm/music/Mohammed+Rafi/_/Song", "note": "5 listeners"},
+        {"kind": "lyrics", "site": "atulsongaday.me", "url": "http://wp.me/phTr2-u4g"}]
+    assert "media" not in u2  # recomputed from the snapshot, so stale links go
+    assert "site%3Ahindigeetmala.net" in snap["media_search"]["lyrics"][0]["url"]
+    assert "lyrics" not in add_media({"units": []}, {"media_links": {"lyrics_sites": []}})["media_search"]

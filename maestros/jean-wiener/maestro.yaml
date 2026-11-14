@@ -77,6 +77,8 @@ checksums:
   - {scope: "film scores (more than)", total: 300, filter: {tiers: [B]}, source: "https://en.wikipedia.org/wiki/Jean_Wiener"}
 taxonomies:
   style: classical_form_and_film_genre
+media_links:
+  lyrics_sites: []  # film scores and instrumental works
 popularity_signals:
   contemporary: [film_success, press]
   # Built: wikipedia_articles (core wikidata_articles), reissues (derived).
