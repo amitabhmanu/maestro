@@ -35,7 +35,7 @@ def test_plan_turns_gaps_into_jobs_and_needs(store_for):
     p = plan(s, completeness_report(s))
     urls = {j["url"]: j for j in p["jobs"]}
     sweeps = [j for j in p["jobs"] if j["kind"] == "sweep"]
-    assert {j["source"] for j in sweeps} == {"musicbrainz", "hfgk_online", "discogs"}
+    assert {j["source"] for j in sweeps} == {"musicbrainz", "hfgk_online", "discogs", "hindigeetmala"}
     listing = urls["https://hamraaz.org/filmssite/public/film.php?id=10"]
     assert listing["kind"] == "container_listing" and listing["entity_id"] == f
     assert "3 of 4" in listing["why"] and listing["purpose"] == "container_sweep"

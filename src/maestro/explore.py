@@ -43,6 +43,7 @@ UNIT_TEXT_FIELDS = {
     "matrix": "matrix", "label": "label", "description": "description", "artist_credit": "artist_credit",
     "work_type": "work_type", "work_kind": "kind", "date": "date", "issues": "issues", "full_title": "full_title",
     "recorded_year": "recorded_year", "release_year": "release_year", "primary_performer": "performer",
+    "raga": "raga",
 }
 CONTAINER_TEXT_FIELDS = {
     "title_hi": "title_alt_script", "language": "language", "container_kind": "kind", "date": "date",
