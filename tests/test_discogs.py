@@ -46,6 +46,11 @@ def test_release_keeps_the_maestros_tracks_and_credits():
     assert [c["name"] for c in nfs["tracks"][0]["credits"]] == ["Khayyam"]
 
 
+def _create_mode(s):
+    """Rafi's pack uses Discogs for details only; these tests exercise the create mode on its data."""
+    next(x for x in s.pack.data["sources"] if x["id"] == "discogs")["unit_mode"] = "create"
+
+
 def _ctx(s, url, body, purpose="spine"):
     raw = s.record_raw_page(url, 200, "x", "p")
     page = Page(url=url, status=200, body=body, sha256="x", path=FIX)
@@ -57,6 +62,7 @@ def test_extract_writes_units_containers_and_matches_hfgk(store_for):
 
     s = store_for("rafi")
     s.pack.data["identity"]["ids"]["discogs"] = str(RAFI)
+    _create_mode(s)
     hfgk_film = film(s, "hfgk_online", "400", "Kohinoor", 1960)
     hfgk_song = song(s, "hfgk_online", "401", "Madhuban Mein Radhika Nache Re", hfgk_film)
 
@@ -127,6 +133,7 @@ def test_real_rafi_records(store_for):
     """Trimmed real API responses (Discogs data is CC0): a film 78 and a non-film EP."""
     s = store_for("rafi")
     s.pack.data["identity"]["ids"]["discogs"] = "386904"
+    _create_mode(s)
     film78 = discogs.parse_release(_load("rafi_film_78.json"), 386904)
     assert film78["title"] == "Baiju Bawra" and film78["soundtrack"] and film78["catalogues"] == ["FT. 17508"]
     assert [t["title"] for t in film78["tracks"]] == ["ओ दुनिया के रखवाले", "ओ दुनिया के रखवाले"]  # two sides
