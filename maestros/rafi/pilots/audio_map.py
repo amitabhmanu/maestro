@@ -27,7 +27,7 @@ Models (both open, CPU is enough):
   FOSS release ships vectors). Self-supervised on music; mean of all 13 layers, 768 dims.
 - ``clap``: LAION larger_clap_music (Apache 2.0). Audio tower of an audio-text model; 512 dims.
 
-Needs ``torch``, ``transformers``, ``librosa`` (and ``nnAudio`` for MERT's remote code) for
+Needs ``torch``, ``transformers`` (4.57 runs both models; 5.x breaks MERT), ``librosa`` (and ``nnAudio`` for MERT's remote code) for
 ``embed``; ``numpy``, ``scikit-learn`` and optionally ``umap-learn`` for ``map``.
 """
 
@@ -98,7 +98,7 @@ class Embedder:
                 else:
                     try:
                         inp = self.proc(audio=batch, sampling_rate=self.sr, return_tensors="pt")
-                    except TypeError:  # older transformers
+                    except (TypeError, ValueError):  # older transformers name it audios=
                         inp = self.proc(audios=batch, sampling_rate=self.sr, return_tensors="pt")
                     outs.append(self.model.get_audio_features(**inp).numpy())  # B x 512
         return np.concatenate(outs).mean(axis=0).astype(np.float32)
