@@ -1,10 +1,10 @@
 """Last.fm: how many people listen to each of the maestro's tracks today (`lastfm` mentions).
 
-Seed with `top_tracks_url(artist)` for each name Last.fm files the maestro under (it keeps
-"Mohammed Rafi" and "Mohd. Rafi" apart, for example). Each page of artist.getTopTracks lists up to
+Seed with `top_tracks_url(artist)` for each name Last.fm files the maestro under (with autocorrect
+on, spellings such as "Mohd. Rafi" resolve to one artist, so one seed is often enough). Each page of artist.getTopTracks lists up to
 1000 tracks with their listeners and play counts, and queues the next page. Every track becomes a
 `lastfm` mention with strength = listeners. Label uploads often name the film or album as
-`Title (From "Film")`: the part in brackets becomes the mention's container, so matching can use it.
+`Title (From "Film")` or `Title - From "Film"`: that part becomes the mention's container, so matching can use it.
 
 The API needs a free key (last.fm/api), read from LASTFM_API_KEY in the environment or .env and sent
 as the `api_key` query parameter on the request only (the pack's source sets `api_auth.param`).
@@ -30,12 +30,19 @@ def top_tracks_url(artist: str, page: int = 1) -> str:
 
 
 def split_title(name: str) -> tuple[str, str | None]:
-    """'Chaudhvin Ka Chand (From "Chaudhvin Ka Chand")' -> ('Chaudhvin Ka Chand', 'Chaudhvin Ka Chand')."""
+    """'Chaudhvin Ka Chand (From "Chaudhvin Ka Chand")' -> ('Chaudhvin Ka Chand', 'Chaudhvin Ka Chand').
+
+    Also 'Title - From "Film"', the other way label uploads name the film."""
     container = None
     m = re.search(r"""\s*[\(\[]\s*From\s+(?:the\s+(?:film|movie)\s+)?["“']?([^"”'\)\]]+?)["”']?\s*[\)\]]""", name, re.I)
     if m:
         container = m.group(1).strip()
         name = name[:m.start()] + name[m.end():]
+    else:  # 'Gulabi Ankhen - From "The Train"'
+        m = re.search(r"""\s+[-–—]\s+From\s+(?:the\s+(?:film|movie)\s+)?["“']?([^"”']+?)["”']?\s*$""", name, re.I)
+        if m:
+            container = m.group(1).strip()
+            name = name[:m.start()]
     # Version notes that are not part of the title.
     name = re.sub(r"\s*[\(\[](?:[^\)\]]*\b(?:remaster(?:ed)?|version|revival|live|mono|stereo|jhankar|sad|happy)\b[^\)\]]*)[\)\]]", "",
                   name, flags=re.I)

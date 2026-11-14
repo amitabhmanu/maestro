@@ -240,6 +240,7 @@ def test_expert_post_lines():
 def test_lastfm_titles_and_pages():
     mod = load("rafi", "lastfm")
     assert mod.split_title('Chaudhvin Ka Chand (From "Chaudhvin Ka Chand")') == ("Chaudhvin Ka Chand", "Chaudhvin Ka Chand")
+    assert mod.split_title('Gulabi Ankhen - From "The Train"') == ("Gulabi Ankhen", "The Train")
     assert mod.split_title("Baharon Phool Barsao (Remastered)") == ("Baharon Phool Barsao", None)
     data = mod.parse(json.dumps({"toptracks": {"track": [
         {"name": 'Kya Hua Tera Wada (From "Hum Kisi Se Kam Nahin")', "listeners": "1200", "playcount": "9000",
