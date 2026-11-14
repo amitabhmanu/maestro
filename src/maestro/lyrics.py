@@ -166,8 +166,13 @@ def fix_store(store, policy: Policy | None = None) -> dict[str, int]:
     return {"fixed": len(rows)}
 
 
+UNIT_TEXT_KEYS = {"title", "alt_titles", "title_alt_script", "lyrics", "lyric"}
+
+
 def check_snapshot(path: Path, policy: Policy) -> dict[str, Any]:
-    """An explorer snapshot (canon/<slug>.json) must hold no lyric text beyond first lines."""
+    """An explorer snapshot (canon/<slug>.json) must hold no lyric text beyond first lines. Only units
+    are checked: container and people names are not lyrics (a film shown as "Juari / Majboor" is two
+    films, not two lines)."""
     data = json.loads(Path(path).read_text("utf-8"))
     bad: list[str] = []
 
@@ -178,11 +183,12 @@ def check_snapshot(path: Path, policy: Policy) -> dict[str, Any]:
         elif isinstance(node, list):
             for v in node:
                 walk(v, key)
-        elif isinstance(node, str) and key in {"titles", "title", "title_alt_script", "lyrics", "lyric"} \
+        elif isinstance(node, str) and key in UNIT_TEXT_KEYS \
                 and (policy.fields or key in ALWAYS_LYRIC_FIELDS) and beyond_first_line(node, policy.max_chars):
             bad.append(node)
 
-    walk(data)
+    for unit in data.get("units", []):
+        walk({k: v for k, v in unit.items() if k in UNIT_TEXT_KEYS})
     return {"snapshot": str(path), "beyond_first_line": len(bad), "sample": bad[:10], "ok": not bad}
 
 
