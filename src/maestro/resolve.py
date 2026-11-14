@@ -647,19 +647,58 @@ def _release_years(store: Store) -> dict[int, int]:
 WHOLE_TITLE_RATIO = 0.9  # canon-wide matching compares whole titles: no context narrows the field
 
 
+def _whole_core(t: str) -> str:
+    words = t.split()
+    if len(words) > 1 and words[0] in ("the", "a", "an"):
+        words = words[1:]
+    return _squash("".join(words))
+
+
 def whole_title_similarity(a: str, b: str) -> float:
     """How alike two whole normalised titles are, ignoring a leading article and spelling-level
     differences ("The Rovin' Gambler" / "Roving Gambler"). Unlike `title_similarity`, a title that
     only opens another ("Turn the World Around" / "... the Other Way") does not score high."""
-    def core(t: str) -> str:
-        words = t.split()
-        if len(words) > 1 and words[0] in ("the", "a", "an"):
-            words = words[1:]
-        return _squash("".join(words))
-    x, y = core(a), core(b)
+    x, y = _whole_core(a), _whole_core(b)
     if not x or not y:
         return 0.0
     return 1.0 if x == y else SequenceMatcher(None, x, y, autojunk=False).ratio()
+
+
+class WholeTitleIndex:
+    """Finds the titles whose `whole_title_similarity` to a query reaches a threshold, without
+    comparing every pair: titles are bucketed by length (a ratio of r needs the shorter title to be at
+    least r/(2-r) of the longer), and cheap upper bounds are checked before the full comparison."""
+
+    def __init__(self, items: dict[int, set[str]]):
+        self.by_len: dict[int, list[tuple[str, int]]] = defaultdict(list)
+        for ident, titles in items.items():
+            for t in titles:
+                core = _whole_core(t)
+                if core:
+                    self.by_len[len(core)].append((core, ident))
+
+    def matches(self, titles: set[str], threshold: float) -> dict[int, float]:
+        out: dict[int, float] = {}
+        f = threshold / (2 - threshold)
+        for t in titles:
+            x = _whole_core(t)
+            if not x:
+                continue
+            sm = SequenceMatcher(None, autojunk=False)
+            sm.set_seq2(x)  # the query is indexed once and compared with each candidate
+            lo, hi = int(len(x) * f), int(len(x) / f) + 1
+            for n in range(max(lo, 1), hi + 1):
+                for core, ident in self.by_len.get(n, ()):
+                    if core == x:
+                        sim = 1.0
+                    else:
+                        sm.set_seq1(core)
+                        if sm.real_quick_ratio() < threshold or sm.quick_ratio() < threshold:
+                            continue
+                        sim = sm.ratio()
+                    if sim >= threshold and sim > out.get(ident, 0.0):
+                        out[ident] = sim
+        return out
 
 
 def _title_keys(norm: Normaliser, label: str) -> set[str]:
@@ -706,19 +745,24 @@ def _match_floating_by_title(store, norm, groups, distinct, stats, unit_recs, co
             keys.setdefault(g, _title_keys(norm, r["label"]))
         if r["id"] in released:
             first_release[g] = min(first_release.get(g, released[r["id"]]), released[r["id"]])
+    index = WholeTitleIndex({c: keys[c] for c in anchored})
     for g0, key in sorted(floating.items()):
         g = groups.find(g0)
         if g in anchored:
             continue  # joined an anchored unit earlier in this pass
         cands = []
-        for c, ckey in anchored.items():
-            if groups.find(c) != c or not groups.can_join(g, c) or tuple(sorted((g, c))) in distinct:
+        for c0, sim in index.matches(keys[g0], WHOLE_TITLE_RATIO).items():
+            c = groups.find(c0)
+            if c not in anchored or c == g or not groups.can_join(g, c) or tuple(sorted((g, c))) in distinct:
                 continue
             if c in unit_year and g in first_release and unit_year[c] > first_release[g]:
                 continue  # recorded after the floating unit was already on a release
-            sim = max(whole_title_similarity(x, y) for x in keys[g0] for y in keys[c])
-            if sim >= WHOLE_TITLE_RATIO:
-                cands.append((sim, c, ckey))
+            cands.append((sim, c, anchored[c]))
+        best: dict[int, tuple[float, int, str]] = {}
+        for x in cands:  # an anchored unit that absorbed others is listed once, at its best
+            if x[0] > best.get(x[1], (0.0,))[0]:
+                best[x[1]] = x
+        cands = sorted(best.values(), key=lambda x: (-x[0], x[1]))
         # A release database's recording was issued: prefer candidates of its source's default tier
         # (issued takes) over unissued alternates of the same title.
         want = {defaults[x] for x in groups.sources(g) if x in defaults}

@@ -140,3 +140,20 @@ def test_real_rafi_records(store_for):
     roles = [r["value"]["role"] for r in s.conn.execute(
         "SELECT value FROM claim WHERE entity_id = %s AND field = 'credit' AND ref_entity_id = %s", (u, s.maestro_entity()))]
     assert roles == ["singer"]  # composing is outside Rafi's roles in scope
+
+
+def test_composer_pack_counts_only_explicit_composer_credits(store_for):
+    """Jean Wiener plays on his records, but they hold other people's works: only tracks he is
+    credited as composing become units (the pack's discogs source sets main_role: null)."""
+    s = store_for("jean-wiener")
+    s.pack.data["identity"]["ids"]["discogs"] = "442234"
+    rel = {"id": 7, "title": "Wiener et Doucet", "year": 1930, "master_id": 0,
+           "artists": [{"id": 442234, "name": "Jean Wiener", "join": "&"}, {"id": 9, "name": "Clément Doucet"}],
+           "extraartists": [{"id": 442234, "name": "Jean Wiener", "role": "Composed By", "tracks": "A"}],
+           "labels": [{"name": "Columbia", "catno": "DF 1"}], "genres": ["Jazz"], "tracklist": [
+               {"position": "A", "type_": "track", "title": "Chopinata"},
+               {"position": "B", "type_": "track", "title": "Whispering"}]}
+    discogs.extract(_ctx(s, discogs.release_url(7), json.dumps(rel).encode()))
+    titles = [r["label"] for r in s.conn.execute(
+        "SELECT e.label FROM entity e JOIN claim c ON c.entity_id = e.id AND c.field = 'xref' AND c.source_id = 'discogs'")]
+    assert titles == ["Chopinata"]
