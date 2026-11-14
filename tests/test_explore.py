@@ -44,6 +44,7 @@ def test_snapshot(store_for):
     assert snap["containers"][str(f)]["title"] == "Mela" and snap["containers"][str(f)]["listed"] == 2
     assert snap["people"][str(lata)]["name"] == "Lata Mangeshkar" and snap["people"][str(lata)]["aliases"] == ["Lata"]
     assert snap["coverage"]["canon_units"] == 2
+    assert snap["gemness"]["default"] == "provisional" and snap["gemness"]["models"][0]["provisional"]
     json.dumps(snap, default=str)
 
 
@@ -111,3 +112,15 @@ def test_media_links():
     assert "media" not in u2  # recomputed from the snapshot, so stale links go
     assert "site%3Ahindigeetmala.net" in snap["media_search"]["lyrics"][0]["url"]
     assert "lyrics" not in add_media({"units": []}, {"media_links": {"lyrics_sites": []}})["media_search"]
+
+
+def test_gemness_models():
+    from maestro import gemness
+
+    assert gemness.scores(None) == {}
+    assert gemness.scores({"score": 40, "evidence": []}) == {}  # no expert word, no lead: unrated, not zero
+    assert gemness.scores({"quality": 90, "lead": {"score": 60}}) == {"provisional": {"score": 90, "basis": "expert"}}
+    assert gemness.scores({"lead": {"score": 67, "reasons": []}}) == {"provisional": {"score": 67, "basis": "lead"}}
+    assert gemness.scores({"picked": True}) == {"provisional": {"score": 100, "basis": "expert"}}
+    ids = [m["id"] for m in gemness.describe()["models"]]
+    assert len(ids) == len(set(ids))

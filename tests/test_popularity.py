@@ -119,6 +119,7 @@ def test_mentions_match_and_score(store_for):
     assert not res["gems"]["reach_known"] and not any(x.gem for x in u.values())
     summary = unit_summary(u[hit])
     assert summary["score"] > 80 and summary["evidence"][0]["source"] == "wikipedia"
+    assert summary["reach"] == round(100 * u[hit].reach)  # the explorer map's popularity axis
     json.dumps(summary)
 
 

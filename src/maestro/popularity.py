@@ -674,6 +674,7 @@ def unit_summary(s: Scored) -> dict[str, Any] | None:
         return None
     out: dict[str, Any] = {
         "score": round(100 * s.popularity),
+        "reach": round(100 * s.reach),  # popularity without expert esteem
         "facets": {f: round(100 * x) for f, x in s.facets.items() if x},
         "evidence": [{"signal": e.signal, "note": e.note, "source": e.source, **({"url": e.url} if e.url else {})}
                      for e in ordered_evidence(s)],
