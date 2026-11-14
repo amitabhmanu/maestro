@@ -42,7 +42,8 @@ from typing import Any
 
 from maestro.completeness import Unit, load_units
 from maestro.pack import load_pack
-from maestro.resolve import Groups, Normaliser, catalogue_key, fold, title_similarity, whole_title_similarity
+from maestro.resolve import (Groups, Normaliser, WholeTitleIndex, catalogue_key, fold, title_similarity,
+                             whole_title_similarity)
 from maestro.store import Store
 
 FACETS = ("contemporary", "enduring", "penetration", "esteem")
@@ -210,6 +211,20 @@ class MentionMatcher:
         self.ukeys = {uid: sorted({k for t in s.titles for k in _keys(norm, t)}) for uid, s in scored.items()}
         self.ckeys = {cid: {norm.container(t) for t in ts} - {""} for cid, ts in ctitles.items()}
         self._cmatch: dict[tuple[int, str], bool] = {}
+        # Tens of thousands of stream mentions meet a canon of thousands: titles are indexed by length
+        # with cheap bounds before the full comparison, and units by container.
+        self.windex = WholeTitleIndex({uid: set(ks) for uid, ks in self.ukeys.items()})
+        self.by_container: dict[int, list[int]] = defaultdict(list)
+        for uid, s in scored.items():
+            if s.unit.container is not None:
+                self.by_container[s.unit.container].append(uid)
+        self._cunits: dict[str, list[int]] = {}
+
+    def _container_units(self, ckey: str) -> list[int]:
+        if ckey not in self._cunits:
+            self._cunits[ckey] = [uid for cid, uids in self.by_container.items()
+                                  if self._in_container(cid, ckey) for uid in uids]
+        return self._cunits[ckey]
 
     def _in_container(self, cid: int | None, ckey: str) -> bool:
         if cid is None:
@@ -225,25 +240,18 @@ class MentionMatcher:
             return None
         year = m.get("year")
         ckey = self.norm.container(m["container"]) if m.get("container") else None
-        cands = []
-        for uid, s in self.scored.items():
-            u = s.unit
-            if ckey:
-                if not self._in_container(u.container, ckey):
-                    continue
+        if ckey:
+            pool = []
+            for uid in self._container_units(ckey):
                 sim = max(((title_similarity(a, b, OPENING_MATCH) if min(len(a), len(b)) >= 10 else whole_title_similarity(a, b))
                            for a in mkeys for b in self.ukeys[uid]), default=0.0)
-                if sim < OPENING_MATCH:
-                    continue
-            else:
-                sim = 0.0
-                for a in mkeys:
-                    for b in self.ukeys[uid]:
-                        if abs(len(a) - len(b)) > 0.3 * max(len(a), len(b)) + 2:
-                            continue
-                        sim = max(sim, whole_title_similarity(a, b))
-                if sim < TITLE_MATCH:
-                    continue
+                if sim >= OPENING_MATCH:
+                    pool.append((uid, sim))
+        else:
+            pool = list(self.windex.matches(set(mkeys), TITLE_MATCH).items())
+        cands = []
+        for uid, sim in pool:
+            u = self.scored[uid].unit
             if year and u.year:
                 gap = (year - u.year) if u.year <= year else 3 * (u.year - year)
             else:
