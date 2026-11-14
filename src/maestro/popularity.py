@@ -297,15 +297,15 @@ def score_canon(store: Store, include_private: bool = False) -> dict[str, Any]:
     picks: set[int] = set()
     not_gems: set[int] = set()
     by_qid: dict[str, int] = {}
-    for r in _unit_facts(store, members, ("title", "on_release", "catalogue", "pick", "film", "xref")):
+    for r in _unit_facts(store, members, ("title", "first_line", "on_release", "catalogue", "pick", "film", "xref")):
         uid = members[r["entity_id"]]
         v = r["value"]
         if r["field"] in ("film", "xref") and isinstance(v, str) and (r["field"] == "film" or r["source_id"] == "wikidata"):
             q = re.search(r"\b(Q\d+)\b", v)
             if q:
                 by_qid.setdefault(q.group(1), uid)
-        elif r["field"] == "title" and isinstance(v, str):
-            scored[uid].titles.add(v)
+        elif r["field"] in ("title", "first_line") and isinstance(v, str):
+            scored[uid].titles.add(v)  # first_line: mentions quoting lyrics keep only their first line
         elif r["field"] == "on_release" and isinstance(v, str):
             rel[uid].add(v)
         elif r["field"] == "catalogue" and isinstance(v, str):

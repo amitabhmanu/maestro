@@ -32,6 +32,7 @@ maestro-migrate = "maestro.ops:migrate_main"
 maestro-doctor = "maestro.ops:doctor_main"
 maestro-backup = "maestro.ops:backup_main"
 maestro-raw = "maestro.rawstore:main"
+maestro-lyrics = "maestro.lyrics:main"
 
 [build-system]
 requires = ["hatchling>=1.25"]

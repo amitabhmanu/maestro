@@ -89,6 +89,8 @@ def _cross_checks(data: dict[str, Any]) -> list[str]:
 
     if data["legal"]["purpose"] != "personal" and data["legal"]["lyrics"] == "private_full":
         problems.append("legal.lyrics 'private_full' is only allowed when legal.purpose is 'personal'")
+    if data["legal"]["lyrics"] == "none" and data["legal"].get("lyric_fields"):
+        problems.append("legal.lyric_fields lists fields that quote lyrics, but legal.lyrics is 'none'")
     return problems
 
 

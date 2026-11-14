@@ -11,7 +11,7 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 - **Nothing maestro-specific in `src/`.** Anything about one maestro (sources, tiers, aliases, extractors, gold sets) belongs in that maestro's folder. If the core needs a new kind of canon, extend the pack schema deliberately.
 - **Every fact is a claim** with a source (`maestro.store.Store.upsert_claim`). Never overwrite or delete claims; supersede them. Merges are reversible `same_as` claims.
 - **The agent plans, workers fetch.** Queue crawls with `enqueue_crawl`; do not browse freely to collect canon data. Respect robots.txt and the pack's `per_domain_rps`. Public APIs a pack lists as `access: api` (MusicBrainz) skip robots.txt but keep the API's own rate (`api_rps`). Never get around a site's bot protection: import pages the user saves instead.
-- **Legal posture:** personal use now, eventual FOSS release. Never download full audio; keep only derived features from lawfully obtained audio. Lyrics beyond what the pack's `legal.lyrics` allows must not be stored. Anything from a non-publishable source, or marked private, stays in the private layer (`data/`, git-ignored) and never ships.
+- **Legal posture:** personal use now, eventual FOSS release. Never download full audio; keep only derived features from lawfully obtained audio. Lyrics beyond what the pack's `legal.lyrics` allows must not be stored or published: `upsert_claim` enforces it (`src/maestro/lyrics.py`; fields that quote lyrics, such as Rafi's titles, are listed in `legal.lyric_fields`), so text past the first line stays private beside a publishable `first_line` claim. Run `maestro-lyrics` before publishing anything. Anything from a non-publishable source, or marked private, stays in the private layer (`data/`, git-ignored) and never ships.
 
 ## Layout
 
@@ -19,6 +19,7 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 - `src/maestro/schema.sql`: Postgres schema baseline (source, entity, claim, job, raw_page); later changes are numbered files in `src/maestro/migrations/` (see its README), applied by `Store.migrate()`.
 - `src/maestro/config.py`: `.env` loading, per-maestro DSNs (`MAESTRO_DSN_<SLUG>`), the private data folder (`MAESTRO_DATA_DIR`).
 - `src/maestro/rawstore.py`: raw pages kept by SHA-256 under `<data dir>/<slug>/raw`; `maestro-raw` finds and refills missing ones.
+- `src/maestro/lyrics.py`: the lyrics policy (`first_line`, the plan `upsert_claim` applies) and `maestro-lyrics`, the publish check.
 - `src/maestro/ops.py`: `maestro-migrate`, `maestro-doctor`, `maestro-backup`.
 - `src/maestro/store.py`: store API (claims, merges, crawl queue, coverage, gaps).
 - `src/maestro/mcp_server.py`: MCP server exposing the store to Claude Code (configured in `.mcp.json`).
@@ -50,4 +51,5 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 - Orchestrator: `uv run maestro-run --pack maestros/<slug> --dsn ... [--rounds 3] [--max-jobs N] [--dry-run] [--save]` runs rounds until every tier meets its target or nothing is left to crawl; its needs list says what a person or a new extractor must add.
 - Tests: `uv run pytest` (starts a throwaway Postgres if `pg_ctl` is installed; otherwise set `MAESTRO_TEST_DSN`)
 - Persistent stores (see `docs/local-store.md`): one database per maestro, DSNs as `MAESTRO_DSN_<SLUG>` in a git-ignored `.env` (then `--dsn` can be left out). `uv run maestro-doctor --all` checks them, `uv run maestro-migrate --all` updates schemas, `uv run maestro-backup --all` dumps them and copies raw pages, `uv run maestro-raw --pack ... status|fill DIR|refetch` checks and refills raw pages. Resolve, review decisions and `maestro-run` hold a per-canon lock, so two sessions never merge at once.
+- Lyrics check: `uv run maestro-lyrics --pack maestros/<slug> [--snapshot data/explorer/canon/<slug>.json]` exits 1 if publishable claims or a snapshot hold lyric text past the first line; `--fix` supersedes claims stored before the guard and stores them again under the policy (back up first).
 - Local database alternative: `docker compose up -d` (pgvector image, localhost only).

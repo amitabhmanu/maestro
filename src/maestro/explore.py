@@ -27,6 +27,8 @@ from pathlib import Path
 from typing import Any
 
 from maestro.completeness import completeness_report, load_units
+from maestro.lyrics import Policy as LyricsPolicy
+from maestro.lyrics import beyond_first_line, first_line
 from maestro.popularity import resolve_reasons, score_canon, unit_summary
 from maestro.pack import load_pack
 from maestro.resolve import Groups
@@ -89,6 +91,8 @@ def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
     report = completeness_report(store)
     maestro = groups.find(store.maestro_entity())
     vis = ("publishable", "private") if include_private else ("publishable",)
+    lyrics = LyricsPolicy(pack.data)
+    lyric_titles = "title" in lyrics.fields
     sources = {r["id"]: r for r in store.conn.execute("SELECT * FROM source").fetchall()}
 
     unit_type = pack.unit
@@ -117,7 +121,7 @@ def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
         visible_units.add(uid)
         if f in ("title", "xref"):
             _add(d, "sources", src)
-        if f == "title":
+        if f in ("title", "first_line"):
             _add(d, "titles", v)
         elif f in UNIT_TEXT_FIELDS:
             _add(d, UNIT_TEXT_FIELDS[f], v)
@@ -163,6 +167,11 @@ def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
                 people.update(ids)
         title = u.label
         titles = d.pop("titles", [])
+        if not include_private and lyric_titles:
+            # Publishable snapshots carry only first lines of lyric titles (pack legal.lyrics).
+            title = first_line(title, lyrics.max_chars) if beyond_first_line(title, lyrics.max_chars) else title
+            titles = list(dict.fromkeys(first_line(t, lyrics.max_chars) if beyond_first_line(t, lyrics.max_chars)
+                                        else t for t in titles))
         alt = [t for t in titles if t != title]
         if u.container is not None:
             containers.add(u.container)

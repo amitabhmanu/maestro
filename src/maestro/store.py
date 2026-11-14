@@ -11,6 +11,8 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from maestro.lyrics import LyricsRefused
+from maestro.lyrics import Policy as LyricsPolicy
 from maestro.pack import Pack
 
 # Built-in sources for claims the harness itself makes.
@@ -47,6 +49,7 @@ class Store:
     def __init__(self, conn: psycopg.Connection, pack: Pack):
         self.conn = conn
         self.pack = pack
+        self.lyrics = LyricsPolicy(pack.data)
 
     @classmethod
     def connect(cls, dsn: str, pack: Pack) -> "Store":
@@ -149,10 +152,27 @@ class Store:
     ) -> int:
         """Add a claim. An identical active claim from the same source is reused, not duplicated.
 
-        Claims from a non-publishable source are always private.
+        Claims from a non-publishable source are always private. Lyric text beyond its first line
+        follows the pack's `legal.lyrics` (see `maestro.lyrics`): the claim is made private and a
+        publishable first-line copy is added, or it is refused.
         """
         if value is None and ref_entity_id is None:
             raise StoreError("a claim needs a value or a ref_entity_id")
+        try:
+            plan = self.lyrics.plan(field, value)
+        except LyricsRefused as exc:
+            raise StoreError(str(exc)) from exc
+        if plan.extra or not plan.store_original or plan.private:
+            common = {"source_id": source_id, "ref_entity_id": ref_entity_id, "confidence": confidence, "kind": kind,
+                      "extractor": extractor, "extractor_version": extractor_version, "raw_page_id": raw_page_id}
+            extra_id = None
+            if plan.extra:
+                extra_id = self.upsert_claim(entity_id, plan.extra[0], value=plan.extra[1], private=private, **common)
+            if not plan.store_original:
+                if extra_id is None:
+                    raise StoreError(f"lyric text in {field!r} cannot be stored under legal.lyrics {self.lyrics.mode!r}")
+                return extra_id
+            field, private = plan.field or field, True
         src = self.conn.execute("SELECT publishable FROM source WHERE id = %s", (source_id,)).fetchone()
         if src is None:
             raise StoreError(f"unknown source {source_id!r}; add it to the pack and run sync_sources")
