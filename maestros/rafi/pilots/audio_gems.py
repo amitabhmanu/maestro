@@ -88,7 +88,12 @@ class Http:
 # ---------------------------------------------------------------- canon
 
 def load_canon(path):
-    d = json.loads(Path(path).read_text(encoding="utf-8"))
+    raw = Path(path).read_bytes()
+    if str(path).endswith(".gz"):
+        import gzip
+
+        raw = gzip.decompress(raw)
+    d = json.loads(raw.decode("utf-8"))
     return d["units"], d["containers"], d["people"]
 
 
