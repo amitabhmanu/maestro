@@ -336,41 +336,60 @@ def extract(args):
 
         def drain(block):
             for fut in list(as_completed(running) if block else [f for f in running if f.done()]):
-                m = running.pop(fut)
+                m, tmp = running.pop(fut)
                 try:
                     feats = fut.result()
                 except Exception as e:  # noqa: BLE001
                     print(f"{m['unit']}: {e}", file=sys.stderr)
                     continue
+                finally:
+                    _discard(tmp)  # a crashed worker never reaches its own delete
                 w.writerow({"unit": m["unit"], "group": m["group"], "year": byid[int(m["unit"])]["year"],
                             "identifier": m["identifier"], "file": m["file"],
                             **{k: _r(feats.get(k)) for k in FEATURES}})
                 fh.flush()
                 print(f"done {m['group']} {m['canon_title'][:40]}", file=sys.stderr)
 
-        for m in todo:
-            while len(running) >= args.workers * 2:
-                time.sleep(1)
+        try:
+            for m in todo:
+                while len(running) >= args.workers * 2:
+                    time.sleep(1)
+                    drain(False)
+                url = f"https://archive.org/download/{m['identifier']}/{urllib.parse.quote(m['file'])}"
+                fd, tmp = tempfile.mkstemp(suffix=Path(m["file"]).suffix)
+                try:
+                    with os.fdopen(fd, "wb") as t:
+                        t.write(http.get(url))
+                except Exception as e:  # noqa: BLE001
+                    os.remove(tmp)
+                    print(f"{m['unit']}: {e}", file=sys.stderr)
+                    continue
+                try:
+                    running[pool.submit(_analyse_and_delete, tmp)] = (m, tmp)
+                except Exception:  # pool already broken
+                    _discard(tmp)
+                    raise
                 drain(False)
-            url = f"https://archive.org/download/{m['identifier']}/{urllib.parse.quote(m['file'])}"
-            fd, tmp = tempfile.mkstemp(suffix=Path(m["file"]).suffix)
-            try:
-                with os.fdopen(fd, "wb") as t:
-                    t.write(http.get(url))
-            except Exception as e:  # noqa: BLE001
-                os.remove(tmp)
-                print(f"{m['unit']}: {e}", file=sys.stderr)
-                continue
-            running[pool.submit(_analyse_and_delete, tmp)] = m
-            drain(False)
-        drain(True)
+            drain(True)
+        finally:
+            for _, tmp in running.values():  # pool broke or run interrupted
+                _discard(tmp)
+
+
+def _discard(tmp: str) -> None:
+    try:
+        os.remove(tmp)
+    except FileNotFoundError:
+        pass
+    except OSError as e:  # e.g. still open on Windows: say so, so it can be removed by hand
+        print(f"could not delete temp audio {tmp}: {e}", file=sys.stderr)
 
 
 def _analyse_and_delete(tmp: str) -> dict:
     try:
         return analyse(tmp)
     finally:
-        os.remove(tmp)  # never keep the audio
+        _discard(tmp)  # never keep the audio
 
 
 def _r(x):
