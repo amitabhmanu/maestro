@@ -178,6 +178,15 @@ def unit_key(release: dict, track: dict) -> str:
     return f"release:{release['id']}:{track['position']}"
 
 
+def _counts(pack_data: dict, track: dict) -> bool:
+    """Whether a track credits the maestro in a role the canon covers (see `extract`)."""
+    primary = pack_data["roles"]["primary"]
+    in_scope = set(pack_data["roles"].get("in_scope") or [primary])
+    source = next((x for x in pack_data.get("sources", []) if x["id"] == SOURCE), {})
+    main_role = source.get("main_role", primary)
+    return bool((set(track["maestro_roles"]) | ({main_role} if track["main"] and main_role else set())) & in_scope)
+
+
 def _artist_id(pack_data: dict) -> int:
     did = (pack_data["identity"].get("ids") or {}).get("discogs")
     if not did:
@@ -212,7 +221,7 @@ def extract(ctx) -> None:
                            extractor="discogs", extractor_version="1", raw_page_id=ctx.raw_page_id)
 
     cid = None
-    if rel["soundtrack"] and rel["tracks"]:
+    if rel["soundtrack"] and any(_counts(pack.data, t) for t in rel["tracks"]):
         ckey = f"master:{rel['master']}" if rel["master"] else f"release:{rel['id']}"
         cid = store.find_or_create_by_xref("container", SOURCE, ckey, rel["title"])
         claim(cid, "title", rel["title"])
@@ -221,13 +230,19 @@ def extract(ctx) -> None:
     maestro = store.maestro_entity()
     primary = pack.data["roles"]["primary"]
     in_scope = set(pack.data["roles"].get("in_scope") or [primary])
+    source = next((x for x in pack.data.get("sources", []) if x["id"] == SOURCE), {})
+    main_role = source.get("main_role", primary)
     people: dict[int, int] = {}
     for t in rel["tracks"]:
+        # Only tracks that credit the maestro in a role the canon covers become units: a composer's
+        # own records hold other people's works.
+        roles = sorted((set(t["maestro_roles"]) | ({main_role} if t["main"] and main_role else set())) & in_scope)
+        if not roles:
+            continue
         uid = store.find_or_create_by_xref(pack.unit, SOURCE, unit_key(rel, t), t["title"])
         claim(uid, "title", t["title"])
-        for role in sorted(set(t["maestro_roles"]) | ({primary} if t["main"] else set())):
-            if role in in_scope:
-                claim(uid, "credit", {"role": role}, ref=maestro)
+        for role in roles:
+            claim(uid, "credit", {"role": role}, ref=maestro)
         if t["artist_credit"]:
             claim(uid, "artist_credit", t["artist_credit"])
         claim(uid, "on_release", f"discogs:{rel['id']}")

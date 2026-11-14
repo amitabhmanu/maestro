@@ -342,3 +342,19 @@ def test_grouped_review_keeps_a_chain_whole_and_refuses_contradictions(store_for
     k3 = person(s, "hfgk_online", "53", "Krishna Goyal")
     with pytest.raises(ValueError, match="marked distinct"):
         apply_groups(s, [], [[k1, short, k3]])
+
+
+def test_whole_title_index_matches_brute_force():
+    import random
+
+    from maestro.resolve import WholeTitleIndex, whole_title_similarity
+
+    rng = random.Random(7)
+    words = ["dil", "mera", "tera", "pyar", "the", "roving", "gambler", "jaane", "kahan", "gaye", "woh", "din"]
+    titles = {i: {" ".join(rng.choice(words) for _ in range(rng.randint(1, 5)))} for i in range(300)}
+    index = WholeTitleIndex(titles)
+    for q in list(titles.values())[:60]:
+        want = {i: max(whole_title_similarity(a, b) for a in q for b in ts) for i, ts in titles.items()}
+        want = {i: v for i, v in want.items() if v >= 0.9}
+        got = index.matches(q, 0.9)
+        assert got.keys() == want.keys() and all(abs(got[i] - want[i]) < 1e-9 for i in got)
