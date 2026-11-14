@@ -440,16 +440,33 @@ def _squash(text: str) -> str:
     return re.sub(r"(.)\1+", r"\1", text)
 
 
-def _prefix_similarity(sa: str, la: str) -> float:
-    # The longer title's opening may be a few letters shorter or longer than the whole shorter one.
-    return max(SequenceMatcher(None, sa, la[:n]).ratio() for n in range(max(1, len(sa) - 3), len(sa) + 4))
+def _letter_bound(a: Counter, la: int, b: str) -> float:
+    """An upper bound on SequenceMatcher(None, x, b).ratio() for any x with letter counts `a` and
+    length `la` (the shared letters, as in difflib's quick_ratio), far cheaper than the ratio."""
+    if not la and not b:
+        return 1.0
+    common = sum(min(n, a.get(ch, 0)) for ch, n in Counter(b).items())
+    return 2.0 * common / (la + len(b))
+
+
+def _prefix_similarity(sa: str, la: str, floor: float = 0.0) -> float:
+    """The best ratio of `sa` against the openings of `la` a few letters shorter or longer than it.
+    With `floor`, openings that cannot beat both the floor and the best so far are not compared, so a
+    result under `floor` may be lower than the exact best (one at or above it is exact)."""
+    counts, best = Counter(sa), 0.0
+    for n in range(max(1, len(sa) - 3), len(sa) + 4):
+        b = la[:n]
+        if _letter_bound(counts, len(sa), b) < max(best, floor):
+            continue
+        best = max(best, SequenceMatcher(None, sa, b).ratio())
+    return best
 
 
 TITLE_LETTERS = 32  # compare at most this many letters: the opening line, not the whole verse
 MIN_TITLE_LETTERS = 10
 
 
-def title_similarity(a: str, b: str) -> float:
+def title_similarity(a: str, b: str, floor: float = 0.0) -> float:
     """How alike two normalised titles are, comparing their openings letter by letter.
 
     One source may give the first line and another the whole opening, often after a spoken or sung
@@ -457,6 +474,9 @@ def title_similarity(a: str, b: str) -> float:
     opening is also tried against the other from each later word. Letters are compared, not words,
     because transliterations split words and spell vowels differently ("rang lo" / "ranglo",
     "jaadoogar" / "jadugar"). At most TITLE_LETTERS letters are compared.
+
+    Callers that only ask whether the result reaches a threshold pass it as `floor`: comparisons that
+    cannot reach it are skipped, so a result under `floor` is only a lower bound.
     """
     wa, wb = a.split(), b.split()
     if min(len(wa), len(wb)) < 2:
@@ -469,7 +489,8 @@ def title_similarity(a: str, b: str) -> float:
             n = min(len(sx), len(sy), TITLE_LETTERS)
             if n < MIN_TITLE_LETTERS:
                 break
-            best = max(best, _prefix_similarity(sx[:n], sy) - (0.02 if j else 0.0))
+            pen = 0.02 if j else 0.0
+            best = max(best, _prefix_similarity(sx[:n], sy, max(best, floor) + pen) - pen)
             if best >= 0.999:
                 return best
     return best
@@ -798,7 +819,7 @@ def _match_titles(store, groups, distinct, stats, entries, context) -> None:
             a, b = groups.find(ra["id"]), groups.find(rb["id"])
             if a == b or (set(ra["sources"]) & set(rb["sources"])) - groups.loose:
                 continue  # one source listing two titles in a context means two units
-            sim = title_similarity(ka, kb)
+            sim = title_similarity(ka, kb, REVIEW_TITLE_RATIO)
             pair = (min(a, b), max(a, b))
             if sim >= REVIEW_TITLE_RATIO and sim > scores.get(pair, (0.0,))[0]:
                 scores[pair] = (sim, ka, kb, ra, rb)
