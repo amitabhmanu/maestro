@@ -10,7 +10,9 @@ videos costs one unit:
    50 videos whose title or description names the maestro (any `identity.variants` spelling).
 3. Each video becomes a `youtube` mention with strength = views. Label titles look like
    "Title | Film | Singer | Composer" or "Title - Singer | Film"; descriptions often carry
-   "Film: X" or "Movie: X". The film, when found, becomes the mention's container.
+   "Film: X" or "Movie: X". The film, when found, becomes the mention's container. Compilations,
+   shows, covers and ads (`is_song`) are skipped, and so is a video whose title and singer line do
+   not name the maestro (`sung_by_maestro`).
 
 A label with 100,000 uploads costs about 2,000 units for the playlist and fewer for the videos. The key
 is read from YOUTUBE_API_KEY and sent as the `key` query parameter on the request only (the pack's
@@ -44,29 +46,59 @@ def videos_url(ids: list[str]) -> str:
     return API + "videos?" + urlencode({"part": "snippet,statistics", "id": ",".join(ids)})
 
 
-SEP = re.compile(r"\s+[|｜]\s+|\s+[-–—]\s+")
-NOISE = re.compile(r"\b(?:full\s+(?:video\s+)?song|lyrical|audio|video|hd|4k|remaster(?:ed)?|official|jukebox|"
-                   r"old\s+is\s+gold|evergreen|hits?|classic|song|songs)\b", re.I)
+SEP = re.compile(r"\s*[|｜]\s*|\s+[-–—]\s+")
+NOISE = re.compile(r"\b(?:full\s+(?:video\s+)?songs?|full\s+video|with\s+lyrics|lyrics?|lyrical|audio|video|hd|4k|"
+                   r"remaster(?:ed)?|official|old\s+is\s+gold|evergreen|classic|songs?|bollywood|hindi|retro)\b", re.I)
+# Videos that are not one recording of one song: compilations, shows, covers and ads.
+NOT_A_SONG = re.compile(r"\b(?:jukebox|best\s+of|top\s+\d+|\d+\s+(?:rare\s+|best\s+|hit\s+|non[- ]?stop\s+)?songs|"
+                        r"songs\s+of|hits\s+of|non[- ]?stop|medley|mash[- ]?up|(?:party|dance|dj)\s+mix|mix\s+vol|vol(?:ume)?\.?\s*\d+|"
+                        r"radio|show|geetmala|season\s+\d+|episode|live\s+(?:concert|performance|in)|concert|recreat(?:ed|ion)|"
+                        r"cover|unplugged|tribute|karaoke|instrumental|reprise|trailer|teaser|promo|interview|carvaan)\b|#", re.I)
+SINGER_LINE = re.compile(r"^\s*(?:singers?|artists?|vocals?|sung\s+by|voice)\s*[:\-–]\s*(.+)$", re.I | re.M)
+FILM_LINE = re.compile(r"^\s*(?:film|movie|album)(?:\s+name)?\s*[:\-–]\s*(.+?)\s*$", re.I | re.M)
+DEVANAGARI = re.compile(r"[\u0900-\u097F]")
+
+
+def is_song(title: str) -> bool:
+    """False for jukeboxes, 'best of' and 'top N' lists, mixes, radio and TV shows, concerts, covers and ads."""
+    return not NOT_A_SONG.search(title)
+
+
+def sung_by_maestro(store, title: str, description: str) -> bool:
+    """The title names the maestro, or the description's singer line does (a name elsewhere in the
+    description is often another song's credit or a playlist plug)."""
+    if names_maestro(store, title):
+        return True
+    return any(names_maestro(store, m.group(1)) for m in SINGER_LINE.finditer(description or ""))
+
+
+def _clean(part: str) -> str:
+    part = re.sub(r"[\(\[][^\)\]]*[\)\]]", "", part)
+    part = NOISE.sub("", part)
+    return re.sub(r"\s{2,}", " ", part).strip(" -|:'\"")
 
 
 def split_title(title: str, description: str = "") -> tuple[str, str | None]:
-    """'Chahoonga Main Tujhe | Dosti | Mohammed Rafi | Laxmikant-Pyarelal' -> ('Chahoonga Main Tujhe', 'Dosti')."""
+    """'Chahoonga Main Tujhe | Dosti | Mohammed Rafi | Laxmikant-Pyarelal' -> ('Chahoonga Main Tujhe', 'Dosti').
+
+    The film comes from the description's 'Film:' line when there is one, else from a bracketed
+    '(From "Film")', else from the title's second part. Parts in Devanagari, and parts that are only
+    noise ('Full Video', 'with lyrics', 'Old is Gold'), are skipped."""
     film = None
-    m = re.search(r"^\s*(?:Film|Movie|Album)\s*[:\-–]\s*(.+?)\s*(?:\(\d{4}\))?\s*$", description or "", re.I | re.M)
+    m = FILM_LINE.search(description or "")
     if m:
-        film = m.group(1).strip()
-    m = re.search(r"""[\(\[]\s*(?:From\s+)?["“']?([^"”'\)\]]+?)["”']?\s*(?:\(\d{4}\))?\s*[\)\]]""", title)
-    parts = [p.strip() for p in SEP.split(title) if p.strip()]
-    name = parts[0] if parts else title.strip()
-    if m and not NOISE.fullmatch(m.group(1).strip()) and m.start() > 0 and m.start() <= len(name):
-        film = film or m.group(1).strip()
-        name = title[:m.start()].strip()
-    elif not film and len(parts) > 1 and not NOISE.search(parts[1]):
+        film = m.group(1)
+    b = re.search(r"""[\(\[]\s*From\s+(?:the\s+(?:film|movie)\s+)?["“']?([^"”'\)\]]+?)["”']?\s*[\)\]]""", title, re.I)
+    if b:
+        film = film or b.group(1)
+        title = title[:b.start()] + title[b.end():]
+    parts = [c for c in (_clean(p) for p in SEP.split(title) if not DEVANAGARI.search(p)) if c]
+    name = parts[0] if parts else _clean(title)
+    if not film and len(parts) > 1:
         film = parts[1]
-    name = re.sub(r"[\(\[][^\)\]]*[\)\]]", "", name).strip(" -|'\"")
     if film:
-        film = re.sub(r"\s*\(\d{4}\)$", "", film).strip()
-    return name, film
+        film = re.sub(r"\s*\(\d{4}\)$", "", film).strip(" :-'\"")
+    return name, film or None
 
 
 def extract(ctx) -> None:
@@ -98,8 +130,11 @@ def extract(ctx) -> None:
     for item in data.get("items", []):  # videos
         sn, st = item.get("snippet", {}), item.get("statistics", {})
         views = int(st.get("viewCount") or 0)
-        title, film = split_title(sn.get("title", ""), sn.get("description", ""))
-        if views <= 0 or not title:
+        raw_title, desc = sn.get("title", ""), sn.get("description", "")
+        if views <= 0 or not is_song(raw_title) or not sung_by_maestro(ctx.store, raw_title, desc):
+            continue
+        title, film = split_title(raw_title, desc)
+        if not title:
             continue
         record_mention(ctx, SOURCE, "youtube", title, strength=views, container=film,
                        url=f"https://www.youtube.com/watch?v={item.get('id')}", extractor="youtube",
