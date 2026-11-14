@@ -106,9 +106,11 @@ taxonomies:
 popularity_signals:
   contemporary: [binaca_geetmala, filmfare]
   # Built: binaca_geetmala (Wikipedia #1s; full yearly lists 1953-1983 from hindigeetmala_binaca), filmfare, wikipedia_list, wikipedia_articles (core), reissues (derived), atulsongaday (source presence).
-  enduring: [wikipedia_list, reissues, wikipedia_articles, youtube, lastfm, jiosaavn]
+  # wikipedia_list is left out: Wikipedia's list of Rafi's songs is a near-complete catalogue, not a list of hits.
+  enduring: [reissues, wikipedia_articles, youtube, lastfm, jiosaavn]
   penetration: [covers, reality_shows]
   esteem: [songsofyore, expert_posts, atulsongaday]
+  lists: expert_lists.tsv
 legal:
   purpose: personal_then_foss
   lyrics: first_line_only

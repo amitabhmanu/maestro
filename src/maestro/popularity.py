@@ -22,10 +22,9 @@ unit is the share of the canon's units it beats on that signal (units without th
 A facet takes its best signal. Popularity is 0.7 x the best facet plus 0.3 x the weighted mean of
 the facets this canon has any data for, so one strong kind of evidence counts and agreement adds.
 
-A **gem** is a unit experts single out that few people know. Quality comes only from expert
-opinion (the esteem facet: critics, curated lists, connoisseurs; see `_expert_quality`) or the
-user's own pick, never from popularity. Reach (popularity without esteem) only filters: a gem's
-reach is under 0.5. Units with no expert word but other signs of worth (a strong team, a hit beside
+A **gem** (rare gem) is a good unit that never became popular. Low popularity is the first, hard
+filter (`low_popularity`); within that set, quality comes only from expert gem lists that pass
+their purity test (see `_expert_quality`) or the user's own pick, never from popularity. Units with no expert word but other signs of worth (a strong team, a hit beside
 them, reissued but never a hit) are **leads**, listed separately. The user's picks and "not a gem"
 marks calibrate how much each expert voice counts. Every gem and lead lists its reasons.
 """
@@ -54,6 +53,9 @@ PRESENCE_CAP = 0.4
 GEM_MAX_REACH = 0.5
 GEM_MIN_QUALITY = 0.6
 FRAMING = {"gem": 1.0, "praise": 0.6, "listed": 0.25}  # how an expert speaks of a unit
+LOW_POP_REISSUES = 2  # a low-popularity unit is on at most this many releases or catalogue numbers
+LIST_PURITY_MIN = 0.9  # a gem list counts only if this share of its units are low-popularity
+LIST_INTENTS = ("gem_list", "best_of", "themed")
 SELECTIVE_SHARE = 0.01  # a voice naming this share of the canon or less has its full say
 VOICE_MAX = 0.9  # no single voice makes a gem certain
 CALIBRATION_MIN_PICKS = 10  # picks needed before voices are weighted by agreement with the user
@@ -392,7 +394,7 @@ def score_canon(store: Store, include_private: bool = False) -> dict[str, Any]:
         s.facet_of = facet_of
 
     gems = _score_gems(scored, maestro, present, pack.container, set(pack.data["roles"]["in_scope"]),
-                       facet_of, picks, not_gems)
+                       facet_of, picks, not_gems, load_lists(pack))
 
     return {
         "maestro": pack.slug,
@@ -402,7 +404,8 @@ def score_canon(store: Store, include_private: bool = False) -> dict[str, Any]:
         "gems": {**gems, "found": sum(1 for s in scored.values() if s.gem),
                  "leads": sum(1 for s in scored.values() if s.lead),
                  "needs": None if any(s.gem for s in scored.values()) else
-                 "expert opinion: critics, curated lists or connoisseurs singling units out (or your own picks)"},
+                 "expert gem lists (lists that claim their units are good and overlooked, with at least "
+                 f"{LIST_PURITY_MIN:.0%} low-popularity units), or your own picks of low-popularity units"},
         "listed_without_data": sorted(set(facet_of) - set(signals)),
         "unmatched_mentions": unmatched,
         "ignored_mentions": dict(ignored),
@@ -410,31 +413,74 @@ def score_canon(store: Store, include_private: bool = False) -> dict[str, Any]:
     }
 
 
+def load_lists(pack) -> dict[str, dict[str, str]]:
+    """The pack's expert lists and their intent (`popularity_signals.lists`, a TSV of url, intent, note).
+
+    Intent is a person's reading of the list's title and introduction: `gem_list` claims its units
+    are good and overlooked; `best_of` claims they are good (and need not be overlooked); `themed`
+    gathers units by a theme (an actor, a year, a raga) and claims nothing about quality."""
+    rel = (pack.data.get("popularity_signals") or {}).get("lists")
+    out: dict[str, dict[str, str]] = {}
+    if not rel:
+        return out
+    path = pack.path.parent / rel
+    for line in path.read_text("utf-8").splitlines():
+        if not line.strip() or line.startswith("#"):
+            continue
+        cols = line.split("\t")
+        url, intent = cols[0].strip(), cols[1].strip()
+        if intent not in LIST_INTENTS:
+            raise ValueError(f"{path}: unknown list intent {intent!r} for {url}")
+        out[url] = {"intent": intent, "note": cols[2].strip() if len(cols) > 2 else ""}
+    return out
+
+
+def low_popularity(s: Scored) -> bool:
+    """Positive and absent evidence agree that few people know the unit: no chart, award or hit list
+    (contemporary), no cover or reuse (penetration), no article or stream count (any enduring signal
+    but reissues), and on at most LOW_POP_REISSUES releases."""
+    for sig in s.signals:
+        f = s.facet_of.get(sig)
+        if f in ("contemporary", "penetration") or (f == "enduring" and sig != "reissues"):
+            return False
+    return s.signals.get("reissues", 0) <= LOW_POP_REISSUES
+
+
 def _voice_of(e: Evidence) -> str:
     return e.expert or e.source
 
 
-def _expert_quality(scored: dict[int, Scored], facet_of: dict[str, str], picks: set[int]) -> dict[str, Any]:
-    """Quality from expert opinion: each unit's esteem evidence, voice by voice.
+def _expert_quality(scored: dict[int, Scored], facet_of: dict[str, str], picks: set[int],
+                    lists: dict[str, dict[str, str]]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Quality from expert gem lists: each unit's mentions in qualifying lists, voice by voice.
 
-    A voice is one expert (an author, or a source that speaks as one). Several posts from one voice
-    count once, at their strongest framing: singling a unit out as rare, underrated or less heard
-    ("gem") counts most, praise ("praise") less, appearing in a long list ("listed") least. A voice
-    that names a large share of the canon says little about any one unit, so its word is scaled by
-    its selectivity. When the user has marked picks, each voice is also weighted by how often it
-    names them compared with its base rate. Quality = 1 - prod(1 - word) over the voices.
+    Only `gem_list` lists count (see `load_lists`), and only when at least LIST_PURITY_MIN of the
+    units they name are low-popularity: a list that slips in hits is listing favourites, not gems.
+    Best-of and themed lists, and lists nobody has classified yet, are reported but never count.
+    A voice is one expert (the list's author). Several lists from one voice count once. A voice that
+    names a large share of the canon says little about any one unit, so its word is scaled by its
+    selectivity; from CALIBRATION_MIN_PICKS user picks on, also by how often it names them.
+    Independent voices agreeing multiply: quality = 1 - prod(1 - word) over the voices.
     """
     n = max(1, len(scored))
-    named: dict[str, set[int]] = defaultdict(set)
-    best: dict[int, dict[str, float]] = defaultdict(dict)
+    per_list: dict[str, dict[str, Any]] = {}
     for uid, s in scored.items():
         for e in s.evidence:
-            if facet_of.get(e.signal) != "esteem":
-                continue
-            v = _voice_of(e)
-            named[v].add(uid)
-            f = FRAMING.get(e.framing or "listed", FRAMING["listed"])
-            best[uid][v] = max(best[uid].get(v, 0.0), f)
+            if facet_of.get(e.signal) != "esteem" or not e.url or not e.expert:
+                continue  # source presence ("listed by" a blog) is not a list
+            L = per_list.setdefault(e.url, {"voice": _voice_of(e), "title": e.note, "units": set(),
+                                             "intent": lists.get(e.url, {}).get("intent", "unclassified")})
+            L["units"].add(uid)
+    report: dict[str, Any] = {}
+    named: dict[str, set[int]] = defaultdict(set)
+    for url, L in per_list.items():
+        low = sum(1 for u in L["units"] if low_popularity(scored[u]))
+        purity = low / len(L["units"])
+        counts = L["intent"] == "gem_list" and purity >= LIST_PURITY_MIN
+        report[url] = {"voice": L["voice"], "title": L["title"], "intent": L["intent"], "units": len(L["units"]),
+                       "low_popularity": low, "purity": round(purity, 3), "counts": counts}
+        if counts:
+            named[L["voice"]] |= L["units"]
     voices: dict[str, dict[str, Any]] = {}
     for v, ids in named.items():
         share = len(ids) / n
@@ -447,19 +493,21 @@ def _expert_quality(scored: dict[int, Scored], facet_of: dict[str, str], picks: 
             weight = max(0.5, min(2.0, ((hit + 1) / (len(picks) * share + 1)) ** 0.5))
         voices[v] = {"units": len(ids), "selectivity": round(sel, 3), "weight": round(weight, 3),
                      **({"names_picks": round(agree, 3)} if agree is not None else {})}
-    for uid, by_voice in best.items():
+    for uid, s in scored.items():
         miss = 1.0
-        for v, f in by_voice.items():
-            miss *= 1 - min(VOICE_MAX, f * voices[v]["selectivity"] * voices[v]["weight"])
-        scored[uid].quality = 1 - miss
+        for v, ids in named.items():
+            if uid in ids:
+                miss *= 1 - min(VOICE_MAX, voices[v]["selectivity"] * voices[v]["weight"])
+        s.quality = 1 - miss
     for uid in picks:
         if uid in scored:
             scored[uid].quality = 1.0
-    return voices
+    return voices, report
 
 
 def _score_gems(scored: dict[int, Scored], maestro: int, present: list[str], container_kind: str,
-                own_roles: set[str], facet_of: dict[str, str], picks: set[int], not_gems: set[int]) -> dict[str, Any]:
+                own_roles: set[str], facet_of: dict[str, str], picks: set[int], not_gems: set[int],
+                lists: dict[str, dict[str, str]]) -> dict[str, Any]:
     """A gem is a unit experts single out that few people know.
 
     Quality comes only from expert opinion (`_expert_quality`) or the user's own pick; popularity is
@@ -475,19 +523,19 @@ def _score_gems(scored: dict[int, Scored], maestro: int, present: list[str], con
       the lists span the unit's year, cover REDISCOVERY_COVERAGE of those years' units and name
       REDISCOVERY_CAPTURE of the most enduring ones).
     """
-    voices = _expert_quality(scored, facet_of, picks)
+    voices, list_report = _expert_quality(scored, facet_of, picks, lists)
+    counting = {url for url, r in list_report.items() if r["counts"]}
     for uid, s in scored.items():
-        if uid in not_gems or s.quality < GEM_MIN_QUALITY or s.reach >= GEM_MAX_REACH:
+        # Low popularity is the first, hard filter: a rare gem is a good unit few people know.
+        if uid in not_gems or not low_popularity(s) or s.quality < GEM_MIN_QUALITY:
             continue
-        s.gem = max(0.01, s.quality - 0.1 * s.reach)
+        s.gem = s.quality
         if s.picked:
             s.gem_reasons.append("your pick")
-        notes = sorted(((FRAMING.get(e.framing or "listed", 0), e.note) for e in s.evidence
-                        if facet_of.get(e.signal) == "esteem"), reverse=True)
-        s.gem_reasons += list(dict.fromkeys(n for _, n in notes))[:3]
+        s.gem_reasons += list(dict.fromkeys(e.note for e in s.evidence if e.url in counting))[:3]
 
     if not present:
-        return {"reach_known": False, "contemporary_coverage": 0.0, "voices": voices}
+        return {"reach_known": False, "contemporary_coverage": 0.0, "voices": voices, "lists": list_report}
     by_person: dict[int, list[int]] = defaultdict(list)
     for uid, s in scored.items():
         for role, ids in s.unit.credits.items():
@@ -561,7 +609,7 @@ def _score_gems(scored: dict[int, Scored], maestro: int, present: list[str], con
         s.lead_reasons = [why for _, why in options]
     return {"reach_known": reach_known, "contemporary_coverage": round(contemporary_cover, 4),
             "hit_list_years": list(era) if era else None, "rediscovery": rediscovery,
-            "lasting_captured": round(capture, 4), "voices": voices}
+            "lasting_captured": round(capture, 4), "voices": voices, "lists": list_report}
 
 
 def ordered_evidence(s: Scored) -> list[Evidence]:

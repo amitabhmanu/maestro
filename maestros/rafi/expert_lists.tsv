@@ -1,0 +1,15 @@
+# Expert lists and their intent, read from each list's title and introduction (Amitabh's rule, 14 Nov 2026):
+# gem_list = claims its songs are good and overlooked; best_of = claims they are good; themed = gathers songs by a theme.
+# Only gem_list lists with at least 90% low-popularity songs make gems. url	intent	note
+https://www.songsofyore.com/some-less-heard-gems-of-mohammad-rafi-the-sad-romantic-solos-1940s-through-50s/	gem_list	Ashok Vaishnav: less heard gems
+https://www.songsofyore.com/some-hidden-gems-of-mohammad-rafi-the-romantic-solos/	gem_list	Ashok Vaishnav: hidden gems
+https://www.songsofyore.com/rafis-songs-with-some-unrecognised-composers/	gem_list	Sivanandam Palamadai: excellent songs by talented, unrecognised composers
+https://www.songsofyore.com/naushads-best-songs-for-mohammad-rafi/	best_of	AK
+https://www.songsofyore.com/rafis-best-songs-by-madan-mohan/	best_of	AK
+https://www.songsofyore.com/rafi-by-kalyanji-anandji/	best_of	AK
+https://www.songsofyore.com/rd-burmans-best-songs-for-rafi/	best_of	AK
+https://www.songsofyore.com/sn-tripathi-part-2-post-1950s-his-best-songs-for-mohammad-rafi/	best_of	AK
+https://www.songsofyore.com/rafi-s-songs-for-not-the-top-heroes/	themed	songs picturised on lesser-known actors
+https://www.songsofyore.com/rafis-centenary-special-35-songs-from-35-years-1946-1980/	themed	one song a year
+https://www.songsofyore.com/classical-songs-of-mohammad-rafi-with-some-thoughts-on-gara/	themed	raga-based songs
+https://madhulikaliddle.com/2025/01/02/famous-songs-not-so-famous-faces-the-magic-of-mohammad-rafi/	themed	famous songs, lesser-known actors
