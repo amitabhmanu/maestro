@@ -157,3 +157,27 @@ def test_composer_pack_counts_only_explicit_composer_credits(store_for):
     titles = [r["label"] for r in s.conn.execute(
         "SELECT e.label FROM entity e JOIN claim c ON c.entity_id = e.id AND c.field = 'xref' AND c.source_id = 'discogs'")]
     assert titles == ["Chopinata"]
+
+
+def test_enrich_mode_adds_details_to_existing_recordings_only(store_for):
+    s = store_for("eddy-arnold")
+    s.pack.data["identity"]["ids"]["discogs"] = "520366"
+    assert next(x for x in s.pack.data["sources"] if x["id"] == "discogs")["unit_mode"] == "enrich"
+    early = s.create_entity("recording", "The Cattle Call")
+    s.upsert_claim(early, "year", value=1944, source_id="musicbrainz")
+    late = s.create_entity("recording", "Cattle Call")
+    s.upsert_claim(late, "year", value=1955, source_id="musicbrainz")
+    roses = s.create_entity("recording", "Bouquet Of Roses")
+    before = s.conn.execute("SELECT count(*) AS n FROM entity").fetchone()["n"]
+    rel = {"id": 77, "title": "Anytime", "year": 1956, "master_id": 0,
+           "artists": [{"id": 520366, "name": "Eddy Arnold"}], "extraartists": [],
+           "labels": [{"name": "RCA Victor", "catno": "LPM-1293"}], "genres": ["Country"], "tracklist": [
+               {"position": "A1", "type_": "track", "title": "The Cattle Call"},
+               {"position": "A2", "type_": "track", "title": "Bouquet of Roses"},
+               {"position": "A3", "type_": "track", "title": "A Song Nobody Has"}]}
+    discogs.extract(_ctx(s, discogs.release_url(77), json.dumps(rel).encode()))
+    assert s.conn.execute("SELECT count(*) AS n FROM entity").fetchone()["n"] == before
+    cat = {r["entity_id"] for r in s.conn.execute("SELECT entity_id FROM claim WHERE field = 'catalogue'")}
+    assert cat == {late, roses}            # the 1956 record carries the 1955 take, the latest before it
+    assert not s.conn.execute("SELECT 1 FROM claim WHERE source_id = 'discogs' AND field IN "
+                              "('title', 'xref', 'credit')").fetchall()   # no lineage

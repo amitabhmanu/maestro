@@ -137,13 +137,16 @@ def _replay_body(source: Store, raw: RawStore, r: dict[str, Any], root: Path | N
     raise FileNotFoundError(f"raw page {r['sha256']} for {r['url']} is missing (see maestro-raw status)")
 
 
-def replay(source: Store, target: Store, *, root: Path | None = None, raw: RawStore | None = None) -> RunStats:
+def replay(source: Store, target: Store, *, root: Path | None = None, raw: RawStore | None = None,
+           only: set[str] | None = None) -> RunStats:
     """Re-run extractors over every page `source` has already fetched or imported, writing into `target`.
 
     Use it after an extractor or core fix: the raw cache is re-read, nothing is fetched. Only the latest
     fetch per (url, extractor) is replayed; every distinct imported file is (one page may be pasted in
     parts). Imports keep the options they were loaded with, and follow-up jobs are not queued. `root` resolves relative cache paths (default: the working directory).
     Pages are looked up by hash in `raw` (default: the target maestro's raw folder) before their recorded path.
+    With `only`, just those extractors' pages are replayed (the target may then be a live store: e.g.
+    one source's pages from a rolled-back run, re-read by its revised extractor).
     """
     raw = raw or RawStore.for_slug(target.pack.slug)
     rows = source.conn.execute(
@@ -156,6 +159,8 @@ def replay(source: Store, target: Store, *, root: Path | None = None, raw: RawSt
                FROM import_log i JOIN raw_page r ON r.id = i.raw_page_id
            ) pages ORDER BY url, extractor, part, raw_page_id DESC"""
     ).fetchall()
+    if only:
+        rows = [r for r in rows if r["extractor"] in only]
     rows.sort(key=lambda r: r["raw_page_id"])
     pack_dir = target.pack.path.parent
     extractors: dict[str, ModuleType] = {}
