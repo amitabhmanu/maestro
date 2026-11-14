@@ -328,3 +328,20 @@ def test_youtube_titles_and_pages():
     assert yt.split_title("Tumhari Nazar Kyon Khafa Ho Gayi Full | Do Kaliyan")[0] == "Tumhari Nazar Kyon Khafa Ho Gayi"
     assert "forHandle=%40saregamamusic" in yt.channel_url("@saregamamusic")
     assert "pageToken=T2" in yt.playlist_url("UU1", "T2") and "id=a%2Cb" in yt.videos_url(["a", "b"])
+
+
+def test_reissues_popular_only_at_the_top():
+    """Compilations put old songs on many releases: only the top of the canon by releases is popular,
+    and a unit on two releases or fewer never is."""
+    from maestro.completeness import Unit
+    from maestro.popularity import Scored, count_thresholds, low_popularity
+    facet_of = {"reissues": "enduring"}
+    scored = {i: Scored(unit=Unit(id=i, label=f"u{i}"), facet_of=facet_of) for i in range(100)}
+    for i in range(100):
+        scored[i].signals["reissues"] = float(i + 1)  # 1..100 releases
+    th = count_thresholds(scored, facet_of)
+    assert th["reissues"] == 91.0
+    assert low_popularity(scored[50], th) and low_popularity(scored[90], th)
+    assert not low_popularity(scored[95], th)
+    few = {i: Scored(unit=Unit(id=i, label=f"v{i}"), facet_of=facet_of, signals={"reissues": 1.0}) for i in range(10)}
+    assert count_thresholds(few, facet_of)["reissues"] == 2.0

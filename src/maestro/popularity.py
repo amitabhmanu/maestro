@@ -54,7 +54,7 @@ PRESENCE_CAP = 0.4
 GEM_MAX_REACH = 0.5
 GEM_MIN_QUALITY = 0.6
 FRAMING = {"gem": 1.0, "praise": 0.6, "listed": 0.25}  # how an expert speaks of a unit
-LOW_POP_REISSUES = 2  # a low-popularity unit is on at most this many releases or catalogue numbers
+LOW_POP_REISSUES = 2  # a unit on at most this many releases or catalogue numbers is never popular for it
 COUNT_SIGNAL_SHARE = 0.2  # an enduring signal naming more of the canon than this is a count (see count_thresholds)
 COUNT_MIN_DISTINCT = 20  # ... as is one whose strengths take at least this many values (listeners, views)
 COUNT_POPULAR_QUANTILE = 0.9  # on a count signal, a unit is popular in the top 10% of the units it names
@@ -448,13 +448,13 @@ def load_lists(pack) -> dict[str, dict[str, str]]:
 
 def low_popularity(s: Scored, medians: dict[str, float] | None = None) -> bool:
     """Positive and absent evidence agree that few people know the unit: no chart, award or hit list
-    (contemporary), no cover or reuse (penetration), no article (an enduring list), on at most
-    LOW_POP_REISSUES releases, and, for count signals (Last.fm listeners, YouTube views; see
-    `count_thresholds`), outside the top of the units they name."""
+    (contemporary), no cover or reuse (penetration), no article (an enduring list), and, for count
+    signals (releases, Last.fm listeners, YouTube views; see `count_thresholds`), outside the top of
+    the units they name."""
     medians = medians or {}
     for sig, strength in s.signals.items():
         f = s.facet_of.get(sig)
-        if sig == "reissues":
+        if sig == "reissues" and sig not in medians:
             if strength > LOW_POP_REISSUES:
                 return False
         elif sig in medians:
@@ -470,15 +470,20 @@ def count_thresholds(scored: dict[int, Scored], facet_of: dict[str, str]) -> dic
     popular. A signal is a count when it names more than COUNT_SIGNAL_SHARE of the canon or its
     strengths take at least COUNT_MIN_DISTINCT values: a few Last.fm listeners say nothing, being in
     the top (COUNT_POPULAR_QUANTILE) of the units it names does. An enduring signal that is neither
-    (an encyclopedia article) is a list: being on it is enough."""
+    (an encyclopedia article) is a list: being on it is enough. Reissues (releases and catalogue
+    numbers) are always a count: old film songs land on many compilations, so only the top of the
+    canon is popular for it, and never a unit on LOW_POP_REISSUES releases or fewer."""
     out = {}
     n = max(1, len(scored))
     for sig in {x for s in scored.values() for x in s.signals}:
-        if facet_of.get(sig) != "enduring" or sig == "reissues":
+        if facet_of.get(sig) != "enduring":
             continue
         vals = sorted(s.signals[sig] for s in scored.values() if sig in s.signals)
-        if len(vals) / n > COUNT_SIGNAL_SHARE or len(set(vals)) >= COUNT_MIN_DISTINCT:
-            out[sig] = vals[min(len(vals) - 1, int(len(vals) * COUNT_POPULAR_QUANTILE))]
+        top = vals[min(len(vals) - 1, int(len(vals) * COUNT_POPULAR_QUANTILE))]
+        if sig == "reissues":
+            out[sig] = max(float(LOW_POP_REISSUES), top)
+        elif len(vals) / n > COUNT_SIGNAL_SHARE or len(set(vals)) >= COUNT_MIN_DISTINCT:
+            out[sig] = top
     return out
 
 
