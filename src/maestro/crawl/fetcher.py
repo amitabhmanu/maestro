@@ -9,7 +9,7 @@ import urllib.robotparser
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 from maestro.rawstore import RawStore
 
@@ -59,14 +59,20 @@ def api_hosts(pack_data: dict) -> dict[str, float]:
 
 
 def api_headers(pack_data: dict) -> dict[str, dict[str, str]]:
-    """Request headers per API host: the token named by a source's `api_auth.env` (from the environment
-    or `.env`), formatted by `api_auth.format`. Hosts without a token get none."""
+    """Request credentials per API host: the token named by a source's `api_auth.env` (from the
+    environment or `.env`), formatted by `api_auth.format`. Hosts without a token get none.
+
+    An API that takes its key in the query string (`api_auth.param`, e.g. Last.fm's `api_key`) gets an
+    entry whose name starts with "?": the fetcher adds it to the request URL only, so the key is never
+    part of a stored page URL or job."""
     out = {}
     for host, src in _api_sources(pack_data):
         token = _token(src)
         if token:
             auth = src["api_auth"]
-            out[host] = {auth.get("header", "Authorization"): auth.get("format", "Bearer {token}").format(token=token)}
+            value = auth.get("format", "{token}" if auth.get("param") else "Bearer {token}").format(token=token)
+            name = "?" + auth["param"] if auth.get("param") else auth.get("header", "Authorization")
+            out[host] = {name: value}
     return out
 
 
@@ -116,7 +122,12 @@ class Fetcher:
 
     def _get(self, url: str) -> tuple[int, bytes]:
         host = urlsplit(url).netloc
-        req = urllib.request.Request(url, headers={"User-Agent": self.user_agent, **self.api_headers.get(host, {})})
+        creds = self.api_headers.get(host, {})
+        params = {k[1:]: v for k, v in creds.items() if k.startswith("?")}
+        if params:  # a key that belongs in the query string: on the request only, never on the page
+            url += ("&" if "?" in url else "?") + urlencode(params)
+        req = urllib.request.Request(url, headers={"User-Agent": self.user_agent,
+                                                   **{k: v for k, v in creds.items() if not k.startswith("?")}})
         for attempt in range(self.RETRIES + 1):
             self._wait_turn(host)
             try:

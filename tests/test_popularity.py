@@ -235,3 +235,43 @@ def test_expert_post_lines():
     assert p("5. 1946 – Kah ke bhi na aaye tum – Safar – C Ramachandra – G.S Nepali")["title"] == "Kah ke bhi na aaye tum"
     assert p("6. Hai kali-kali ke labh par (Lala Rukh, 1957): Lotan. Based on a poem")["film"] == "Lala Rukh"
     assert p("Not a numbered line") is None
+
+
+def test_lastfm_titles_and_pages():
+    mod = load("rafi", "lastfm")
+    assert mod.split_title('Chaudhvin Ka Chand (From "Chaudhvin Ka Chand")') == ("Chaudhvin Ka Chand", "Chaudhvin Ka Chand")
+    assert mod.split_title("Baharon Phool Barsao (Remastered)") == ("Baharon Phool Barsao", None)
+    data = mod.parse(json.dumps({"toptracks": {"track": [
+        {"name": 'Kya Hua Tera Wada (From "Hum Kisi Se Kam Nahin")', "listeners": "1200", "playcount": "9000",
+         "url": "https://www.last.fm/music/x"}], "@attr": {"artist": "Mohammed Rafi", "page": "1", "totalPages": "3"}}}))
+    assert data["pages"] == 3 and data["tracks"][0]["container"] == "Hum Kisi Se Kam Nahin"
+    assert data["tracks"][0]["listeners"] == 1200
+    assert "page=2" in mod.top_tracks_url("Mohammed Rafi", 2)
+
+
+def test_api_key_as_query_parameter(monkeypatch):
+    from maestro.crawl.fetcher import Fetcher, api_headers
+    monkeypatch.setenv("LASTFM_API_KEY", "secret")
+    from maestro.pack import load_pack
+    creds = api_headers(load_pack(ROOT / "maestros" / "rafi").data)
+    assert creds["ws.audioscrobbler.com"] == {"?api_key": "secret"}
+    seen = []
+
+    class Resp:
+        status = 200
+        def read(self):
+            return b"{}"
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+
+    def opener(req, timeout):
+        seen.append((req.full_url, dict(req.header_items())))
+        return Resp()
+
+    import tempfile
+    f = Fetcher(tempfile.mkdtemp(), 1.0, opener=opener, api_hosts={"ws.audioscrobbler.com": 2.0}, api_headers=creds,
+                sleep=lambda s: None)
+    f._get("https://ws.audioscrobbler.com/2.0/?method=x")
+    assert seen[0][0].endswith("&api_key=secret") and not any("secret" in v for v in seen[0][1].values())
