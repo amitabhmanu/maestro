@@ -60,6 +60,26 @@ canvas { width: 100%; height: 100%; display: block; cursor: crosshair }
 .empty { color: var(--muted); font-size: 13px }
 a { color: var(--accent) }
 .foot { color: var(--muted); font-size: 12px; max-width: 80ch }
+.latent { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; min-width: 0 }
+.latent h2 { font-family: var(--display); font-weight: 500; font-size: 18px; margin: 0 }
+.heatwrap { overflow-x: auto } #heat { display: block; width: 100%; height: 420px; cursor: pointer }
+.scale { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted) }
+.scale i { width: 140px; height: 10px; border-radius: 3px; display: inline-block }
+.axes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px }
+.axis { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 13px; display: grid; gap: 4px }
+.axis b { font-family: var(--mono); font-weight: 500 }
+.strip { display: grid; grid-template-columns: repeat(24, 1fr); gap: 1px; height: 14px; border-radius: 3px; overflow: hidden; min-width: 0 }
+.strip span { display: block }
+select { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg) }
+.test { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px }
+.test h2 { font-family: var(--display); font-weight: 500; font-size: 18px; margin: 0 }
+.trial { display: grid; grid-template-columns: 2.2em 1fr; gap: 8px; align-items: center; padding-block: 6px; border-top: 1px solid var(--line) }
+.trial .no { font-family: var(--mono); color: var(--muted); font-size: 12px }
+.trial .row { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 13px }
+.trial label { display: inline-flex; gap: 4px; align-items: center; cursor: pointer }
+.score { font-family: var(--mono); font-size: 13px }
+button.copy { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent); cursor: pointer; width: fit-content }
+textarea { font-family: var(--mono); font-size: 12px; width: 100%; min-height: 60px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px }
 </style>
 
 <div class="wrap">
@@ -67,19 +87,36 @@ a { color: var(--accent) }
     <h1>Rafi Sound Map</h1>
     <p class="lede" id="lede"></p>
   </header>
-  <section class="verdict" id="verdict" aria-label="Do neighbours share these labels more than chance?"></section>
+  <section class="verdict" id="verdict" aria-label="Audio-only checks"></section>
   <div class="controls">
     <span><span class="lab">Model</span><span class="seg" id="model"></span></span>
     <span><span class="lab">Colour by</span><span class="seg" id="colour"></span></span>
-    <input type="search" id="q" placeholder="Find a song, film or composer" aria-label="Find a song">
+    <span><span class="lab">Layout</span><span class="seg" id="lay"></span></span>
+    <span id="axsel" hidden><label class="lab" for="ax">Across</label><select id="ax"></select> <label class="lab" for="ay">Up</label><select id="ay"></select></span>
+    <input type="search" id="q" inputmode="numeric" placeholder="Go to recording #" aria-label="Go to recording number">
   </div>
   <div class="main">
     <div style="display:grid;gap:8px;min-width:0">
-      <div class="mapbox"><canvas id="cv" aria-label="Map of songs placed by sound"></canvas><div class="tip" id="tip" hidden></div></div>
+      <div class="mapbox"><canvas id="cv" aria-label="Map of recordings placed by sound"></canvas><div class="tip" id="tip" hidden></div></div>
       <div class="legend" id="legend"></div>
     </div>
-    <aside class="panel" id="panel"><p class="empty">Click a dot to see the song and the eight recordings that sound most like it. Metadata is shown only to judge whether the neighbours make sense: none of it was used to place the dots.</p></aside>
+    <aside class="panel" id="panel"><p class="empty">Click a dot to hear a recording and the eight recordings that sound most like it. Recordings are numbered only: no title, film, composer or year is used or shown, so your ear is the judge.</p></aside>
   </div>
+  <section class="latent" aria-label="Inside the vectors">
+    <h2>Inside the vectors</h2>
+    <p class="lede" style="margin:0" id="latentlede"></p>
+    <div class="scale"><span>lower</span><i id="scalebar"></i><span>higher on the axis</span></div>
+    <div class="heatwrap"><canvas id="heat" aria-label="Every recording's vector as a row of colour"></canvas></div>
+    <div class="axes" id="axes"></div>
+  </section>
+  <section class="test" id="test">
+    <h2>Blind listening test</h2>
+    <p class="lede" style="margin:0">For each row, listen to the anchor, then to A and B, and pick the one that sounds more like it. One of them is the anchor's closest recording under both models, the other is a far one, in random order. If the map hears music, you should agree with it far more often than half the time.</p>
+    <div id="trials"></div>
+    <div class="score" id="score"></div>
+    <button class="copy" id="copy" type="button">Copy my answers</button>
+    <textarea id="answers" readonly aria-label="Your answers, to paste back"></textarea>
+  </section>
   <p class="foot" id="foot"></p>
 </div>
 
@@ -87,147 +124,181 @@ a { color: var(--accent) }
 const DATA = /*MAP_DATA*/null;
 const MODEL_NAMES = { mert: "MERT", clap: "CLAP", craft: "20 features" };
 const PALETTE = ["#4269d0", "#efb118", "#ff725c", "#6cc5b0", "#3ca951", "#ff8ab7", "#a463f2", "#97bbf5", "#9c6b4e", "#e45756"];
-const songs = DATA.songs, maps = DATA.maps;
+const recs = DATA.recordings, maps = DATA.maps, S = DATA.summary;
 const models = Object.keys(maps);
-let model = models[0], colourBy = "composer", sel = null, hover = null, query = "", hidden = new Set();
+let model = models[0], colourBy = "cluster", sel = null, hover = null, query = "", hidden = new Set();
+const byNum = Object.fromEntries(Object.entries(recs).map(([k, r]) => [r.n, k]));
+const other = () => models.find(m => m !== model && m !== "craft");
 
+function isoBand(k) { const v = maps[model].iso[k], all = Object.values(maps[model].iso).sort((a, b) => a - b);
+  return v >= all[Math.floor(all.length * .9)] ? "Most isolated 10%" : v <= all[Math.floor(all.length * .5)] ? "Dense half" : "In between"; }
 const colourings = {
-  composer: { label: "Composer", get: s => s.composer },
-  decade: { label: "Decade", get: s => s.decade ? s.decade + "s" : null },
-  solo: { label: "Solo or duet", get: s => s.solo == null ? null : (s.solo ? "Solo" : "With other singers") },
-  group: { label: "Popularity", get: s => ({ gem: "Expert-listed", expert: "Expert-listed", hit: "Chart hit", known: "Well known", ordinary: "Other" })[s.group] },
+  cluster: { label: "Sound cluster", get: k => "Cluster " + (maps[model].cluster[k] + 1) },
+  iso: { label: "Isolation", get: isoBand },
+  agree: { label: "Models agree", get: k => { const o = other(); if (!o) return null;
+    const a = new Set(maps[model].nn[k].map(x => x[0])), n = maps[o].nn[k].filter(x => a.has(x[0])).length;
+    return n >= 3 ? "3+ shared neighbours" : n >= 1 ? "1-2 shared" : "None shared"; } },
 };
+let C;
 function cats() {
   const get = colourings[colourBy].get, n = {};
-  Object.values(songs).forEach(s => { const v = get(s); if (v) n[v] = (n[v] || 0) + 1; });
-  let keys = Object.keys(n).sort((a, b) => colourBy === "decade" ? a.localeCompare(b) : n[b] - n[a]);
-  const top = keys.slice(0, 9);
-  const col = {}; top.forEach((k, i) => col[k] = PALETTE[i]);
-  return { col, top, other: keys.length > 9, n };
+  Object.keys(recs).forEach(k => { const v = get(k); if (v) n[v] = (n[v] || 0) + 1; });
+  const keys = Object.keys(n).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const col = {}; keys.slice(0, 10).forEach((k, i) => col[k] = PALETTE[i]);
+  return { col, top: keys.slice(0, 10), n };
 }
-let C = cats();
-const colOf = s => { const v = colourings[colourBy].get(s); return v && C.col[v] ? C.col[v] : null; };
-const catOf = s => { const v = colourings[colourBy].get(s); return v && C.col[v] ? v : "Other"; };
+const colOf = k => C.col[colourings[colourBy].get(k)] || null;
+const catOf = k => colourings[colourBy].get(k);
 
-// verdict strip (summary for the selected model)
-const LABELS = { composer: "Same composer", film: "Same film", decade: "Same decade", solo: "Solo vs duet", lyricist: "Same lyricist", item: "Same upload (artefact)" };
+function div(z) { // diverging colour for a standardised axis value, theme-aware ends
+  const t = Math.max(-1, Math.min(1, z / 2.5)), dark = matchMedia("(prefers-color-scheme: dark)").matches && document.documentElement.dataset.theme !== "light" || document.documentElement.dataset.theme === "dark";
+  const mid = dark ? [40, 44, 56] : [238, 240, 245], lo = [47, 91, 211], hi = [214, 96, 44];
+  const e = t < 0 ? lo : hi, a = Math.abs(t);
+  return `rgb(${mid.map((m, i) => Math.round(m + (e[i] - m) * a)).join(",")})`;
+}
+const strip = k => `<div class="strip" title="Recording #${recs[k].n}: its first 24 axes">${maps[model].pc[k].slice(0, 24).map(z => `<span style="background:${div(z)}"></span>`).join("")}</div>`;
+let lay = "map", ax = 0, ay = 1;
+const axisName = i => `Axis ${i + 1} (${(maps[model].pcvar[i] * 100).toFixed(0)}%)`;
+function axisOpts() { ["ax", "ay"].forEach((id, j) => { const el = document.getElementById(id);
+  el.innerHTML = maps[model].pcvar.map((_, i) => `<option value="${i}">${axisName(i)}</option>`).join(""); el.value = j ? ay : ax; }); }
+function heat() {
+  const c = document.getElementById("heat"), r = c.getBoundingClientRect(), d = devicePixelRatio || 1, h = c.getContext("2d");
+  c.width = r.width * d; c.height = r.height * d; h.setTransform(d, 0, 0, d, 0, 0);
+  const keys = Object.keys(maps[model].pc).sort((a, b) => maps[model].cluster[a] - maps[model].cluster[b] || maps[model].pc[a][0] - maps[model].pc[b][0]);
+  const cols = maps[model].pcvar.length, lab = 26, cw = (r.width - lab) / keys.length, rh = (r.height - 18) / cols;
+  heatKeys = keys; heatGeom = { lab, cw };
+  h.fillStyle = css("--muted"); h.font = "10px " + css("--mono");
+  for (let j = 0; j < cols; j++) h.fillText(j + 1, 2, 18 + j * rh + rh * .7);
+  keys.forEach((k, i) => maps[model].pc[k].forEach((z, j) => { h.fillStyle = div(z); h.fillRect(lab + i * cw, 18 + j * rh, Math.ceil(cw), Math.ceil(rh)); }));
+  let prev = null; keys.forEach((k, i) => { const cl = maps[model].cluster[k]; if (cl !== prev) { h.fillStyle = PALETTE[cl % 10]; h.fillRect(lab + i * cw, 4, 2, 10);
+    h.fillStyle = css("--muted"); h.fillText("C" + (cl + 1), lab + i * cw + 4, 13); prev = cl; } });
+  if (sel) { const i = keys.indexOf(sel); h.strokeStyle = css("--fg"); h.lineWidth = 1.5; h.strokeRect(lab + i * cw, 17, Math.max(cw, 2), r.height - 18); }
+}
+let heatKeys = [], heatGeom = {};
+document.getElementById("heat").addEventListener("click", e => { const r = e.currentTarget.getBoundingClientRect(), i = Math.floor((e.clientX - r.left - heatGeom.lab) / heatGeom.cw);
+  if (heatKeys[i]) select(heatKeys[i]); });
+function axes() {
+  const el = document.getElementById("axes"), m = maps[model]; el.innerHTML = "";
+  m.pcends.slice(0, 6).forEach((e, i) => el.insertAdjacentHTML("beforeend", `<div class="axis"><b>${axisName(i)}</b>
+    <span>Low end: ${e.low.map(listen).join(" ")}</span><span>High end: ${e.high.map(listen).join(" ")}</span></div>`));
+  const tot = m.pcvar.reduce((a, b) => a + b, 0);
+  document.getElementById("latentlede").textContent = `Each column is one recording and each row one axis of the ${MODEL_NAMES[model]} space, ordered by how much of the variation it carries; the ${m.pcvar.length} axes shown hold ${(tot * 100).toFixed(0)}% of it. Columns are grouped by sound cluster. Axes have no names: listen to the recordings at each end to hear what one measures. Click a column to open that recording.`;
+  document.getElementById("scalebar").style.background = `linear-gradient(90deg, ${div(-2.5)}, ${div(0)}, ${div(2.5)})`;
+}
+const pct = x => (x * 100).toFixed(0) + "%";
 function verdict() {
-  const s = DATA.summary[model], el = document.getElementById("verdict"); el.innerHTML = "";
-  Object.keys(LABELS).forEach(f => {
-    const r = s[f]; if (!r) return;
-    const a = f === "item" ? r.agree : (r.agree_other_uploads ?? r.agree), c = f === "item" ? r.chance : (r.chance_other_uploads ?? r.chance);
-    const lift = c > 0 ? a / c : 0;
-    const cls = f === "item" ? (lift > 2 ? "weak" : "good") : (a > r.chance95 && lift >= 1.5 ? "good" : a > r.chance95 ? "weak" : "none");
-    const word = f === "item" ? (lift > 2 ? "confound" : "no confound") : (cls === "good" ? "heard" : cls === "weak" ? "faint" : "not heard");
-    el.insertAdjacentHTML("beforeend", `<div class="v"><span class="k">${LABELS[f]}</span>
-      <span class="n">${(a * 100).toFixed(0)}% <small>vs ${(c * 100).toFixed(0)}% by chance</small></span>
-      <span class="pill ${cls}">${word}</span></div>`);
-  });
-  const o = s.outlier_auc, y = s.year_gap;
-  el.insertAdjacentHTML("beforeend", `<div class="v"><span class="k">Year gap to neighbours</span>
-    <span class="n">${y.neighbours.toFixed(1)} <small>vs ${y.random.toFixed(1)} yrs random</small></span>
-    <span class="why">Expert-listed songs as outliers: AUC ${o.expert_vs_ordinary == null ? "n/a" : o.expert_vs_ordinary.toFixed(2)}</span></div>`);
+  const el = document.getElementById("verdict"), v = S.views[model]; el.innerHTML = "";
+  const card = (k, n, small, cls, word) => el.insertAdjacentHTML("beforeend",
+    `<div class="v"><span class="k">${k}</span><span class="n">${n} <small>${small}</small></span><span class="pill ${cls}">${word}</span></div>`);
+  const o = other();
+  if (o) { const key = [model, o].join("~"), x = S.neighbour_overlap[key] ?? S.neighbour_overlap[[o, model].join("~")];
+    const lift = x / S.chance;
+    card(`Same neighbours in ${MODEL_NAMES[o]}`, pct(x), `vs ${pct(S.chance)} by chance`, lift > 3 ? "good" : lift > 1.5 ? "weak" : "none", lift > 3 ? "strong" : lift > 1.5 ? "some" : "none"); }
+  card("Cluster stability", v.stability_ari.toFixed(2), `${v.k} clusters, 0 to 1`, v.stability_ari > .7 ? "good" : v.stability_ari > .4 ? "weak" : "none", v.stability_ari > .7 ? "stable" : v.stability_ari > .4 ? "shaky" : "unstable");
+  card("Cluster separation", v.silhouette.toFixed(2), "silhouette, -1 to 1", v.silhouette > .25 ? "good" : v.silhouette > .1 ? "weak" : "none", v.silhouette > .25 ? "clear" : v.silhouette > .1 ? "blurred" : "a continuum");
+  card("2D map faithfulness", v.trustworthiness.toFixed(2), "1 = keeps all neighbours", v.trustworthiness > .9 ? "good" : "weak", v.trustworthiness > .9 ? "faithful" : "approximate");
+  const art = v.same_upload / Math.max(v.same_upload_chance, 1e-3);
+  card("Neighbours from the same upload", pct(v.same_upload), `vs ${pct(v.same_upload_chance)} by chance`, art > 3 ? "weak" : "good", art > 3 ? "hears the transfer" : "little transfer effect");
 }
 
 function seg(id, opts, cur, on) {
   const el = document.getElementById(id); el.innerHTML = "";
-  opts.forEach(([k, label]) => {
-    const b = document.createElement("button"); b.textContent = label; b.setAttribute("aria-pressed", k === cur);
-    b.onclick = () => { on(k); seg(id, opts, k, on); }; el.appendChild(b);
-  });
+  opts.forEach(([k, label]) => { const b = document.createElement("button"); b.type = "button"; b.textContent = label; b.setAttribute("aria-pressed", k === cur);
+    b.onclick = () => { on(k); seg(id, opts, k, on); }; el.appendChild(b); });
 }
-
-window.__pts = () => pts;
 const cv = document.getElementById("cv"), ctx = cv.getContext("2d"), tip = document.getElementById("tip");
-let W = 0, pts = [];
-function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+let pts = [];
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 function layout() {
-  const r = cv.getBoundingClientRect(), d = devicePixelRatio || 1; W = r.width;
+  const r = cv.getBoundingClientRect(), d = devicePixelRatio || 1;
   cv.width = r.width * d; cv.height = r.height * d; ctx.setTransform(d, 0, 0, d, 0, 0);
-  const pad = 18, xy = maps[model].xy;
+  const pad = 18, m = maps[model];
+  let xy = m.xy;
+  if (lay === "pcs") { const ks = Object.keys(m.pc), xs = ks.map(k => m.pc[k][ax]), ys = ks.map(k => m.pc[k][ay]);
+    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    xy = Object.fromEntries(ks.map(k => [k, [(m.pc[k][ax] - x0) / (x1 - x0 || 1), (m.pc[k][ay] - y0) / (y1 - y0 || 1)]])); }
   pts = Object.keys(xy).map(k => ({ k, x: pad + xy[k][0] * (r.width - 2 * pad), y: pad + (1 - xy[k][1]) * (r.height - 2 * pad) }));
   draw();
-}
-function matches(s) {
-  if (!query) return true;
-  const q = query.toLowerCase();
-  return [s.title, s.film, s.composer, s.lyricist, ...(s.cosingers || [])].some(x => x && x.toLowerCase().includes(q));
 }
 function draw() {
   const r = cv.getBoundingClientRect(); ctx.clearRect(0, 0, r.width, r.height);
   const none = css("--none"), fg = css("--fg"), accent = css("--accent");
   const nbs = sel ? new Set(maps[model].nn[sel].map(x => x[0])) : null;
   const P = Object.fromEntries(pts.map(p => [p.k, p]));
-  if (sel && P[sel]) {
-    ctx.strokeStyle = accent; ctx.globalAlpha = .45; ctx.lineWidth = 1;
-    maps[model].nn[sel].forEach(([k]) => { const p = P[k]; if (!p) return; ctx.beginPath(); ctx.moveTo(P[sel].x, P[sel].y); ctx.lineTo(p.x, p.y); ctx.stroke(); });
-  }
+  if (sel && P[sel]) { ctx.strokeStyle = accent; ctx.globalAlpha = .45; ctx.lineWidth = 1;
+    maps[model].nn[sel].forEach(([k]) => { const p = P[k]; if (!p) return; ctx.beginPath(); ctx.moveTo(P[sel].x, P[sel].y); ctx.lineTo(p.x, p.y); ctx.stroke(); }); }
   pts.forEach(p => {
-    const s = songs[p.k], c = colOf(s), cat = catOf(s);
-    let a = hidden.has(cat) ? .08 : .85;
-    if (query && !matches(s)) a = .08;
+    let a = hidden.has(catOf(p.k)) ? .08 : .85;
+    if (query && String(recs[p.k].n) !== query) a = .08;
     if (nbs && !nbs.has(p.k) && p.k !== sel) a = Math.min(a, .25);
-    ctx.globalAlpha = a; ctx.fillStyle = c || none;
+    ctx.globalAlpha = a; ctx.fillStyle = colOf(p.k) || none;
     ctx.beginPath(); ctx.arc(p.x, p.y, p.k === sel ? 7 : 4.5, 0, 7); ctx.fill();
     if (p.k === sel || p.k === hover) { ctx.globalAlpha = 1; ctx.strokeStyle = fg; ctx.lineWidth = 2; ctx.stroke(); }
   });
   ctx.globalAlpha = 1;
 }
-function nearest(e) {
-  const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-  let best = null, bd = 144;
-  pts.forEach(p => { const d = (p.x - x) ** 2 + (p.y - y) ** 2; if (d < bd) { bd = d; best = p; } });
-  return best;
-}
-cv.addEventListener("mousemove", e => {
-  const p = nearest(e); hover = p ? p.k : null;
-  if (p) { const s = songs[p.k]; tip.hidden = false; tip.textContent = `${s.title} (${s.film || "?"}, ${s.year || "?"})`;
-    const r = cv.getBoundingClientRect(); tip.style.left = Math.min(p.x + 10, r.width - 270) + "px"; tip.style.top = (p.y + 10) + "px"; }
-  else tip.hidden = true;
-  draw();
-});
+function nearest(e) { const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  let best = null, bd = 144; pts.forEach(p => { const d = (p.x - x) ** 2 + (p.y - y) ** 2; if (d < bd) { bd = d; best = p; } }); return best; }
+cv.addEventListener("mousemove", e => { const p = nearest(e); hover = p ? p.k : null;
+  if (p) { tip.hidden = false; tip.textContent = `Recording #${recs[p.k].n} · ${catOf(p.k) || ""}`; const r = cv.getBoundingClientRect();
+    tip.style.left = Math.min(p.x + 10, r.width - 200) + "px"; tip.style.top = (p.y + 10) + "px"; } else tip.hidden = true; draw(); });
 cv.addEventListener("mouseleave", () => { hover = null; tip.hidden = true; draw(); });
 cv.addEventListener("click", e => { const p = nearest(e); if (p) select(p.k); });
-
-const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const listen = k => `<a href="${recs[k].listen}" target="_blank" rel="noopener">#${recs[k].n}</a>`;
 function select(k) {
-  sel = k; const s = songs[k], panel = document.getElementById("panel");
-  const shared = o => {
-    const out = [];
-    if (o.composer && o.composer === s.composer) out.push("composer");
-    if (o.film_id && o.film_id === s.film_id) out.push("film");
-    if (o.decade === s.decade) out.push("decade");
-    if (o.item === s.item) out.push("same upload");
-    return out.map(x => `<span class="chip">${x}</span>`).join("");
-  };
-  panel.innerHTML = `<h2>${esc(s.title)}</h2>
-    <dl class="meta"><dt>Film</dt><dd>${esc(s.film || "unknown")}, ${esc(s.year || "")}</dd>
-    <dt>Composer</dt><dd>${esc(s.composer || "unknown")}</dd><dt>Lyricist</dt><dd>${esc(s.lyricist || "unknown")}</dd>
-    <dt>With</dt><dd>${s.cosingers && s.cosingers.length ? esc(s.cosingers.join(", ")) : "solo"}</dd>
-    <dt>Listen</dt><dd><a href="${esc(s.listen)}" target="_blank" rel="noopener">Internet Archive</a></dd></dl>
-    <div class="k" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Sounds most like (${MODEL_NAMES[model]})</div>
-    <div class="nbs">${maps[model].nn[k].map(([o, sim]) => { const t = songs[o]; return `<button class="nb" data-k="${o}">
-      <span class="s">${sim.toFixed(2)}</span><span><span class="t">${esc(t.title)}</span><br><span class="c">${esc(t.film || "?")} · ${esc(t.year || "?")} · ${esc(t.composer || "?")}${shared(t)}</span></span></button>`; }).join("")}</div>`;
-  panel.querySelectorAll(".nb").forEach(b => b.onclick = () => select(b.dataset.k));
-  draw();
+  sel = k; const panel = document.getElementById("panel"), o = other();
+  const inOther = o ? new Set(maps[o].nn[k].map(x => x[0])) : new Set();
+  panel.innerHTML = `<h2>Recording #${recs[k].n}</h2>
+    <dl class="meta"><dt>Listen</dt><dd><a href="${recs[k].listen}" target="_blank" rel="noopener">Play from the Internet Archive</a></dd>
+    <dt>${colourings.cluster.label}</dt><dd>${colourings.cluster.get(k)} (${MODEL_NAMES[model]})</dd>
+    <dt>Isolation</dt><dd>${isoBand(k)}</dd></dl>
+    <div style="display:grid;gap:4px"><span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Its vector, first 24 axes</span>${strip(k)}</div>
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Sounds most like (${MODEL_NAMES[model]})</div>
+    <div class="nbs">${maps[model].nn[k].map(([n, sim]) => `<div class="nb"><span class="s">${sim.toFixed(2)}</span>
+      <span style="display:grid;gap:3px;min-width:0">${strip(n)}<span class="t">${listen(n)} <button type="button" class="chip" data-k="${n}" style="border:0;cursor:pointer">show</button>${inOther.has(n) && o ? `<span class="chip">also in ${MODEL_NAMES[o]}</span>` : ""}${recs[n].upload === recs[k].upload ? '<span class="chip">same upload</span>' : ""}</span></span></div>`).join("")}</div>
+    <p class="empty" style="margin:0">The file names on the Internet Archive often carry titles. Listen before reading them if you want a blind check.</p>`;
+  panel.querySelectorAll("button[data-k]").forEach(b => b.onclick = () => select(b.dataset.k));
+  draw(); heat();
 }
 function legend() {
   const el = document.getElementById("legend"); el.innerHTML = "";
-  const items = C.top.map(k => [k, C.col[k], C.n[k]]); if (C.other) items.push(["Other", css("--none"), null]);
-  items.forEach(([k, c, n]) => {
-    const sp = document.createElement("span"); sp.className = hidden.has(k) ? "off" : "";
-    sp.innerHTML = `<i style="background:${c}"></i>${esc(k)}${n ? ` (${n})` : ""}`;
-    sp.onclick = () => { hidden.has(k) ? hidden.delete(k) : hidden.add(k); legend(); draw(); };
-    el.appendChild(sp);
-  });
+  C.top.forEach(k => { const sp = document.createElement("span"); sp.className = hidden.has(k) ? "off" : "";
+    sp.innerHTML = `<i style="background:${C.col[k]}"></i>${k} (${C.n[k]})`;
+    sp.onclick = () => { hidden.has(k) ? hidden.delete(k) : hidden.add(k); legend(); draw(); }; el.appendChild(sp); });
 }
+// listening test
+let picks = {}; try { picks = JSON.parse(localStorage.getItem("rafi-sound-test") || "{}"); } catch (e) {}
+function trials() {
+  const el = document.getElementById("trials"); el.innerHTML = "";
+  DATA.trials.forEach((t, i) => {
+    el.insertAdjacentHTML("beforeend", `<div class="trial"><span class="no">${i + 1}</span><div class="row">
+      <span>Anchor ${listen(t.anchor)}</span><span>A ${listen(t.a)}</span><span>B ${listen(t.b)}</span>
+      <label><input type="radio" name="t${i}" id="t${i}a" value="a" ${picks[i] === "a" ? "checked" : ""}> A is closer</label>
+      <label><input type="radio" name="t${i}" id="t${i}b" value="b" ${picks[i] === "b" ? "checked" : ""}> B is closer</label></div></div>`);
+  });
+  el.querySelectorAll("input").forEach(inp => inp.onchange = () => { picks[inp.name.slice(1)] = inp.value;
+    try { localStorage.setItem("rafi-sound-test", JSON.stringify(picks)); } catch (e) {} score(); });
+  score();
+}
+function score() {
+  const done = Object.keys(picks).length, agree = Object.entries(picks).filter(([i, v]) => DATA.trials[i] && DATA.trials[i].near === v).length;
+  document.getElementById("score").textContent = done ? `You agree with the map on ${agree} of ${done} answered (${pct(agree / done)}). Chance is 50%.` : `${DATA.trials.length} trials. Nothing answered yet.`;
+  document.getElementById("answers").value = "rafi-sound-test " + DATA.trials.map((t, i) => `${i + 1}${picks[i] || "-"}`).join(" ");
+}
+document.getElementById("copy").onclick = () => { const t = document.getElementById("answers");
+  navigator.clipboard.writeText(t.value).catch(() => { t.select(); }); };
 
-seg("model", models.map(m => [m, MODEL_NAMES[m] || m]), model, m => { model = m; verdict(); layout(); if (sel) select(sel); });
+seg("model", models.map(m => [m, MODEL_NAMES[m] || m]), model, m => { model = m; hidden.clear(); C = cats(); verdict(); legend(); axisOpts(); axes(); layout(); heat(); if (sel) select(sel); });
+seg("lay", [["map", "Map"], ["pcs", "Axes"]], lay, v => { lay = v; document.getElementById("axsel").hidden = v !== "pcs"; layout(); });
+document.getElementById("ax").onchange = e => { ax = +e.target.value; layout(); };
+document.getElementById("ay").onchange = e => { ay = +e.target.value; layout(); };
 seg("colour", Object.entries(colourings).map(([k, v]) => [k, v.label]), colourBy, c => { colourBy = c; hidden.clear(); C = cats(); legend(); draw(); });
-document.getElementById("q").addEventListener("input", e => { query = e.target.value.trim(); draw(); });
-document.getElementById("lede").textContent = `${Object.keys(songs).length} Rafi recordings published by 1965, placed only by how they sound. Nearby dots are recordings a pretrained music model hears as similar. Film, composer and year were added afterwards, to check whether the neighbours make musical sense.`;
-document.getElementById("foot").textContent = `Neighbours are the ${DATA.k} closest recordings in the model's full vector space; the 2D layout (${maps[model].how.toUpperCase()}) only approximates it. "By chance" is the same share with labels shuffled among songs. Uploads on the Internet Archive often hold one transfer of several songs, so composer, film and decade scores leave out neighbours from the same upload. No audio is stored here; listen links go to the Internet Archive.`;
-verdict(); legend();
+document.getElementById("q").addEventListener("input", e => { query = e.target.value.trim().replace("#", ""); if (byNum[query]) select(byNum[query]); draw(); });
+C = cats();
+document.getElementById("lede").textContent = `${Object.keys(recs).length} Rafi recordings published by 1965, placed only by how they sound. Nearby dots are recordings a pretrained music model hears as similar. No title, film, composer, year or popularity is used to place them or to judge the map.`;
+document.getElementById("foot").textContent = `Neighbours are the ${DATA.k} closest recordings in the model's full vector space. The Map layout (${maps[model].how.toUpperCase()}) squeezes that space into 2D and only approximates it; the Axes layout plots two of its principal axes directly. Clusters are k-means on the vectors. The upload check uses only which Internet Archive upload a file came from, to warn when neighbours are the same transfer. No audio is stored here: listen links play from the Internet Archive.`;
+verdict(); legend(); trials(); axisOpts(); axes();
 new ResizeObserver(layout).observe(cv);
-matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+new ResizeObserver(heat).observe(document.getElementById("heat"));
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { draw(); heat(); axes(); if (sel) select(sel); });
 </script>

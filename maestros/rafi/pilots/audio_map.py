@@ -1,8 +1,10 @@
 """Pilot: a map of Rafi's songs built from the audio alone.
 
 Each recording becomes a vector computed only from its sound by an open, pretrained music model.
-No metadata (film, composer, year, popularity) goes into the vectors or the 2D layout. Metadata is
-joined afterwards, only to label the map and to test whether neighbours make musical sense.
+No song metadata (title, film, composer, year, popularity) is used anywhere: not in the vectors,
+not in the layout, and not in judging the map (Amitabh, 14 Nov 2026). The map is judged by
+audio-internal evidence instead: whether two unrelated models hear the same neighbours, whether
+audio clusters are stable, whether neighbours are merely the same transfer, and blind listening.
 
 Two steps:
 
@@ -11,9 +13,8 @@ Two steps:
         --out data/pilots/audio-map [--models mert,clap] [--max 400]
 
     # anywhere, from the saved vectors:
-    python maestros/rafi/pilots/audio_map.py map --out data/pilots/audio-map \
-        --snapshot maestros/rafi/pilots/audio-pilot-canon.json.gz --labels data/explorer/canon/rafi.json \
-        [--craft data/pilots/audio/features.csv]
+    python maestros/rafi/pilots/audio_map.py map --out data/pilots/audio-map [--craft data/pilots/audio/features.csv]
+    python maestros/rafi/pilots/audio_map.py page --out data/pilots/audio-map
 
 ``matches.csv`` comes from ``audio_gems.py discover``: canon songs published by 1965 matched to
 Internet Archive recordings. Legal posture as in that pilot (Amitabh's approval, 14 Nov 2026):
@@ -48,7 +49,7 @@ import urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from audio_gems import LAST_PD_YEAR, RAFI, Http, _discard, group_of, load_canon  # noqa: E402
+from audio_gems import LAST_PD_YEAR, Http, _discard  # noqa: E402
 
 CHUNK_S = 10.0
 MAX_S = 300.0
@@ -133,10 +134,8 @@ def embed(args):
     for m in models:
         (out / "emb" / m).mkdir(parents=True, exist_ok=True)
     matches = [m for m in csv.DictReader(open(args.matches, encoding="utf-8")) if int(m["year"]) <= LAST_PD_YEAR]
-    # every expert-listed song first, then the rest in a fixed random order, up to --max files
-    rng = random.Random(14)
-    rng.shuffle(matches)
-    matches.sort(key=lambda m: m["group"] not in ("gem", "expert"))
+    # a fixed random order, up to --max files (no song metadata decides which)
+    random.Random(14).shuffle(matches)
     files, units_of = [], collections.defaultdict(list)
     for m in matches:
         k = file_key(m["identifier"], m["file"])
@@ -176,7 +175,7 @@ def embed(args):
             np.save(out / "emb" / name / f"{k}.npy", v.astype(np.float16))
         lw.writerow([k, "ok", round(dur, 1)])
         log.flush()
-        print(f"[{n}/{len(todo)}] {time.time() - t0:.0f}s {m['group']} {m['canon_title'][:40]}", file=sys.stderr)
+        print(f"[{n}/{len(todo)}] {time.time() - t0:.0f}s {k}", file=sys.stderr)
 
 
 # ---------------------------------------------------------------- map
@@ -219,37 +218,6 @@ def load_views(out: Path, craft_csv: str | None):
     return views, files
 
 
-def labels_for(files, snapshot, labels_path):
-    units, _, _ = load_canon(snapshot)
-    pilot = {str(u["id"]): u for u in units}
-    full = json.load(open(labels_path, encoding="utf-8")) if labels_path else {"units": [], "containers": [], "people": []}
-    fu = {str(u["id"]): u for u in full["units"]}
-    by_id = lambda xs: ({str(x["id"]): x for x in xs} if isinstance(xs, list) else {str(i): x for i, x in xs.items()})
-    cont, ppl = by_id(full["containers"]), by_id(full["people"])
-    pname = lambda i: (ppl.get(str(i)) or {}).get("name") or str(i)
-    lab = {}
-    for k, f in files.items():
-        uid = f["units"].split()[0]
-        u = fu.get(uid) or pilot.get(uid) or {}
-        cr = u.get("credits", {})
-        singers = cr.get("singer", [])
-        c = cont.get(str(u.get("container"))) or {}
-        lab[k] = {
-            "unit": int(uid), "units": [int(x) for x in f["units"].split()],
-            "title": u.get("title", ""), "year": u.get("year"),
-            "decade": (u["year"] // 10 * 10) if u.get("year") else None,
-            "film": c.get("title") or c.get("name"), "film_id": u.get("container"),
-            "composer": pname(cr["composer"][0]) if cr.get("composer") else None,
-            "lyricist": pname(cr["lyricist"][0]) if cr.get("lyricist") else None,
-            "cosingers": [pname(s) for s in singers if s != RAFI],
-            "solo": singers == [RAFI] if singers else None,
-            "group": group_of(pilot[uid]) if uid in pilot else "ordinary",
-            "item": f["identifier"],
-            "listen": f"https://archive.org/details/{f['identifier']}",
-        }
-    return lab
-
-
 def knn(X, k):
     import numpy as np
 
@@ -257,42 +225,6 @@ def knn(X, k):
     np.fill_diagonal(S, -np.inf)
     idx = np.argsort(-S, axis=1)[:, :k]
     return idx, np.take_along_axis(S, idx, axis=1)
-
-
-def agreement(idx, labels, exclude=None):
-    """Mean share of a song's neighbours with the same label (songs and neighbours without a label skipped)."""
-    tot, n = 0.0, 0
-    for i, row in enumerate(idx):
-        if labels[i] is None:
-            continue
-        nb = [j for j in row if labels[j] is not None and not (exclude is not None and exclude[j] == exclude[i])]
-        if not nb:
-            continue
-        tot += sum(labels[j] == labels[i] for j in nb) / len(nb)
-        n += 1
-    return tot / n if n else None
-
-
-def shuffled(idx, labels, exclude=None, reps=200, seed=14):
-    """Agreement expected by chance: labels permuted among songs that have one."""
-    rng = random.Random(seed)
-    have = [i for i, l in enumerate(labels) if l is not None]
-    vals = []
-    for _ in range(reps):
-        perm = [labels[i] for i in have]
-        rng.shuffle(perm)
-        lab = list(labels)
-        for i, l in zip(have, perm):
-            lab[i] = l
-        vals.append(agreement(idx, lab, exclude))
-    vals.sort()
-    return sum(vals) / len(vals), vals[int(0.95 * len(vals))]
-
-
-def auc(pos, neg):
-    if len(pos) < 3 or len(neg) < 3:
-        return None
-    return sum((p > q) + 0.5 * (p == q) for p in pos for q in neg) / (len(pos) * len(neg))
 
 
 def project(X, seed=14):
@@ -317,104 +249,142 @@ def project(X, seed=14):
     return Y, how
 
 
-TESTS = [  # label, why it should (or should not) be audible
-    ("composer", "each composer has an orchestral and melodic style"),
-    ("film", "songs of one film share a recording session and orchestra"),
-    ("decade", "recording technology and fashion change with time"),
-    ("solo", "a second voice (often female) is plainly audible"),
-    ("lyricist", "words are barely audible to these models; mostly rides on composer"),
-    ("item", "same Internet Archive upload: same transfer, a recording artefact, not music"),
-]
+def clusters(X, seed=14):
+    """Audio-only clusters: k-means on the vectors, k chosen by silhouette, plus bootstrap stability (ARI)."""
+    import numpy as np
+    from sklearn.cluster import KMeans
+    from sklearn.metrics import adjusted_rand_score, silhouette_score
+
+    best = None
+    for k in range(3, 11):
+        lab = KMeans(k, n_init=10, random_state=seed).fit_predict(X)
+        s = silhouette_score(X, lab, metric="cosine")
+        if best is None or s > best[1]:
+            best = (k, s, lab)
+    k, sil, lab = best
+    rng = np.random.default_rng(seed)
+    aris = []
+    for _ in range(20):
+        sub = rng.choice(len(X), int(0.8 * len(X)), replace=False)
+        lab2 = KMeans(k, n_init=10, random_state=int(rng.integers(1e6))).fit_predict(X[sub])
+        aris.append(adjusted_rand_score(lab[sub], lab2))
+    return lab, {"k": k, "silhouette": float(sil), "stability_ari": float(np.mean(aris))}
+
+
+def overlap(a, b):
+    """Mean share of a recording's neighbours that two views have in common."""
+    return sum(len(set(x) & set(y)) / len(x) for x, y in zip(a, b)) / len(a)
 
 
 def map_(args):
+    """Everything here comes from the audio vectors. No song metadata is read.
+
+    The one outside fact used is which Internet Archive upload a file came from: it is about the
+    transfer, not the song, and is used only to warn when neighbours are the same transfer.
+    """
     import numpy as np
+    from sklearn.manifold import trustworthiness
+    from sklearn.metrics import adjusted_rand_score
 
     out = Path(args.out)
     views, files = load_views(out, args.craft)
     if not views:
         sys.exit("no embeddings found")
-    lab = labels_for(files, args.snapshot, args.labels)
-    k = args.k
-    report = ["# Audio-only map of Rafi's songs: pilot report", "",
-              "Vectors come from the audio alone. Metadata is joined afterwards to test the neighbours.",
-              f"Neighbours: the {k} nearest songs by cosine similarity in the full vector space (not the 2D map). "
-              "Chance = the same score with labels shuffled among songs (200 times). "
-              "'Other uploads' leaves out neighbours from the same Internet Archive item, which share a transfer.", ""]
-    summary, maps = {}, {}
+    common = sorted(set.intersection(*(set(keys) for keys, _ in views.values())))
+    pos = {v: {key: i for i, key in enumerate(keys)} for v, (keys, _) in views.items()}
+    views = {v: (common, X[[pos[v][key] for key in common]]) for v, (keys, X) in views.items()}
+    n, k = len(common), args.k
+    num = {key: i + 1 for i, key in enumerate(sorted(common, key=lambda c: hashlib.sha1(c.encode()).hexdigest()))}
+    items = [files[key]["identifier"] for key in common]
+    chance = k / (n - 1)
+
+    nn, summary, maps, labs = {}, {}, {}, {}
     for v, (keys, X) in views.items():
         idx, sims = knn(X, k)
-        L = lambda f: [lab[key][f] for key in keys]
-        items = L("item")
-        rows = {}
-        for f, why in TESTS:
-            labels = L(f)
-            if sum(x is not None for x in labels) < 20:
-                continue
-            obs = agreement(idx, labels)
-            base, p95 = shuffled(idx, labels, reps=args.reps)
-            obs_x = agreement(idx, labels, exclude=items) if f != "item" else None
-            base_x = shuffled(idx, labels, exclude=items, reps=args.reps)[0] if f != "item" else None
-            rows[f] = {"agree": obs, "chance": base, "chance95": p95, "agree_other_uploads": obs_x,
-                       "chance_other_uploads": base_x, "why": why}
-        years = L("year")
-        dy = [abs(years[i] - years[j]) for i in range(len(keys)) for j in idx[i] if years[i] and years[j]]
-        rng = random.Random(14)
-        yy = [y for y in years if y]
-        dy0 = [abs(rng.choice(yy) - rng.choice(yy)) for _ in range(20000)]
-        rows["year_gap"] = {"neighbours": float(np.mean(dy)), "random": float(np.mean(dy0))}
-        # outliers: mean cosine distance to the k nearest songs
-        iso = 1 - sims.mean(axis=1)
-        grp = L("group")
-        g = lambda names: [iso[i] for i in range(len(keys)) if grp[i] in names]
-        rows["outlier_auc"] = {
-            "expert_vs_ordinary": auc(g({"gem", "expert"}), g({"ordinary"})),
-            "gem_vs_ordinary": auc(g({"gem"}), g({"ordinary"})),
-            "hit_vs_ordinary": auc(g({"hit"}), g({"ordinary"})),
-            "n": dict(collections.Counter(grp)),
-        }
-        dup = [(keys[i], keys[j], float(s)) for i in range(len(keys)) for j, s in zip(idx[i], sims[i])
-               if s > args.dup and i < j]
-        rows["near_duplicates"] = [{"a": lab[a]["unit"], "b": lab[b]["unit"], "sim": round(s, 4)} for a, b, s in dup]
-        summary[v] = rows
+        nn[v] = (idx, sims)
+        same_upload = float(np.mean([[items[j] == items[i] for j in row] for i, row in enumerate(idx)]))
+        perm = np.random.default_rng(14).permutation(n)
+        upload_chance = float(np.mean([[items[perm[j]] == items[perm[i]] for j in row] for i, row in enumerate(idx)]))
+        sims_all = X @ X.T
+        dup = [(i, j, float(sims_all[i, j])) for i in range(n) for j in range(i + 1, n) if sims_all[i, j] > args.dup]
+        r = {"same_upload": same_upload, "same_upload_chance": upload_chance, "near_duplicates": len(dup)}
         if v in ("mert", "clap", "craft"):
             Y, how = project(X)
-            maps[v] = {"how": how, "xy": {key: [round(float(a), 4), round(float(b), 4)] for key, (a, b) in zip(keys, Y)},
+            lab, cl = clusters(X)
+            labs[v] = lab
+            r.update(cl, trustworthiness=float(trustworthiness(X, Y, n_neighbors=k, metric="cosine")))
+            iso = 1 - sims.mean(axis=1)
+            from sklearn.decomposition import PCA
+
+            pca = PCA(n_components=min(args.pcs, n - 1, X.shape[1]), random_state=14)
+            P = pca.fit_transform(X)
+            P = P / (P.std(axis=0) + 1e-9)  # each axis in standard units, so the strips compare
+            ends = [{"low": [keys[j] for j in np.argsort(P[:, c])[:3]],
+                     "high": [keys[j] for j in np.argsort(-P[:, c])[:3]]} for c in range(P.shape[1])]
+            maps[v] = {"how": how,
+                       "pc": {key: [round(float(x), 2) for x in P[i]] for i, key in enumerate(keys)},
+                       "pcvar": [round(float(x), 4) for x in pca.explained_variance_ratio_],
+                       "pcends": ends,
+                       "xy": {key: [round(float(a), 4), round(float(b), 4)] for key, (a, b) in zip(keys, Y)},
                        "nn": {key: [[keys[j], round(float(s), 3)] for j, s in zip(idx[i][:8], sims[i][:8])]
                               for i, key in enumerate(keys)},
-                       "iso": {key: round(float(iso[i]), 4) for i, key in enumerate(keys)}}
+                       "iso": {key: round(float(iso[i]), 4) for i, key in enumerate(keys)},
+                       "cluster": {key: int(lab[i]) for i, key in enumerate(keys)}}
+        summary[v] = r
 
-        report += [f"## {v} ({len(keys)} recordings)", "",
-                   "| label | neighbours agree | chance | other uploads only | chance |", "|---|---|---|---|---|"]
-        for f, _ in TESTS:
-            r = rows.get(f)
-            if not r:
-                continue
-            fx = lambda x: "" if x is None else f"{x:.2f}"
-            report.append(f"| {f} | {fx(r['agree'])} | {fx(r['chance'])} | {fx(r['agree_other_uploads'])} | "
-                          f"{fx(r['chance_other_uploads'])} |")
-        o = rows["outlier_auc"]
-        fx = lambda x: "n/a" if x is None else f"{x:.2f}"
-        report += ["", f"Year gap to neighbours: {rows['year_gap']['neighbours']:.1f} years "
-                       f"(random pairs {rows['year_gap']['random']:.1f}).",
-                   f"Outlier AUC (isolation, 0.5 = chance): expert-listed vs ordinary {fx(o['expert_vs_ordinary'])}, "
-                   f"gems vs ordinary {fx(o['gem_vs_ordinary'])}, hits vs ordinary {fx(o['hit_vs_ordinary'])}. "
-                   f"Groups: {o['n']}.",
-                   f"Near-duplicates (cosine > {args.dup}): {len(dup)}.", ""]
+    names = [v for v in views if v in ("mert", "clap", "craft")]
+    agree = {f"{a}~{b}": overlap(nn[a][0], nn[b][0]) for i, a in enumerate(names) for b in names[i + 1:]}
+    cl_agree = {f"{a}~{b}": float(adjusted_rand_score(labs[a], labs[b]))
+                for i, a in enumerate(list(labs)) for b in list(labs)[i + 1:]}
 
+    # blind listening test: for each anchor, its nearest neighbour under both models versus a far recording
+    rng = random.Random(14)
+    trials = []
+    if "mert" in nn and "clap" in nn:
+        S = views["mert"][1] @ views["mert"][1].T + views["clap"][1] @ views["clap"][1].T
+        for i in rng.sample(range(n), min(args.trials, n)):
+            order = [j for j in np.argsort(-S[i]) if j != i]
+            near, far = order[0], rng.choice(order[n // 2:])
+            a, b = (near, far) if rng.random() < 0.5 else (far, near)
+            trials.append({"anchor": common[i], "a": common[a], "b": common[b], "near": "a" if a == near else "b"})
+
+    fx = lambda x: f"{x:.2f}"
+    report = ["# Audio-only map of Rafi's songs: pilot report", "",
+              "Built and judged from the audio alone: no title, film, composer, year or popularity is used.",
+              f"{n} recordings. Neighbours = the {k} closest recordings by cosine similarity in the full vector space.", "",
+              "## Do the models hear the same thing?", "",
+              f"Share of neighbours two views have in common (chance {fx(chance)}):", ""]
+    report += [f"- {p.replace('~', ' and ')}: {fx(x)}" for p, x in agree.items()]
+    report += ["", "Agreement of the audio clusters (adjusted Rand, 0 = chance, 1 = identical):", ""]
+    report += [f"- {p.replace('~', ' and ')}: {fx(x)}" for p, x in cl_agree.items()]
+    report += ["", "## Each view", "",
+               "| view | clusters | silhouette | stability | 2D trust | same-upload neighbours | chance | near-duplicates |",
+               "|---|---|---|---|---|---|---|---|"]
+    for v, r in summary.items():
+        report.append(f"| {v} | {r.get('k', '')} | {fx(r['silhouette']) if 'silhouette' in r else ''} | "
+                      f"{fx(r['stability_ari']) if 'stability_ari' in r else ''} | "
+                      f"{fx(r['trustworthiness']) if 'trustworthiness' in r else ''} | {fx(r['same_upload'])} | "
+                      f"{fx(r['same_upload_chance'])} | {r['near_duplicates']} |")
+    report += ["", "Stability: adjusted Rand between the clusters and clusters re-fitted on 80% samples. "
+               "2D trust: how well the map keeps each recording's true neighbours (1 = perfectly). "
+               "Same-upload neighbours: share of neighbours from the same Internet Archive upload; far above "
+               "chance means the model hears the transfer (noise, speed, EQ) rather than the music.",
+               "", f"Listening test: {len(trials)} blind trials in the page (which of A and B sounds more like the anchor?)."]
     text = "\n".join(report) + "\n"
     (out / "map-report.md").write_text(text, encoding="utf-8")
-    (out / "map-summary.json").write_text(json.dumps(summary, indent=1, default=float), encoding="utf-8")
-    songs = {key: lab[key] for key in files if any(key in m["xy"] for m in maps.values())}
-    (out / "map.json").write_text(json.dumps({"songs": songs, "maps": maps, "k": k,
-                                              "summary": summary}, default=float), encoding="utf-8")
+    summary = {"views": summary, "neighbour_overlap": agree, "cluster_agreement": cl_agree, "chance": chance}
+    (out / "map-summary.json").write_text(json.dumps(summary, indent=1), encoding="utf-8")
+    recs = {key: {"n": num[key], "listen": f"https://archive.org/download/{files[key]['identifier']}/"
+                                           f"{urllib.parse.quote(files[key]['file'])}",
+                  "upload": files[key]["identifier"]} for key in common}
+    (out / "map.json").write_text(json.dumps({"recordings": recs, "maps": maps, "k": k, "summary": summary,
+                                              "trials": trials}), encoding="utf-8")
     print(text)
 
 
 def page(args):
-    """Write a self-contained explorer page from map.json (no audio, publishable titles only)."""
+    """Write a self-contained explorer page from map.json (no audio, no song metadata)."""
     d = json.load(open(Path(args.out) / "map.json", encoding="utf-8"))
-    d["summary"] = {v: r for v, r in d["summary"].items() if v in d["maps"]}
     html = Path(__file__).with_name("audio_map.html").read_text(encoding="utf-8")
     html = html.replace("/*MAP_DATA*/null", json.dumps(d, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/"))
     dest = Path(args.page or Path(args.out) / "rafi-sound-map.html")
@@ -433,11 +403,10 @@ def main():
     e.add_argument("--rps", type=float, default=1.0)
     m = sub.add_parser("map")
     m.add_argument("--out", default="data/pilots/audio-map")
-    m.add_argument("--snapshot", default=str(Path(__file__).with_name("audio-pilot-canon.json.gz")))
-    m.add_argument("--labels", help="full canon snapshot (maestro-explore JSON) for film and people names")
     m.add_argument("--craft", default="data/pilots/audio/features.csv", help="the earlier pilot's 20 features")
     m.add_argument("--k", type=int, default=10)
-    m.add_argument("--reps", type=int, default=200)
+    m.add_argument("--trials", type=int, default=30)
+    m.add_argument("--pcs", type=int, default=24, help="principal axes kept for the latent views")
     m.add_argument("--dup", type=float, default=0.985)
     p = sub.add_parser("page")
     p.add_argument("--out", default="data/pilots/audio-map")
