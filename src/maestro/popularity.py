@@ -54,7 +54,9 @@ GEM_MAX_REACH = 0.5
 GEM_MIN_QUALITY = 0.6
 FRAMING = {"gem": 1.0, "praise": 0.6, "listed": 0.25}  # how an expert speaks of a unit
 LOW_POP_REISSUES = 2  # a low-popularity unit is on at most this many releases or catalogue numbers
-COUNT_SIGNAL_SHARE = 0.2  # an enduring signal naming more of the canon than this is a count (see count_medians)
+COUNT_SIGNAL_SHARE = 0.2  # an enduring signal naming more of the canon than this is a count (see count_thresholds)
+COUNT_MIN_DISTINCT = 20  # ... as is one whose strengths take at least this many values (listeners, views)
+COUNT_POPULAR_QUANTILE = 0.9  # on a count signal, a unit is popular in the top 10% of the units it names
 LIST_PURITY_MIN = 0.9  # a gem list counts only if this share of its units are low-popularity
 LIST_INTENTS = ("gem_list", "best_of", "themed")
 SELECTIVE_SHARE = 0.01  # a voice naming this share of the canon or less has its full say
@@ -439,8 +441,8 @@ def load_lists(pack) -> dict[str, dict[str, str]]:
 def low_popularity(s: Scored, medians: dict[str, float] | None = None) -> bool:
     """Positive and absent evidence agree that few people know the unit: no chart, award or hit list
     (contemporary), no cover or reuse (penetration), no article (an enduring list), on at most
-    LOW_POP_REISSUES releases, and, for count signals that name much of the canon (Last.fm listeners,
-    YouTube views; see `count_medians`), no more than the median of the units they name."""
+    LOW_POP_REISSUES releases, and, for count signals (Last.fm listeners, YouTube views; see
+    `count_thresholds`), outside the top of the units they name."""
     medians = medians or {}
     for sig, strength in s.signals.items():
         f = s.facet_of.get(sig)
@@ -455,17 +457,20 @@ def low_popularity(s: Scored, medians: dict[str, float] | None = None) -> bool:
     return True
 
 
-def count_medians(scored: dict[int, Scored], facet_of: dict[str, str]) -> dict[str, float]:
-    """Enduring signals that name more than COUNT_SIGNAL_SHARE of the canon are counts, not lists:
-    having a few Last.fm listeners says nothing, being above the middle of the named units does."""
+def count_thresholds(scored: dict[int, Scored], facet_of: dict[str, str]) -> dict[str, float]:
+    """Enduring signals that are counts, not lists, with the strength above which a unit counts as
+    popular. A signal is a count when it names more than COUNT_SIGNAL_SHARE of the canon or its
+    strengths take at least COUNT_MIN_DISTINCT values: a few Last.fm listeners say nothing, being in
+    the top (COUNT_POPULAR_QUANTILE) of the units it names does. An enduring signal that is neither
+    (an encyclopedia article) is a list: being on it is enough."""
     out = {}
     n = max(1, len(scored))
     for sig in {x for s in scored.values() for x in s.signals}:
         if facet_of.get(sig) != "enduring" or sig == "reissues":
             continue
         vals = sorted(s.signals[sig] for s in scored.values() if sig in s.signals)
-        if len(vals) / n > COUNT_SIGNAL_SHARE:
-            out[sig] = vals[len(vals) // 2]
+        if len(vals) / n > COUNT_SIGNAL_SHARE or len(set(vals)) >= COUNT_MIN_DISTINCT:
+            out[sig] = vals[min(len(vals) - 1, int(len(vals) * COUNT_POPULAR_QUANTILE))]
     return out
 
 
@@ -486,7 +491,7 @@ def _expert_quality(scored: dict[int, Scored], facet_of: dict[str, str], picks: 
     Independent voices agreeing multiply: quality = 1 - prod(1 - word) over the voices.
     """
     n = max(1, len(scored))
-    medians = count_medians(scored, facet_of)
+    medians = count_thresholds(scored, facet_of)
     per_list: dict[str, dict[str, Any]] = {}
     for uid, s in scored.items():
         for e in s.evidence:

@@ -276,3 +276,20 @@ def test_api_key_as_query_parameter(monkeypatch):
                 sleep=lambda s: None)
     f._get("https://ws.audioscrobbler.com/2.0/?method=x")
     assert seen[0][0].endswith("&api_key=secret") and not any("secret" in v for v in seen[0][1].values())
+
+
+def test_count_signal_popular_only_at_the_top():
+    """A few Last.fm listeners do not make a song popular, even when Last.fm names a small share of
+    the canon: only the top of the units a count signal names is popular."""
+    from maestro.completeness import Unit
+    from maestro.popularity import Scored, count_thresholds, low_popularity
+    facet_of = {"lastfm": "enduring", "wikipedia_articles": "enduring"}
+    scored = {i: Scored(unit=Unit(id=i, label=f"u{i}"), facet_of=facet_of) for i in range(1000)}
+    for i in range(100):  # 10% of the canon, 100 distinct listener counts
+        scored[i].signals["lastfm"] = float(i + 1)
+    scored[500].signals["wikipedia_articles"] = 1.0
+    th = count_thresholds(scored, facet_of)
+    assert set(th) == {"lastfm"} and th["lastfm"] == 91.0
+    assert low_popularity(scored[5], th) and low_popularity(scored[90], th)
+    assert not low_popularity(scored[99], th)
+    assert not low_popularity(scored[500], th)  # an article is a list: being on it is enough
