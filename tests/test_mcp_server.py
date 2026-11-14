@@ -11,11 +11,12 @@ def test_tools_are_registered():
                      "resolve_entities", "list_reviews", "decide_review", "completeness_report"}
 
 
-def test_tools_run_against_a_store(pg_server, monkeypatch):
+def test_tools_run_against_a_store(store_for, pg_server, monkeypatch):
     from conftest import ROOT
 
+    store = store_for("eddy-arnold")  # a fresh database of its own, never the server's default one
     monkeypatch.setenv("MAESTRO_PACK", str(ROOT / "maestros" / "eddy-arnold"))
-    monkeypatch.setenv("MAESTRO_DSN", pg_server)
+    monkeypatch.setenv("MAESTRO_DSN", pg_server.rsplit("/", 1)[0] + "/" + store.conn.info.dbname)
     mcp_server._store.cache_clear()
     try:
         summary = mcp_server.pack_summary()

@@ -618,14 +618,20 @@ def resolve_reasons(reasons: list[str], people: dict[int, str], titles: dict[int
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="maestro-score", description="Popularity and rare-gem scores for one maestro's canon.")
     p.add_argument("--pack", default=os.environ.get("MAESTRO_PACK"), required=os.environ.get("MAESTRO_PACK") is None)
-    p.add_argument("--dsn", default=os.environ.get("MAESTRO_DSN"), required=os.environ.get("MAESTRO_DSN") is None)
+    p.add_argument("--dsn", help="default $MAESTRO_DSN_<SLUG>, then $MAESTRO_DSN (.env is read)")
     p.add_argument("--top", type=int, default=20, help="how many popular units and gems to list")
     p.add_argument("--pick", type=int, nargs="+", metavar="UNIT", help="record the user's pick: a gem (also calibrates the experts)")
     p.add_argument("--not-gem", type=int, nargs="+", metavar="UNIT", help="record that the user says a unit is not a gem")
     p.add_argument("--json", action="store_true", help="print every scored unit as JSON")
     p.add_argument("--include-private", action="store_true")
     args = p.parse_args(argv)
-    store = Store.connect(args.dsn, load_pack(args.pack))
+    from maestro import config
+
+    pack = load_pack(args.pack)
+    dsn = config.dsn_for(pack.slug, args.dsn)
+    if not dsn:
+        p.error(f"--dsn (or {config.dsn_env_name(pack.slug)} or MAESTRO_DSN) is required")
+    store = Store.connect(dsn, pack)
     try:
         if args.pick:
             for uid in args.pick:

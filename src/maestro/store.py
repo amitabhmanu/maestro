@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import zlib
+from contextlib import contextmanager
 from importlib import resources
-from typing import Any
+from typing import Any, Iterator
 
 import psycopg
 from psycopg.rows import dict_row
@@ -23,6 +25,22 @@ QUERY_ROW_LIMIT = 500
 
 class StoreError(RuntimeError):
     pass
+
+
+def _lock_key(what: str) -> int:
+    """A stable advisory-lock key per purpose (the same in every session)."""
+    return zlib.crc32(f"maestro:{what}".encode())
+
+
+def migrations() -> list[tuple[int, str]]:
+    """Numbered migrations shipped in `maestro/migrations/` (NNN_name.sql), in order."""
+    folder = resources.files("maestro").joinpath("migrations")
+    out = []
+    for f in folder.iterdir():
+        name = f.name
+        if name.endswith(".sql") and name[:3].isdigit():
+            out.append((int(name[:3]), f.read_text("utf-8")))
+    return sorted(out)
 
 
 class Store:
@@ -45,10 +63,39 @@ class Store:
 
     # ---- setup -------------------------------------------------------------
 
-    def migrate(self) -> None:
+    def migrate(self) -> list[int]:
+        """Bring the schema up to date: the baseline (`schema.sql`), then every numbered file in
+        `migrations/` not yet applied. Returns the versions applied now."""
         sql = resources.files("maestro").joinpath("schema.sql").read_text("utf-8")
+        applied_now = []
         with self.conn.transaction():
+            self.conn.execute("SELECT pg_advisory_xact_lock(%s)", (_lock_key("migrate"),))
             self.conn.execute(sql)
+            have = {r["version"] for r in self.conn.execute("SELECT version FROM schema_version").fetchall()}
+            for version, body in migrations():
+                if version not in have:
+                    self.conn.execute(body)
+                    self.conn.execute("INSERT INTO schema_version (version) VALUES (%s)", (version,))
+                    applied_now.append(version)
+        return applied_now
+
+    def schema_version(self) -> int:
+        row = self.conn.execute("SELECT max(version) AS v FROM schema_version").fetchone()
+        return row["v"] or 0
+
+    @contextmanager
+    def exclusive(self, what: str = "canon-write") -> Iterator[None]:
+        """Hold a lock on this canon while a command merges or writes decisions, so two sessions
+        (or threads) cannot resolve, apply review answers or run the orchestrator at the same time.
+        Raises StoreError at once if another session holds it."""
+        key = _lock_key(what)
+        if not self.conn.execute("SELECT pg_try_advisory_lock(%s) AS ok", (key,)).fetchone()["ok"]:
+            raise StoreError(f"another session is already running a {what} command on this canon; "
+                             "try again when it has finished")
+        try:
+            yield
+        finally:
+            self.conn.execute("SELECT pg_advisory_unlock(%s)", (key,))
 
     def sync_sources(self) -> int:
         """Register the pack's sources (and the built-in ones). Returns how many were written."""

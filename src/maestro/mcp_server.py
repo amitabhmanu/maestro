@@ -2,7 +2,7 @@
 
 Configuration (environment):
   MAESTRO_PACK  path to a maestro folder, e.g. maestros/rafi
-  MAESTRO_DSN   Postgres connection string for that maestro's database
+  MAESTRO_DSN   Postgres connection string for that maestro's database (or MAESTRO_DSN_<SLUG>; .env is read)
 """
 
 from __future__ import annotations
@@ -28,11 +28,17 @@ server = MCPServer(
 
 @cache
 def _store() -> Store:
+    from maestro import config
+
+    config.load_env()
     pack_path = os.environ.get("MAESTRO_PACK")
-    dsn = os.environ.get("MAESTRO_DSN")
-    if not pack_path or not dsn:
-        raise RuntimeError("set MAESTRO_PACK and MAESTRO_DSN before starting the maestro MCP server")
-    store = Store.connect(dsn, load_pack(pack_path))
+    if not pack_path:
+        raise RuntimeError("set MAESTRO_PACK (and MAESTRO_DSN or MAESTRO_DSN_<SLUG>) before starting the maestro MCP server")
+    pack = load_pack(pack_path)
+    dsn = config.dsn_for(pack.slug)
+    if not dsn:
+        raise RuntimeError(f"set {config.dsn_env_name(pack.slug)} or MAESTRO_DSN before starting the maestro MCP server")
+    store = Store.connect(dsn, pack)
     store.migrate()
     store.sync_sources()
     return store

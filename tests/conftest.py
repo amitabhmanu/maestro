@@ -29,6 +29,16 @@ def _free_port() -> int:
         return s.getsockname()[1]
 
 
+@pytest.fixture(autouse=True)
+def _no_live_stores(monkeypatch, tmp_path_factory):
+    """Tests never see a machine's real stores: no .env, no MAESTRO_DSN_<SLUG>, no data folder."""
+    monkeypatch.setenv("MAESTRO_NO_DOTENV", "1")
+    for key in list(os.environ):
+        if key.startswith("MAESTRO_DSN") or key in ("MAESTRO_DATA_DIR", "MAESTRO_BACKUP_DIR"):
+            monkeypatch.delenv(key)
+    monkeypatch.setenv("MAESTRO_DATA_DIR", str(tmp_path_factory.mktemp("maestro-data")))
+
+
 @pytest.fixture(scope="session")
 def pg_server():
     """Yields a DSN to an empty server database ('postgres')."""

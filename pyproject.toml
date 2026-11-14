@@ -28,6 +28,10 @@ maestro-report = "maestro.cli:report_main"
 maestro-explore = "maestro.explore:main"
 maestro-run = "maestro.cli:run_main"
 maestro-score = "maestro.popularity:main"
+maestro-migrate = "maestro.ops:migrate_main"
+maestro-doctor = "maestro.ops:doctor_main"
+maestro-backup = "maestro.ops:backup_main"
+maestro-raw = "maestro.rawstore:main"
 
 [build-system]
 requires = ["hatchling>=1.25"]

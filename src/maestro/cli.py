@@ -9,6 +9,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
+from maestro import config
 from maestro.pack import PackError, load_pack
 
 
@@ -35,11 +36,17 @@ def _store(p: argparse.ArgumentParser, argv: list[str] | None):
     from maestro.store import Store
 
     p.add_argument("--pack", default=os.environ.get("MAESTRO_PACK"), help="maestro folder (default $MAESTRO_PACK)")
-    p.add_argument("--dsn", default=os.environ.get("MAESTRO_DSN"), help="Postgres DSN (default $MAESTRO_DSN)")
+    p.add_argument("--dsn", help="Postgres DSN (default $MAESTRO_DSN_<SLUG>, then $MAESTRO_DSN; .env is read)")
     args = p.parse_args(argv)
-    if not args.pack or not args.dsn:
-        p.error("--pack and --dsn (or MAESTRO_PACK and MAESTRO_DSN) are required")
-    store = Store.connect(args.dsn, load_pack(args.pack))
+    config.load_env()
+    args.pack = args.pack or os.environ.get("MAESTRO_PACK")
+    if not args.pack:
+        p.error("--pack (or MAESTRO_PACK) is required")
+    pack = load_pack(args.pack)
+    args.dsn = config.dsn_for(pack.slug, args.dsn)
+    if not args.dsn:
+        p.error(f"--dsn (or {config.dsn_env_name(pack.slug)} or MAESTRO_DSN) is required")
+    store = Store.connect(args.dsn, pack)
     store.migrate()
     store.sync_sources()
     return args, store
@@ -50,7 +57,8 @@ def resolve_main(argv: list[str] | None = None) -> int:
     from maestro.resolve import resolve
 
     _, store = _store(argparse.ArgumentParser(description=resolve_main.__doc__), argv)
-    print(json.dumps(resolve(store).as_dict(), indent=2))
+    with store.exclusive():
+        print(json.dumps(resolve(store).as_dict(), indent=2))
     store.close()
     return 0
 
@@ -101,12 +109,13 @@ def review_main(argv: list[str] | None = None) -> int:
 
         total: Counter[str] = Counter()
         failed = 0
-        for a in json.loads(Path(args.apply).read_text("utf-8"))["answers"]:
-            try:
-                total.update(apply_groups(store, a["items"], a.get("groups"), a.get("note") or args.note))
-            except ValueError as e:
-                failed += 1
-                print(f"items {a['items']}: not applied: {e}")
+        with store.exclusive():
+            for a in json.loads(Path(args.apply).read_text("utf-8"))["answers"]:
+                try:
+                    total.update(apply_groups(store, a["items"], a.get("groups"), a.get("note") or args.note))
+                except ValueError as e:
+                    failed += 1
+                    print(f"items {a['items']}: not applied: {e}")
         print(json.dumps(dict(total)) + (f"; {failed} answers not applied" if failed else ""))
     elif args.item is None:
         for r in open_reviews(store, args.limit, args.kind):
@@ -115,7 +124,8 @@ def review_main(argv: list[str] | None = None) -> int:
     elif args.decision is None:
         p.error("give a decision: merge, distinct or dismiss")
     else:
-        claim = decide_review(store, args.item, args.decision, args.note, args.keep)
+        with store.exclusive():
+            claim = decide_review(store, args.item, args.decision, args.note, args.keep)
         print(f"item {args.item}: {args.decision}" + (f" (claim {claim})" if claim else ""))
     store.close()
     return 0
@@ -132,14 +142,15 @@ def run_main(argv: list[str] | None = None) -> int:
     p.add_argument("--rounds", type=int, default=3)
     p.add_argument("--max-jobs", type=int, help="jobs per round (default and ceiling: the pack's budget)")
     p.add_argument("--dry-run", action="store_true", help="plan one round without crawling")
-    p.add_argument("--cache-dir", default=None, help="raw page cache (default data/<slug>/raw)")
+    p.add_argument("--cache-dir", default=None, help="raw page folder (default <MAESTRO_DATA_DIR>/<slug>/raw)")
     p.add_argument("--json", action="store_true", help="print JSON instead of Markdown")
     p.add_argument("--save", action="store_true", help="also write maestros/<slug>/runs/<time>-run.{md,json}")
     args, store = _store(p, argv)
     pack = store.pack
-    fetcher = Fetcher(Path(args.cache_dir or Path("data") / pack.slug / "raw"),
+    fetcher = Fetcher(Path(args.cache_dir) if args.cache_dir else config.raw_dir(pack.slug),
                       rps=pack.data["budget"]["per_domain_rps"], api_hosts=api_hosts(pack.data))
-    rounds = run_rounds(store, fetcher, rounds=args.rounds, max_jobs=args.max_jobs, dry_run=args.dry_run)
+    with store.exclusive():
+        rounds = run_rounds(store, fetcher, rounds=args.rounds, max_jobs=args.max_jobs, dry_run=args.dry_run)
     md = render_markdown(pack.slug, rounds)
     if args.save:
         runs = pack.path.parent / "runs"
