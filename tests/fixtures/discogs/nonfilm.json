@@ -1,0 +1,13 @@
+{"id": 5002, "title": "Ghazals", "year": 1968, "master_id": 0,
+ "artists": [{"id": 99, "name": "Mohammed Rafi", "anv": "", "join": "", "role": "", "tracks": ""}],
+ "extraartists": [{"id": 304, "name": "Khayyam", "anv": "", "role": "Music By", "tracks": "1"}],
+ "labels": [{"name": "Columbia", "catno": "3AEX 5201", "id": 3}],
+ "formats": [{"name": "Vinyl", "qty": "1", "descriptions": ["EP"]}],
+ "genres": ["Folk, World, & Country"], "styles": ["Ghazal"],
+ "tracklist": [
+  {"position": "1", "type_": "track", "title": "Ghazal Number One", "duration": "4:00"},
+  {"position": "2", "type_": "track", "title": "A Duet Without Him", "duration": "3:00",
+   "artists": [{"id": 303, "name": "Asha Bhosle", "anv": "", "join": "", "role": "", "tracks": ""}]},
+  {"position": "3", "type_": "index", "title": "Medley",
+   "sub_tracks": [{"position": "3a", "type_": "track", "title": "Part One"}]}
+ ]}

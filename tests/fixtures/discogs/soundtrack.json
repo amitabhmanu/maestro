@@ -1,0 +1,16 @@
+{"id": 5001, "title": "Kohinoor", "year": 1960, "master_id": 111,
+ "artists": [{"id": 300, "name": "Naushad", "anv": "", "join": "", "role": "", "tracks": ""}],
+ "extraartists": [
+  {"id": 301, "name": "Shakeel Badayuni", "anv": "", "role": "Lyrics By", "tracks": ""},
+  {"id": 99, "name": "Mohammed Rafi", "anv": "Mohd. Rafi", "role": "Vocals [Playback]", "tracks": "A1 to A2"}],
+ "labels": [{"name": "His Master's Voice", "catno": "MOCE 4021", "id": 1}, {"name": "HMV", "catno": "none", "id": 2}],
+ "formats": [{"name": "Vinyl", "qty": "1", "descriptions": ["LP"]}],
+ "genres": ["Stage & Screen"], "styles": ["Bollywood", "Soundtrack"],
+ "tracklist": [
+  {"position": "", "type_": "heading", "title": "Side One"},
+  {"position": "A1", "type_": "track", "title": "Madhuban Mein Radhika Nache Re", "duration": "6:05"},
+  {"position": "A2", "type_": "track", "title": "Do Sitaron Ka Zameen Par", "duration": "3:20",
+   "extraartists": [{"id": 302, "name": "Lata Mangeshkar", "anv": "", "role": "Vocals", "tracks": ""}]},
+  {"position": "B1", "type_": "track", "title": "Dil Mein Baji Pyar Ki Shehnaiyan", "duration": "3:30",
+   "extraartists": [{"id": 302, "name": "Lata Mangeshkar", "anv": "", "role": "Vocals", "tracks": ""}]}
+ ]}

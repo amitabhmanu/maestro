@@ -135,7 +135,7 @@ def run_main(argv: list[str] | None = None) -> int:
     """`maestro-run`: the orchestrator loop. Each round resolves, measures, plans and crawls what it
     can, until every tier meets its target, nothing is left to crawl, or --rounds is reached. Prints
     (and with --save writes) each round's estimates, the jobs it ran and what it needs from a person."""
-    from maestro.crawl.fetcher import Fetcher, api_hosts
+    from maestro.crawl.fetcher import Fetcher, api_headers, api_hosts
     from maestro.orchestrate import render_markdown, run_rounds
 
     p = argparse.ArgumentParser(description=run_main.__doc__)
@@ -148,7 +148,8 @@ def run_main(argv: list[str] | None = None) -> int:
     args, store = _store(p, argv)
     pack = store.pack
     fetcher = Fetcher(Path(args.cache_dir) if args.cache_dir else config.raw_dir(pack.slug),
-                      rps=pack.data["budget"]["per_domain_rps"], api_hosts=api_hosts(pack.data))
+                      rps=pack.data["budget"]["per_domain_rps"], api_hosts=api_hosts(pack.data),
+                      api_headers=api_headers(pack.data))
     with store.exclusive():
         rounds = run_rounds(store, fetcher, rounds=args.rounds, max_jobs=args.max_jobs, dry_run=args.dry_run)
     md = render_markdown(pack.slug, rounds)

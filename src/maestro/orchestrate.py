@@ -152,9 +152,16 @@ def run_rounds(store: Store, fetcher: Any, *, rounds: int = 3, max_jobs: int | N
     max_jobs = min(max_jobs or budget, budget)
     out: list[dict[str, Any]] = []
     for n in range(1, rounds + 1):
-        resolved = resolve(store).as_dict()
-        report = completeness_report(store)
-        p = plan(store, report)
+        if dry_run:
+            # A dry run writes nothing: resolution's merges and review items are rolled back after planning.
+            with store.conn.transaction(force_rollback=True):
+                resolved = resolve(store).as_dict()
+                report = completeness_report(store)
+                p = plan(store, report)
+        else:
+            resolved = resolve(store).as_dict()
+            report = completeness_report(store)
+            p = plan(store, report)
         summary: dict[str, Any] = {"round": n, "at": datetime.now(UTC).isoformat(timespec="seconds"),
                                    "resolved": resolved, **p}
         out.append(summary)

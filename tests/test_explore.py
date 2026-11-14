@@ -65,6 +65,8 @@ def test_xref_links():
     assert _xref_link("musicbrainz", "work:348be3d3-a436-452a-9848-deb64186113d").startswith("https://musicbrainz.org/work/")
     assert _xref_link("bnf", "work:cb169477798") == "https://data.bnf.fr/ark:/12148/cb169477798"
     assert _xref_link("atulsongaday", "http://wp.me/phTr2-edz") == "http://wp.me/phTr2-edz"
+    assert _xref_link("discogs", "master:1883154:ghazal") == "https://www.discogs.com/master/1883154"
+    assert _xref_link("discogs", "release:20601124:A") == "https://www.discogs.com/release/20601124"
     assert _xref_link("hfgk_online", "5814") is None
 
 

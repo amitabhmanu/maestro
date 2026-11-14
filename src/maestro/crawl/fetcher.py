@@ -33,12 +33,40 @@ class Page:
         return self.body.decode("utf-8", errors="replace")
 
 
-def api_hosts(pack_data: dict) -> dict[str, float]:
-    """Hosts of the pack's `access: api` sources, with their request rate (`api_rps`, default the crawl rate)."""
-    out = {}
+def _api_sources(pack_data: dict):
     for src in pack_data.get("sources", []):
         if src.get("access") == "api" and src.get("url"):
-            out[urlsplit(src["url"]).netloc] = src.get("api_rps", pack_data["budget"]["per_domain_rps"])
+            yield urlsplit(src["url"]).netloc, src
+
+
+def _token(src: dict) -> str | None:
+    from maestro import config
+
+    auth = src.get("api_auth")
+    return config.setting(auth["env"]) if auth else None
+
+
+def api_hosts(pack_data: dict) -> dict[str, float]:
+    """Hosts of the pack's `access: api` sources, with their request rate (`api_rps`, default the crawl
+    rate; `api_auth.rps` when the source's token is set)."""
+    out = {}
+    for host, src in _api_sources(pack_data):
+        rps = src.get("api_rps", pack_data["budget"]["per_domain_rps"])
+        if _token(src) and src["api_auth"].get("rps"):
+            rps = src["api_auth"]["rps"]
+        out[host] = rps
+    return out
+
+
+def api_headers(pack_data: dict) -> dict[str, dict[str, str]]:
+    """Request headers per API host: the token named by a source's `api_auth.env` (from the environment
+    or `.env`), formatted by `api_auth.format`. Hosts without a token get none."""
+    out = {}
+    for host, src in _api_sources(pack_data):
+        token = _token(src)
+        if token:
+            auth = src["api_auth"]
+            out[host] = {auth.get("header", "Authorization"): auth.get("format", "Bearer {token}").format(token=token)}
     return out
 
 
@@ -59,6 +87,7 @@ class Fetcher:
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
         api_hosts: dict[str, float] | None = None,
+        api_headers: dict[str, dict[str, str]] | None = None,
     ):
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -67,6 +96,7 @@ class Fetcher:
         # crawlers, so it is not consulted; the API's own rate limit (`api_rps`) applies instead.
         self.api_intervals = {h: 1.0 / r for h, r in (api_hosts or {}).items()}
         self.user_agent = user_agent
+        self.api_headers = api_headers or {}  # tokens: sent with requests, never stored with the page
         self._open = opener
         self._clock = clock
         self._sleep = sleep
@@ -86,7 +116,7 @@ class Fetcher:
 
     def _get(self, url: str) -> tuple[int, bytes]:
         host = urlsplit(url).netloc
-        req = urllib.request.Request(url, headers={"User-Agent": self.user_agent})
+        req = urllib.request.Request(url, headers={"User-Agent": self.user_agent, **self.api_headers.get(host, {})})
         for attempt in range(self.RETRIES + 1):
             self._wait_turn(host)
             try:

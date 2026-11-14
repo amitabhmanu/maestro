@@ -70,6 +70,11 @@ def dsn_for(slug: str | None, explicit: str | None = None) -> str | None:
     return None
 
 
+def setting(name: str) -> str | None:
+    """A setting such as an API token: the process environment first, then `.env`. Never logged."""
+    return os.environ.get(name) or read_env_file().get(name) or None
+
+
 def data_dir() -> Path:
     """Root of the private data layer (raw pages, backups). MAESTRO_DATA_DIR, default ./data."""
     load_env()

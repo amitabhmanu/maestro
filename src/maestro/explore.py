@@ -62,6 +62,10 @@ def _xref_link(source_id: str, value: str) -> str | None:
         m = re.search(r"(Q\d+)", value)
         if m:
             return f"https://www.wikidata.org/wiki/{m.group(1)}"
+    if source_id == "discogs":
+        m = re.match(r"(master|release|artist):(\d+)", value)
+        if m:
+            return f"https://www.discogs.com/{m.group(1)}/{m.group(2)}"
     if source_id == "bnf":
         m = re.search(r"(cb\w+)", value)
         if m:
@@ -71,7 +75,7 @@ def _xref_link(source_id: str, value: str) -> str | None:
 
 def _page_link(url: str | None) -> str | None:
     """The source page a claim was read from, unless it is an API endpoint nobody would browse."""
-    if not url or "/ws/2/" in url or "query.wikidata.org" in url or "/sparql" in url:
+    if not url or "/ws/2/" in url or "api.discogs.com" in url or "query.wikidata.org" in url or "/sparql" in url:
         return None
     return url
 

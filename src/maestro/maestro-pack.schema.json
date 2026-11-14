@@ -43,7 +43,8 @@
             "musicbrainz": {"type": ["string", "null"]},
             "viaf": {"type": ["string", "null"]},
             "isni": {"type": ["string", "null"]},
-            "bnf": {"type": ["string", "null"]}
+            "bnf": {"type": ["string", "null"]},
+            "discogs": {"type": ["string", "null"], "pattern": "^[0-9]+$"}
           },
           "additionalProperties": false
         },
@@ -137,6 +138,7 @@
           "default_tier": {"type": "string", "description": "Tier for a unit known only from this source, with no tier of its own or from its container (e.g. A for a release database that lists issued recordings)."},
           "live_tier": {"type": "string", "description": "With default_tier: the tier for such a unit when the source marks it live."},
           "api_rps": {"type": "number", "exclusiveMinimum": 0, "description": "For access: api, the API's request limit per second. The fetcher skips robots.txt for an API host and keeps to this rate."},
+          "api_auth": {"type": "object", "required": ["env"], "additionalProperties": false, "description": "For access: api, an optional personal token: read from the environment or .env (never the pack), sent as `header` with `format` ({token} is replaced). `rps` is the API's rate when the token is set.", "properties": {"env": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"}, "header": {"type": "string"}, "format": {"type": "string"}, "rps": {"type": "number", "exclusiveMinimum": 0}}},
           "url": {"type": "string"},
           "extractor": {"type": "string"},
           "sweep": {"type": "object", "required": ["url"], "additionalProperties": false, "description": "Listing pages the orchestrator may fetch unaided: url is a template over {year} (with years) or {page} and {offset} (with pages and page_size).", "properties": {"url": {"type": "string"}, "years": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2}, "pages": {"type": "integer", "minimum": 1}, "page_size": {"type": "integer", "minimum": 1}, "extractor": {"type": "string"}, "purpose": {"enum": ["spine", "container_sweep", "enrich", "gap"]}}},

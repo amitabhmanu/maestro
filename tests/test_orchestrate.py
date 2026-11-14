@@ -35,7 +35,7 @@ def test_plan_turns_gaps_into_jobs_and_needs(store_for):
     p = plan(s, completeness_report(s))
     urls = {j["url"]: j for j in p["jobs"]}
     sweeps = [j for j in p["jobs"] if j["kind"] == "sweep"]
-    assert {j["source"] for j in sweeps} == {"musicbrainz", "hfgk_online"}
+    assert {j["source"] for j in sweeps} == {"musicbrainz", "hfgk_online", "discogs"}
     listing = urls["https://hamraaz.org/filmssite/public/film.php?id=10"]
     assert listing["kind"] == "container_listing" and listing["entity_id"] == f
     assert "3 of 4" in listing["why"] and listing["purpose"] == "container_sweep"
@@ -64,3 +64,19 @@ def test_run_rounds_stops(store_for):
     rounds = run_rounds(quiet, None, rounds=3)
     assert len(rounds) == 1 and rounds[0]["stop"].startswith("nothing left to crawl")
     assert rounds[0]["needs"]
+
+
+def test_dry_run_writes_nothing(store_for):
+    from test_resolve import film, song
+
+    s = store_for("rafi")
+    f = film(s, "hfgk_online", "10", "Mela", 1948)
+    song(s, "hfgk_online", "100", "Ye Zindagi Ke Mele", f)
+    song(s, "musicbrainz", "rec-1", "Ye Zindagi Ke Mele", f)  # resolution would merge these
+
+    def counts():
+        return [s.conn.execute(f"SELECT count(*) AS n FROM {t}").fetchone()["n"] for t in ("claim", "review_item", "job")]
+
+    before = counts()
+    rounds = run_rounds(s, None, dry_run=True)
+    assert sum(rounds[0]["resolved"]["merged"].values()) >= 1 and counts() == before

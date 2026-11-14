@@ -4,7 +4,7 @@ status: draft
 identity:
   name: Mohammed Rafi
   slug: rafi
-  ids: {wikidata: Q156815, musicbrainz: 28365249-f3fd-44db-8131-32cb170970c4, viaf: "7575974", isni: "0000000063085938", bnf: 13921553r}
+  ids: {wikidata: Q156815, musicbrainz: 28365249-f3fd-44db-8131-32cb170970c4, viaf: "7575974", isni: "0000000063085938", bnf: 13921553r, discogs: "386904"}
   variants: [Mohd. Rafi, Mohd Rafi, Md. Rafi, Mohammad Rafi, Muhammad Rafi, Muhammed Rafi, محمد رفیع, मोहम्मद रफ़ी]
   namesakes: ["Q6893273: Indian footballer, born 1982", "Q109473241: Indian businessperson, born 1959"]
   active: [1941, 1980]
@@ -71,7 +71,7 @@ sources:
   - {id: hindigeetmala, kind: semi, lineage: hfgk, reliability: 0.85, access: crawlable, url: "https://www.hindigeetmala.net"}
   - {id: atulsongaday, kind: semi, lineage: atul, reliability: 0.75, access: unavailable, url: https://atulsongaday.me}  # bot challenge on every page: import the saved "List of songs yearwise" page
   - {id: mohdrafi, kind: semi, lineage: mohdrafi, reliability: 0.7, access: unavailable, url: "http://www.mohdrafi.com/database/listtracks.php"}
-  - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api, url: https://www.discogs.com}
+  - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api, api_rps: 0.4, api_auth: {env: DISCOGS_TOKEN, format: "Discogs token={token}", rps: 0.9}, distinct_ids: false, url: "https://api.discogs.com/", extractor: discogs, sweep: {url: "https://api.discogs.com/artists/386904/releases?sort=year&per_page=100&page=1", extractor: discogs, purpose: spine}}
   - {id: songsofyore, kind: prose, lineage: songsofyore, reliability: 0.75, access: unavailable, url: https://www.songsofyore.com}  # robots.txt shuts out AI crawlers: import posts the user saves
   - {id: dustedoff, kind: prose, lineage: dustedoff, reliability: 0.75, access: unavailable, url: https://madhulikaliddle.com}  # Madhulika Liddle's blog: saved posts only
   - {id: anuradhawarrier, kind: prose, lineage: anuradhawarrier, reliability: 0.75, access: unavailable, url: https://anuradhawarrier.blogspot.com}  # saved posts only
