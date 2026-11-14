@@ -230,6 +230,11 @@
       "properties": {
         "purpose": {"enum": ["personal", "personal_then_foss", "public"]},
         "lyrics": {"enum": ["none", "first_line_only", "private_full"]},
+        "lyric_fields": {
+          "type": "array", "items": {"type": "string"}, "uniqueItems": true,
+          "description": "Claim fields whose values quote lyrics (Hindi film song titles are the opening words), also keys inside dict values such as popularity mentions. lyrics and lyric always count."
+        },
+        "first_line_max": {"type": "integer", "minimum": 20, "maximum": 200, "description": "Longest publishable first line, in characters (default 80)."},
         "audio": {"enum": ["none", "derived_features_only"]},
         "_why": {"$ref": "#/$defs/evidence"}
       }

@@ -112,6 +112,9 @@ popularity_signals:
 legal:
   purpose: personal_then_foss
   lyrics: first_line_only
+  # Film song titles are the opening words, and HFGK gives the whole opening (up to ~220 characters):
+  # past the first line they stay private, with a publishable first_line beside them.
+  lyric_fields: [title, title_hi]
   audio: derived_features_only
 budget:
   crawl_requests_per_round: 5000
