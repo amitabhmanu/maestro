@@ -168,7 +168,7 @@ def main(argv: list[str] | None = None) -> int:
     maestro-raw --pack maestros/rafi fill DIR     restore missing pages from saved files (matched by hash)
     maestro-raw --pack maestros/rafi refetch      fetch missing crawled pages again (polite, rate-limited)
     """
-    from maestro.crawl.fetcher import Fetcher, api_hosts
+    from maestro.crawl.fetcher import Fetcher, api_headers, api_hosts
     from maestro.pack import load_pack
     from maestro.store import Store
 
@@ -196,7 +196,8 @@ def main(argv: list[str] | None = None) -> int:
             p.error("fill needs a folder")
         result = fill_from_dir(store, raw, args.folder, base)
     else:
-        fetcher = Fetcher(raw.root, rps=pack.data["budget"]["per_domain_rps"], api_hosts=api_hosts(pack.data))
+        fetcher = Fetcher(raw.root, rps=pack.data["budget"]["per_domain_rps"], api_hosts=api_hosts(pack.data),
+                          api_headers=api_headers(pack.data))
         result = refetch(store, raw, fetcher, limit=args.limit, base=base)
     print(json.dumps({"maestro": pack.slug, "raw_dir": str(raw.root), args.action: result}, indent=2))
     store.close()

@@ -1,0 +1,7 @@
+{"pagination": {"page": 1, "pages": 2, "per_page": 100, "items": 104, "urls": {}},
+ "releases": [
+  {"id": 111, "type": "master", "main_release": 5001, "title": "Kohinoor", "artist": "Naushad", "role": "Appearance", "year": 1960},
+  {"id": 5002, "type": "release", "title": "Ghazals", "artist": "Mohammed Rafi", "role": "Main", "year": 1968, "format": "LP"},
+  {"id": 5003, "type": "release", "title": "Bootleg Hits", "artist": "Mohammed Rafi", "role": "UnofficialRelease", "year": 1999},
+  {"id": 5001, "type": "release", "title": "Kohinoor", "artist": "Naushad", "role": "TrackAppearance", "year": 1960}
+ ]}

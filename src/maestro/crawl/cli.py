@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 
 from maestro import config
-from maestro.crawl.fetcher import Fetcher, api_hosts
+from maestro.crawl.fetcher import Fetcher, api_headers, api_hosts
 from maestro.crawl.runner import import_page, replay, run_jobs
 from maestro.pack import load_pack
 from maestro.store import Store
@@ -47,7 +47,8 @@ def main(argv: list[str] | None = None) -> int:
         store.enqueue_crawl(url, args.extractor, args.purpose, priority=1000)
 
     cache = Path(args.cache_dir) if args.cache_dir else config.raw_dir(pack.slug)
-    fetcher = Fetcher(cache, rps=pack.data["budget"]["per_domain_rps"], api_hosts=api_hosts(pack.data))
+    fetcher = Fetcher(cache, rps=pack.data["budget"]["per_domain_rps"], api_hosts=api_hosts(pack.data),
+                          api_headers=api_headers(pack.data))
     options = dict(o.split("=", 1) for o in args.opt)
     stats = run_jobs(store, fetcher, max_jobs=args.max_jobs, options=options)
     print(json.dumps({"run": stats.as_dict(), "coverage": store.coverage_report()}, indent=2, default=str))
