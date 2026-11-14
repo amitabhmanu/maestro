@@ -86,7 +86,9 @@ def replay_main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=replay_main.__doc__)
     p.add_argument("--pack", required=True, help="maestro folder, e.g. maestros/rafi")
     p.add_argument("--from-dsn", required=True, help="store whose fetched and imported pages are replayed")
-    p.add_argument("--dsn", required=True, help="target store: a new empty database (never the live store)")
+    p.add_argument("--dsn", required=True, help="target store: a new empty database (never the live store, "
+                                                "unless --extractor limits the replay to one source's pages)")
+    p.add_argument("--extractor", action="append", help="replay only this extractor's pages (repeatable)")
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     pack = load_pack(args.pack)
@@ -97,7 +99,7 @@ def replay_main(argv: list[str] | None = None) -> int:
     target.migrate()
     target.sync_sources()
     source.migrate()  # older stores may lack import_log
-    stats = replay(source, target)
+    stats = replay(source, target, only=set(args.extractor or []) or None)
     print(json.dumps({"replay": stats.as_dict(), "coverage": target.coverage_report()}, indent=2, default=str))
     source.close()
     target.close()

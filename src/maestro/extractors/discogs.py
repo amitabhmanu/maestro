@@ -192,6 +192,71 @@ def _counts(pack_data: dict, track: dict) -> bool:
     return bool((set(track["maestro_roles"]) | ({main_role} if track["main"] and main_role else set())) & in_scope)
 
 
+# ---- enrich mode: details for units the canon already has --------------------------------------
+
+def _unit_index(store):
+    """Title index over the canon's units (built once per store connection) and each unit's year."""
+    from maestro.resolve import Groups, Normaliser, WholeTitleIndex, _title_keys
+
+    cached = getattr(store, "_discogs_unit_index", None)
+    if cached is None:
+        norm, groups = Normaliser.for_store(store), Groups(store)
+        rows = store.conn.execute(
+            """SELECT e.id, e.label, (SELECT min((c.value #>> '{}')::int) FROM claim c WHERE c.entity_id = e.id
+                     AND c.field IN ('year', 'release_year') AND c.status = 'active'
+                     AND jsonb_typeof(c.value) = 'number') AS year
+               FROM entity e WHERE e.type = %s""", (store.pack.unit,)).fetchall()
+        titles: dict[int, set[str]] = {}
+        years: dict[int, int | None] = {}
+        for r in rows:
+            g = groups.find(r["id"])
+            titles.setdefault(g, set()).update(_title_keys(norm, r["label"]))
+            if r["year"] and (years.get(g) is None or r["year"] < years[g]):
+                years[g] = r["year"]
+            years.setdefault(g, None)
+        cached = store._discogs_unit_index = (WholeTitleIndex(titles), years, norm)
+    return cached
+
+
+ENRICH_MATCH = 0.92
+
+
+def match_unit(store, title: str, release_year: int | None) -> int | None:
+    """The canon unit a release's track is, by whole title: the only one of that title, or, of several
+    (a song recorded more than once), the latest made no later than the release. None when unsure."""
+    from maestro.resolve import _title_keys
+
+    index, years, norm = _unit_index(store)
+    cands = index.matches(_title_keys(norm, title), ENRICH_MATCH)
+    if len(cands) == 1:
+        return next(iter(cands))
+    if not cands or not release_year:
+        return None
+    before = [(years[c], c) for c in cands if years.get(c) is not None and years[c] <= release_year]
+    if not before or any(years.get(c) is None for c in cands):
+        return None
+    before.sort()
+    if len(before) > 1 and before[-1][0] == before[-2][0]:
+        return None  # two takes of the same year: cannot tell which was issued
+    return before[-1][1]
+
+
+def _enrich(ctx, rel: dict, claim) -> None:
+    """Add a release's issue details to the units it carries; never create units or credits, so the
+    source adds no lineage (it cannot tell recordings of one song apart)."""
+    for t in rel["tracks"]:
+        if not _counts(ctx.store.pack.data, t):
+            continue
+        uid = match_unit(ctx.store, t["title"], rel["year"])
+        if uid is None:
+            continue
+        claim(uid, "on_release", f"discogs:{rel['id']}")
+        for cat in rel["catalogues"]:
+            claim(uid, "catalogue", cat)
+        if rel["year"]:
+            claim(uid, "release_year", rel["year"])
+
+
 def _artist_id(pack_data: dict) -> int:
     did = (pack_data["identity"].get("ids") or {}).get("discogs")
     if not did:
@@ -225,6 +290,11 @@ def extract(ctx) -> None:
         store.upsert_claim(eid, field, value=value, ref_entity_id=ref, source_id=SOURCE,
                            extractor="discogs", extractor_version="1", raw_page_id=ctx.raw_page_id)
 
+    source = next((x for x in pack.data.get("sources", []) if x["id"] == SOURCE), {})
+    if source.get("unit_mode") == "enrich":
+        _enrich(ctx, rel, claim)
+        return
+
     cid = None
     if rel["soundtrack"] and any(_counts(pack.data, t) for t in rel["tracks"]):
         ckey = f"master:{rel['master']}" if rel["master"] else f"release:{rel['id']}"
@@ -235,7 +305,6 @@ def extract(ctx) -> None:
     maestro = store.maestro_entity()
     primary = pack.data["roles"]["primary"]
     in_scope = set(pack.data["roles"].get("in_scope") or [primary])
-    source = next((x for x in pack.data.get("sources", []) if x["id"] == SOURCE), {})
     main_role = source.get("main_role", primary)
     people: dict[int, int] = {}
     for t in rel["tracks"]:
