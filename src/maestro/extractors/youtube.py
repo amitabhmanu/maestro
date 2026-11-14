@@ -47,20 +47,25 @@ def videos_url(ids: list[str]) -> str:
 
 
 SEP = re.compile(r"\s*[|｜]\s*|\s+[-–—]\s+")
-NOISE = re.compile(r"\b(?:full\s+(?:video\s+)?songs?|full\s+video|with\s+lyrics|lyrics?|lyrical|audio|video|hd|4k|"
-                   r"remaster(?:ed)?|official|old\s+is\s+gold|evergreen|classic|songs?|bollywood|hindi|retro)\b", re.I)
-# Videos that are not one recording of one song: compilations, shows, covers and ads.
+NOISE = re.compile(r"\b(?:full\s+(?:video\s+)?songs?|full\s+video|with\s+lyrics|lyrics?|lyrical|audio|video|hd|4k|full|"
+                   r"remaster(?:ed)?|official|evergreen|classic|songs?|bollywood|hindi|retro|music|movie|film|"
+                   r"comedy|romantic|sad|duet|love|qawwali|ghazal|bhajan|patriotic|in\s+colou?r|colou?red|\d0'?s)\b", re.I)
+# Videos that are not one recording of one song: compilations, shows, covers, remixes and ads.
 NOT_A_SONG = re.compile(r"\b(?:jukebox|best\s+of|top\s+\d+|\d+\s+(?:rare\s+|best\s+|hit\s+|non[- ]?stop\s+)?songs|"
                         r"songs\s+of|hits\s+of|non[- ]?stop|medley|mash[- ]?up|(?:party|dance|dj)\s+mix|mix\s+vol|vol(?:ume)?\.?\s*\d+|"
                         r"radio|show|geetmala|season\s+\d+|episode|live\s+(?:concert|performance|in)|concert|recreat(?:ed|ion)|"
-                        r"cover|unplugged|tribute|karaoke|instrumental|reprise|trailer|teaser|promo|interview|carvaan)\b|#", re.I)
+                        r"cover|unplugged|tribute|karaoke|instrumental|reprise|trailer|teaser|promo|interview|carvaan|"
+                        r"collection|full\s+album|lo-?fi|chill|remix|slowed|reverb|lp\s+recording|old\s+is\s+gold|"
+                        r"songs?\s+of\s+the\s+day|podcast|all\s+songs|playlist|special|top\s+(?:[\w']+\s+){0,3}songs|hits\s+vol)\b|"
+                        r"#|ज्यूकबॉक्स|वॉल्यूम", re.I)
 SINGER_LINE = re.compile(r"^\s*(?:singers?|artists?|vocals?|sung\s+by|voice)\s*[:\-–]\s*(.+)$", re.I | re.M)
 FILM_LINE = re.compile(r"^\s*(?:film|movie|album)(?:\s+name)?\s*[:\-–]\s*(.+?)\s*$", re.I | re.M)
-DEVANAGARI = re.compile(r"[\u0900-\u097F]")
+DEVANAGARI = re.compile(r"[ऀ-ॿ]")
 
 
 def is_song(title: str) -> bool:
-    """False for jukeboxes, 'best of' and 'top N' lists, mixes, radio and TV shows, concerts, covers and ads."""
+    """False for jukeboxes, 'best of' and 'top N' lists, collections, mixes and remixes, radio and TV
+    shows, concerts, covers and ads."""
     return not NOT_A_SONG.search(title)
 
 
@@ -75,15 +80,25 @@ def sung_by_maestro(store, title: str, description: str) -> bool:
 def _clean(part: str) -> str:
     part = re.sub(r"[\(\[][^\)\]]*[\)\]]", "", part)
     part = NOISE.sub("", part)
-    return re.sub(r"\s{2,}", " ", part).strip(" -|:'\"")
+    return re.sub(r"\s{2,}", " ", part).strip(" -|:,'\"“”")
 
 
-def split_title(title: str, description: str = "") -> tuple[str, str | None]:
+def _film_of_credits(part: str) -> str | None:
+    """'Manna Dey, Mohammed Rafi, Bahu Begum Song' -> 'Bahu Begum' (Ultra's 'Song - cast, singers, Film Song')."""
+    m = re.match(r"(.+?)\s+Song\b", part, re.I)
+    if not m:
+        return None
+    return _clean(m.group(1).split(",")[-1]) or None
+
+
+def split_title(title: str, description: str = "", people: list[str] | tuple[str, ...] = ()) -> tuple[str, str | None]:
     """'Chahoonga Main Tujhe | Dosti | Mohammed Rafi | Laxmikant-Pyarelal' -> ('Chahoonga Main Tujhe', 'Dosti').
 
-    The film comes from the description's 'Film:' line when there is one, else from a bracketed
-    '(From "Film")', else from the title's second part. Parts in Devanagari, and parts that are only
-    noise ('Full Video', 'with lyrics', 'Old is Gold'), are skipped."""
+    The film comes from the description's 'Film:' line when there is one, else '(From "Film")', else
+    the last credit of a part ending in 'Song' ('Song - Actor, Singer, Film Song'), else the first later
+    part that is not a cast list (commas), the maestro's name (the surname of any of `people`) or only noise.
+    A quoted song name ('"Dafliwale" - Rishi Kapoor, ...') is the title; a title of commas alone
+    ('Song, Singer, Singer, Film') gives its first and last items. Devanagari parts are skipped."""
     film = None
     m = FILM_LINE.search(description or "")
     if m:
@@ -92,10 +107,31 @@ def split_title(title: str, description: str = "") -> tuple[str, str | None]:
     if b:
         film = film or b.group(1)
         title = title[:b.start()] + title[b.end():]
-    parts = [c for c in (_clean(p) for p in SEP.split(title) if not DEVANAGARI.search(p)) if c]
-    name = parts[0] if parts else _clean(title)
-    if not film and len(parts) > 1:
-        film = parts[1]
+    quoted = re.match(r"""\s*["“]([^"”]+)["”]""", title)
+    raw = [p for p in SEP.split(title) if p.strip() and not DEVANAGARI.search(p)]
+    surnames = {n.split()[-1].lower().strip(".") for n in people if n.split() and len(n.split()[-1]) >= 4}
+    if quoted:
+        name = _clean(quoted.group(1))
+        rest = raw[1:] if _clean(raw[0]) == name else raw
+    elif len(raw) == 1 and raw[0].count(",") >= 2:  # 'Song, Singer, Singer, Film'
+        items = [_clean(x) for x in raw[0].split(",")]
+        return items[0], film or (items[-1] if len(items) > 1 and items[-1] else None)
+    else:
+        cleaned = [(p, _clean(p)) for p in raw]
+        cleaned = [(p, c) for p, c in cleaned if c]
+        name = cleaned[0][1] if cleaned else _clean(title)
+        rest = [p for p, _ in cleaned[1:]]
+    if not film:
+        for p in rest:
+            film = _film_of_credits(p)
+            if film:
+                break
+    if not film:
+        for p in rest:
+            c = _clean(p)
+            if c and "," not in c and not surnames & {w.lower() for w in re.findall(r"\w+", c)}:
+                film = c
+                break
     if film:
         film = re.sub(r"\s*\(\d{4}\)$", "", film).strip(" :-'\"")
     return name, film or None
@@ -127,13 +163,15 @@ def extract(ctx) -> None:
         if ids:
             ctx.enqueue(videos_url(ids), "youtube", purpose)
         return
+    ident = ctx.store.pack.data["identity"]
+    people = [ident["name"], *ident.get("variants", [])]
     for item in data.get("items", []):  # videos
         sn, st = item.get("snippet", {}), item.get("statistics", {})
         views = int(st.get("viewCount") or 0)
         raw_title, desc = sn.get("title", ""), sn.get("description", "")
         if views <= 0 or not is_song(raw_title) or not sung_by_maestro(ctx.store, raw_title, desc):
             continue
-        title, film = split_title(raw_title, desc)
+        title, film = split_title(raw_title, desc, people)
         if not title:
             continue
         record_mention(ctx, SOURCE, "youtube", title, strength=views, container=film,
