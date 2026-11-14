@@ -312,15 +312,18 @@ def test_youtube_titles_and_pages():
     assert yt.is_song("Chahoonga Main Tujhe | Dosti | Mohammed Rafi")
     for t in ["Pyaasa Hindi Movie | Old Classic Songs Collection", "Geet | Mere Mitwa | Full Album",
               "Likhe Jo khat Tuje | LoFi Chill Mix | Kanyadaan", "Original LP Recording | Chaudhvin Ka Chand",
-              "Old is Gold | O Mere Dil Ke Chain"]:
+              "Old is Gold | O Mere Dil Ke Chain", "Platinum Song Of The Day | Ruke Ruke Se Qadam",
+              "Dharmputra (1961) - All Songs | Shashi Kapoor", "Makar Sankranti Special | Popular Playlist"]:
         assert not yt.is_song(t), t
     rafi = ("Mohammed Rafi", "Mohd Rafi", "Md. Rafi")
     assert yt.split_title("Dhund Ke Laoon Kahan Se Main - Manna Dey, Mohammed Rafi, Bahu Begum Song", people=rafi) == ("Dhund Ke Laoon Kahan Se Main", "Bahu Begum")
     assert yt.split_title("Door Desh Ka Raja - Geeta Dutt, Mohd Rafi - Veer Babruvahan Song", people=rafi) == ("Door Desh Ka Raja", "Veer Babruvahan")
     assert yt.split_title('"Dafliwale Dafli Baja" - Rishi Kapoor, Jaya Prada, Sargam Song', people=rafi) == ("Dafliwale Dafli Baja", "Sargam")
+    assert yt.split_title("Mujhe Kitna Pyaar Hai - Romantic Song in Colour | Dil Tera Deewana")[1] == "Dil Tera Deewana"
     assert yt.split_title("Mujhe Kitna Pyaar Hai, Lata Mangeshkar, Mohammed Rafi, Dil Tera Deewana") == ("Mujhe Kitna Pyaar Hai", "Dil Tera Deewana")
     assert yt.split_title("Hum Bekhudi Mein Tumko Pukare Chale Gaye with lyrics | हम बेखुदी | Mohammed Rafi", people=rafi) == ("Hum Bekhudi Mein Tumko Pukare Chale Gaye", None)
     assert yt.split_title("Sar Jo Tera Chakraye with Lyrics - Comedy Hindi Song | Mohammed Rafi | Pyaasa", people=rafi) == ("Sar Jo Tera Chakraye", "Pyaasa")
+    assert yt.split_title("Aaja Tujhko Pukare | Mohammedd Rafi Hits | Neel Kamal", people=rafi) == ("Aaja Tujhko Pukare", "Neel Kamal")
     assert yt.split_title("Tumhari Nazar Kyon Khafa Ho Gayi Full | Do Kaliyan")[0] == "Tumhari Nazar Kyon Khafa Ho Gayi"
     assert "forHandle=%40saregamamusic" in yt.channel_url("@saregamamusic")
     assert "pageToken=T2" in yt.playlist_url("UU1", "T2") and "id=a%2Cb" in yt.videos_url(["a", "b"])

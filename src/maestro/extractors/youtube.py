@@ -49,13 +49,14 @@ def videos_url(ids: list[str]) -> str:
 SEP = re.compile(r"\s*[|｜]\s*|\s+[-–—]\s+")
 NOISE = re.compile(r"\b(?:full\s+(?:video\s+)?songs?|full\s+video|with\s+lyrics|lyrics?|lyrical|audio|video|hd|4k|full|"
                    r"remaster(?:ed)?|official|evergreen|classic|songs?|bollywood|hindi|retro|music|movie|film|"
-                   r"comedy|romantic|sad|duet|love|qawwali|ghazal|bhajan|patriotic|\d0'?s)\b", re.I)
+                   r"comedy|romantic|sad|duet|love|qawwali|ghazal|bhajan|patriotic|in\s+colou?r|colou?red|\d0'?s)\b", re.I)
 # Videos that are not one recording of one song: compilations, shows, covers, remixes and ads.
 NOT_A_SONG = re.compile(r"\b(?:jukebox|best\s+of|top\s+\d+|\d+\s+(?:rare\s+|best\s+|hit\s+|non[- ]?stop\s+)?songs|"
                         r"songs\s+of|hits\s+of|non[- ]?stop|medley|mash[- ]?up|(?:party|dance|dj)\s+mix|mix\s+vol|vol(?:ume)?\.?\s*\d+|"
                         r"radio|show|geetmala|season\s+\d+|episode|live\s+(?:concert|performance|in)|concert|recreat(?:ed|ion)|"
                         r"cover|unplugged|tribute|karaoke|instrumental|reprise|trailer|teaser|promo|interview|carvaan|"
-                        r"collection|full\s+album|lo-?fi|chill|remix|slowed|reverb|lp\s+recording|old\s+is\s+gold)\b|#", re.I)
+                        r"collection|full\s+album|lo-?fi|chill|remix|slowed|reverb|lp\s+recording|old\s+is\s+gold|"
+                        r"songs?\s+of\s+the\s+day|podcast|all\s+songs|playlist|special)\b|#", re.I)
 SINGER_LINE = re.compile(r"^\s*(?:singers?|artists?|vocals?|sung\s+by|voice)\s*[:\-–]\s*(.+)$", re.I | re.M)
 FILM_LINE = re.compile(r"^\s*(?:film|movie|album)(?:\s+name)?\s*[:\-–]\s*(.+?)\s*$", re.I | re.M)
 DEVANAGARI = re.compile(r"[ऀ-ॿ]")
@@ -94,7 +95,7 @@ def split_title(title: str, description: str = "", people: list[str] | tuple[str
 
     The film comes from the description's 'Film:' line when there is one, else '(From "Film")', else
     the last credit of a part ending in 'Song' ('Song - Actor, Singer, Film Song'), else the first later
-    part that is not a cast list (commas), a name in `people` (the maestro's spellings) or only noise.
+    part that is not a cast list (commas), the maestro's name (the surname of any of `people`) or only noise.
     A quoted song name ('"Dafliwale" - Rishi Kapoor, ...') is the title; a title of commas alone
     ('Song, Singer, Singer, Film') gives its first and last items. Devanagari parts are skipped."""
     film = None
@@ -107,7 +108,7 @@ def split_title(title: str, description: str = "", people: list[str] | tuple[str
         title = title[:b.start()] + title[b.end():]
     quoted = re.match(r"""\s*["“]([^"”]+)["”]""", title)
     raw = [p for p in SEP.split(title) if p.strip() and not DEVANAGARI.search(p)]
-    folded = {re.sub(r"\W+", "", n).lower() for n in people}
+    surnames = {n.split()[-1].lower().strip(".") for n in people if n.split() and len(n.split()[-1]) >= 4}
     if quoted:
         name = _clean(quoted.group(1))
         rest = raw[1:] if _clean(raw[0]) == name else raw
@@ -127,7 +128,7 @@ def split_title(title: str, description: str = "", people: list[str] | tuple[str
     if not film:
         for p in rest:
             c = _clean(p)
-            if c and "," not in c and re.sub(r"\W+", "", c).lower() not in folded:
+            if c and "," not in c and not surnames & {w.lower() for w in re.findall(r"\w+", c)}:
                 film = c
                 break
     if film:
