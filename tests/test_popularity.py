@@ -293,3 +293,13 @@ def test_count_signal_popular_only_at_the_top():
     assert low_popularity(scored[5], th) and low_popularity(scored[90], th)
     assert not low_popularity(scored[99], th)
     assert not low_popularity(scored[500], th)  # an article is a list: being on it is enough
+
+
+def test_youtube_titles_and_pages():
+    from maestro.extractors import youtube as yt
+    assert yt.split_title("Chahoonga Main Tujhe | Dosti | Mohammed Rafi | Laxmikant-Pyarelal") == ("Chahoonga Main Tujhe", "Dosti")
+    assert yt.split_title("Baharo Phool Barsao - Mohammed Rafi", "Film: Suraj (1966)\nSinger: Mohammed Rafi") == ("Baharo Phool Barsao", "Suraj")
+    assert yt.split_title('Gulabi Aankhen (From "The Train")') == ("Gulabi Aankhen", "The Train")
+    assert yt.split_title("Teri Galiyon Mein (HD) | Mohammed Rafi Hits")[0] == "Teri Galiyon Mein"
+    assert "forHandle=%40saregamamusic" in yt.channel_url("@saregamamusic")
+    assert "pageToken=T2" in yt.playlist_url("UU1", "T2") and "id=a%2Cb" in yt.videos_url(["a", "b"])
