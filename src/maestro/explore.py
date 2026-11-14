@@ -28,6 +28,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from maestro.completeness import completeness_report, load_units
+from maestro import gemness
 from maestro.lyrics import Policy as LyricsPolicy
 from maestro.lyrics import beyond_first_line, first_line
 from maestro.popularity import resolve_reasons, score_canon, unit_summary
@@ -289,6 +290,9 @@ def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
                 if k in summary:
                     summary[k]["reasons"] = resolve_reasons(summary[k]["reasons"], names, names)
             unit["pop"] = summary
+        gem = gemness.scores(summary)
+        if gem:
+            unit["gemness"] = gem
     popularity = {k: pop[k] for k in ("signals", "facets_present", "gems", "listed_without_data",
                                        "unmatched_mentions")}
 
@@ -373,6 +377,7 @@ def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
         "people": out_people,
         "coverage": report,
         "popularity": popularity,
+        "gemness": gemness.describe(),
     }
     return add_media(snap, pack.data)
 
