@@ -226,7 +226,7 @@ class MentionMatcher:
             if ckey:
                 if not self._in_container(u.container, ckey):
                     continue
-                sim = max(((title_similarity(a, b) if min(len(a), len(b)) >= 10 else whole_title_similarity(a, b))
+                sim = max(((title_similarity(a, b, OPENING_MATCH) if min(len(a), len(b)) >= 10 else whole_title_similarity(a, b))
                            for a in mkeys for b in self.ukeys[uid]), default=0.0)
                 if sim < OPENING_MATCH:
                     continue

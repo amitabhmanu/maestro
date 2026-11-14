@@ -358,3 +358,20 @@ def test_whole_title_index_matches_brute_force():
         want = {i: v for i, v in want.items() if v >= 0.9}
         got = index.matches(q, 0.9)
         assert got.keys() == want.keys() and all(abs(got[i] - want[i]) < 1e-9 for i in got)
+
+
+def test_title_similarity_floor_is_exact_at_or_above_it():
+    import random
+
+    from maestro.resolve import title_similarity
+
+    rng = random.Random(3)
+    words = ["dil", "deewana", "mera", "tera", "pyar", "jaane", "kahan", "gaye", "woh", "din", "o", "duniya",
+             "ke", "rakhwale", "sun", "dard", "bhare", "mere", "naale", "chaudhvin", "ka", "chand"]
+    for _ in range(1500):
+        a = " ".join(rng.choice(words) for _ in range(rng.randint(2, 7)))
+        b = " ".join(rng.choice(words) for _ in range(rng.randint(2, 7)))
+        if rng.random() < 0.3:
+            b = a.replace("a", "aa", 1)
+        exact, fast = title_similarity(a, b), title_similarity(a, b, 0.8)
+        assert (fast == exact) if exact >= 0.8 else fast < 0.8

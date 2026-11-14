@@ -83,13 +83,18 @@ def _artist_line(artists: list[dict]) -> str:
 
 
 def _flatten(tracklist: list[dict]) -> list[dict]:
-    """Playable tracks in order: headings dropped, index tracks replaced by their sub-tracks."""
+    """Playable tracks in order: headings dropped, an index track (movements, medley) kept as one track."""
     out = []
     for t in tracklist or []:
         if t.get("type_") == "heading":
             continue
         if t.get("sub_tracks"):
-            out.extend(s for s in t["sub_tracks"] if s.get("type_", "track") == "track")
+            # A work in movements (or a medley) is one track under its index title.
+            subs = [s for s in t["sub_tracks"] if s.get("type_", "track") == "track"]
+            out.append({**t, "type_": "track",
+                        "position": t.get("position") or (subs[0].get("position") if subs else ""),
+                        "artists": t.get("artists") or next((s["artists"] for s in subs if s.get("artists")), []),
+                        "extraartists": (t.get("extraartists") or []) + [c for s in subs for c in s.get("extraartists") or []]})
         elif t.get("type_", "track") == "track":
             out.append(t)
     return out
