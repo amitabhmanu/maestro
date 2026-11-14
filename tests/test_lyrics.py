@@ -135,3 +135,15 @@ def test_snapshot_carries_only_first_lines(store_for, tmp_path):
     path.write_text(json.dumps(leaky, ensure_ascii=False, default=str), "utf-8")
     assert not check_snapshot(path, s.lyrics)["ok"]
     assert main(["--pack", str(ROOT / "maestros" / "rafi"), "--no-store", "--snapshot", str(path)]) == 1
+
+
+def test_snapshot_check_reads_unit_titles_only(tmp_path):
+    policy = Policy({"legal": {"purpose": "personal_then_foss", "lyrics": "first_line_only", "lyric_fields": ["title"]}})
+    path = tmp_path / "s.json"
+    snap = {"units": [{"id": 1, "title": "Short", "alt_titles": []}],
+            "containers": {"7": {"title": "Juari / Majboor"}}, "people": {"3": {"name": "A / B"}}}
+    path.write_text(json.dumps(snap), "utf-8")
+    assert check_snapshot(path, policy)["ok"]                  # two films in one container title are fine
+    snap["units"][0]["alt_titles"] = [LONG]
+    path.write_text(json.dumps(snap), "utf-8")
+    assert check_snapshot(path, policy)["beyond_first_line"] == 1
