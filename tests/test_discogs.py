@@ -259,3 +259,12 @@ def test_placement_reads_devanagari_titles():
     assert is_devanagari("ओ दुनिया के रखवाले") and not is_devanagari("O Duniya Ke Rakhwale")
     assert deva_key("मिली ख़ाक में मोहब्बत") == deva_key("मिली खाक में मोहब्बत")
     assert deva_key("ओ दुनिया के रखवाले - १") == "ओ दुनिया के रखवाले"
+
+
+def test_placement_matches_the_short_titles_records_print():
+    from maestro.placement import deva_key, similarity
+
+    assert similarity("yaad na jaye", "yad na jae beete dinon kee ja ke na aae") >= 0.93
+    assert similarity("kiss kiss", "kiss kiss ko bechoon main") >= 0.93
+    assert similarity(deva_key("एक बंजारा गाये"), deva_key("इक बंजारा गाए जीवन के गीत सुनाये")) >= 0.93
+    assert similarity("yaad na jaye", "yahan koee naheen tera mere siva") < 0.85

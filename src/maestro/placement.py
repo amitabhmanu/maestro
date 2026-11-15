@@ -24,12 +24,31 @@ def deva_key(text: str) -> str:
     folded to short; other scripts and digits removed."""
     t = unicodedata.normalize("NFD", text or "").translate(_DROP).translate(_FOLD)
     t = re.sub(r"[^ऀ-॥॰-ॿ\s]", " ", t)
-    return re.sub(r"\s+", " ", t).strip()
+    t = re.sub(r"\s+", " ", t).strip()
+    # Common spelling pairs: जाये / जाए, एक / इक.
+    t = re.sub(r"ये(?=\s|$)", "ए", t)
+    return re.sub(r"(?:^|(?<=\s))एक(?=\s|$)", "इक", t)
 
 
 def is_devanagari(text: str) -> bool:
     letters = [ch for ch in text or "" if ch.isalpha() or unicodedata.category(ch).startswith("M")]
     return bool(letters) and sum(1 for ch in letters if _DEVA.match(ch)) * 2 > len(letters)
+
+
+SHORT_TITLE_LETTERS = 5
+
+
+def similarity(a: str, b: str) -> float:
+    """`title_similarity`, and for titles too short for it (a record's label often prints only the
+    first words: "Yaad Na Jaye" for "Yad Na Jae Beete Dinon Ki"), the short title against the
+    opening of the long one. Only used within one film, where few songs compete."""
+    from maestro.resolve import _prefix_similarity, _squash, title_similarity
+
+    sim = title_similarity(a, b)
+    if sim or min(len(a.split()), len(b.split())) < 2:
+        return sim
+    sa, sb = sorted((_squash(a.replace(" ", "")), _squash(b.replace(" ", ""))), key=len)
+    return _prefix_similarity(sa, sb) if len(sa) >= SHORT_TITLE_LETTERS else 0.0
 
 
 def title_keys(norm, text: str) -> tuple[str, str]:
@@ -119,7 +138,7 @@ def place(store, film: dict, title: str, exclude_source: str | None = None,
           later_issue: bool = False) -> tuple[list[int], str]:
     """The canon units a listing names (one, or the versions of one song that tie), or none with the
     reason it could not be placed: `film_not_in_canon` or `song_not_in_film`."""
-    from maestro.resolve import AUTO_TITLE_RATIO, CLEAR_MARGIN, CLEAR_TITLE_RATIO, TIE_MARGIN, title_similarity
+    from maestro.resolve import AUTO_TITLE_RATIO, CLEAR_MARGIN, CLEAR_TITLE_RATIO, TIE_MARGIN
 
     roots = film_roots(store, film["title"], film.get("year"), exclude_source, later_issue)
     if not roots:
@@ -130,7 +149,7 @@ def place(store, film: dict, title: str, exclude_source: str | None = None,
     for root in roots:
         for unit, (s, k) in songs.get(root, []):
             if s == script and key:
-                best[unit] = max(best.get(unit, 0.0), title_similarity(key, k))
+                best[unit] = max(best.get(unit, 0.0), similarity(key, k))
     ranked = sorted(best.items(), key=lambda x: -x[1])
     if not ranked or ranked[0][1] < CLEAR_TITLE_RATIO:
         return [], "song_not_in_film"
