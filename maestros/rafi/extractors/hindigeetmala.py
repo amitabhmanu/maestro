@@ -10,8 +10,8 @@ Albums named "Non-Film (...)" are not films: their songs stay uncontained with t
 Film songs with a year are Tier A.
 
 With the pack's `unit_mode: enrich` (Amitabh's choice, 15 Nov 2026) the site adds details only: each
-song is placed in the canon's own film (same film-title key, years at most one apart, exactly one
-such film) and matched to that film's song by title. A matched song gains the site's ragas, actors on
+song is placed in the canon's own film (same film-title key, years at most one apart; a film
+the canon still holds twice is searched as one) and matched to that film's song by title. A matched song gains the site's ragas, actors on
 screen and categories; nothing that counts as a sighting (title, credit, part_of, tier) is written, so
 the site adds no lineage. A song the canon cannot place becomes a `listing_gap` claim on the maestro
 (reason `film_not_in_canon` or `song_not_in_film`), the list Amitabh checks by hand. Non-film songs get no tier from this source: the site lists only a
@@ -116,12 +116,15 @@ def place(store, film: dict, title: str) -> tuple[list[int], str]:
     films, songs, norm, _groups = _canon_index(store)
     roots = [root for root, years in films.get(_squash_container(norm.container(film["title"])), {}).items()
              if not years or not film["year"] or any(abs(y - film["year"]) <= 1 for y in years)]
-    if len(roots) != 1:
-        return [], "film_not_in_canon" if not roots else "film_ambiguous"
+    if not roots:
+        return [], "film_not_in_canon"
+    # A film the canon still holds twice (HFGK's and Atul's Pyaasa, not yet merged) is searched as one:
+    # the song's title decides, with the same thresholds.
     key = norm.title(title)
     best: dict[int, float] = {}
-    for unit, k in songs.get(roots[0], []):
-        best[unit] = max(best.get(unit, 0.0), title_similarity(key, k))
+    for root in roots:
+        for unit, k in songs.get(root, []):
+            best[unit] = max(best.get(unit, 0.0), title_similarity(key, k))
     ranked = sorted(best.items(), key=lambda x: -x[1])
     if not ranked or ranked[0][1] < CLEAR_TITLE_RATIO:
         return [], "song_not_in_film"

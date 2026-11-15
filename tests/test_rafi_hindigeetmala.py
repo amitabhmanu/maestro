@@ -129,3 +129,14 @@ def test_place_gives_versions_of_one_song_the_details(store_for):
     b = song(s, "hfgk_online", "3", "Pardesiyon Se Na Ankhiyan Milana", f)
     units, why = hgm.place(s, {"title": "Jab Jab Phool Khile", "year": 1965}, "Pardesiyon Se Na Aankhiyan Milana (Sad)")
     assert why == "matched" and set(units) == {a, b}
+
+
+def test_place_searches_a_film_the_canon_holds_twice(store_for):
+    s = store_for("rafi")
+    hfgk = film(s, "hfgk_online", "6373", "Pyasa", 1957)
+    atul = film(s, "atulsongaday", "f1", "Pyaasa", 1957)
+    u = song(s, "hfgk_online", "1", "Jinhen Naaz Hai Hind Par Woh Kahan Hain", hfgk)
+    song(s, "atulsongaday", "2", "Sar Jo Tera Chakraye", atul)
+    units, why = hgm.place(s, {"title": "Pyaasa", "year": 1957}, "Jinhe Naaz Hai Hind Par Wo Kahan Hain")
+    assert why == "matched" and units == [u]
+    assert hgm.place(s, {"title": "Pyaasa", "year": 1957}, "Ye Duniya Agar Mil Bhi Jaye")[1] == "song_not_in_film"
