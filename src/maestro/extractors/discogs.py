@@ -154,6 +154,12 @@ def parse_release(data: dict, artist_id: int) -> dict:
         for c, cover in rel_credits:
             if pos in cover:
                 credits.append({"id": c.get("id"), "name": _name(c), "role": c.get("role", "")})
+        # A release credit with no track list covers every track, and often over-attributes (one
+        # singer credited for a whole soundtrack); `named` says the track itself names the maestro.
+        named = (any(a.get("id") == artist_id for a in artists)
+                 or any(c.get("id") == artist_id for c in t.get("extraartists") or [])
+                 or any(c.get("id") == artist_id and (c.get("tracks") or "").strip() and pos in cover
+                        for c, cover in rel_credits))
         for c in credits:
             if c["id"] == artist_id:
                 role = canon_role(c["role"])
@@ -166,6 +172,7 @@ def parse_release(data: dict, artist_id: int) -> dict:
             "title": clean_track_title(t.get("title") or ""),
             "artist_credit": _artist_line(artists or rel_artists),
             "main": main,
+            "named": named,
             "maestro_roles": sorted(maestro_roles),
             "credits": [c for c in credits if c["id"] != artist_id and c["id"] and canon_role(c["role"])],
         })
@@ -241,20 +248,61 @@ def match_unit(store, title: str, release_year: int | None) -> int | None:
     return before[-1][1]
 
 
+def _maestro_roles(pack_data: dict, track: dict) -> list[str]:
+    """The canon roles a counted track gives the maestro: its explicit credits, else the main role."""
+    if track["maestro_roles"]:
+        return track["maestro_roles"]
+    source = next((x for x in pack_data.get("sources", []) if x["id"] == SOURCE), {})
+    role = source.get("main_role", pack_data["roles"]["primary"])
+    return [role] if role else []
+
+
+def _issue_details(uid: int, rel: dict, claim) -> None:
+    claim(uid, "on_release", f"discogs:{rel['id']}")
+    for cat in rel["catalogues"]:
+        claim(uid, "catalogue", cat)
+    if rel["year"]:
+        claim(uid, "release_year", rel["year"])
+
+
 def _enrich(ctx, rel: dict, claim) -> None:
-    """Add a release's issue details to the units it carries; never create units or credits, so the
-    source adds no lineage (it cannot tell recordings of one song apart)."""
+    """Add a release's issue details to the units it carries; never create units, so the source adds
+    no lineage (it cannot tell recordings of one song apart).
+
+    With the source's `soundtrack_sightings`, a soundtrack whose film the canon has is read against
+    that film's song list instead (`maestro.placement`): a track that matches a song there also
+    credits the maestro on it, a sighting from a lineage of its own, and a track that matches none
+    becomes a `listing_gap` claim on the maestro (reason `song_not_in_film`) when the track itself
+    names the maestro. Compilations, and
+    soundtracks of films the canon lacks, add details only."""
+    from maestro.lyrics import first_line
+    from maestro.placement import film_roots, place, record_gap
+
+    store, pack = ctx.store, ctx.store.pack.data
+    source = next((x for x in pack.get("sources", []) if x["id"] == SOURCE), {})
+    in_film = bool(source.get("soundtrack_sightings") and rel["soundtrack"]
+                   and film_roots(store, rel["title"], rel["year"], later_issue=True))
     for t in rel["tracks"]:
-        if not _counts(ctx.store.pack.data, t):
+        if not _counts(pack, t):
             continue
-        uid = match_unit(ctx.store, t["title"], rel["year"])
-        if uid is None:
+        if in_film:
+            units, why = place(store, {"title": rel["title"], "year": rel["year"]}, t["title"], later_issue=True)
+            # Keyed by master and title, so the reissues of one record give one gap, not one each.
+            where = f"master/{rel['master']}" if rel["master"] else f"release/{rel['id']}"
+            url = f"https://www.discogs.com/{where}#{fold(t['title'])}"
+            gap = None if units else {"title": first_line(t["title"]), "film": rel["title"], "year": rel["year"],
+                                      "url": url, "reason": why}
+            # Only a track that names the maestro itself can be missing from the film: a credit for the
+            # whole record also covers the other singers' songs on it.
+            record_gap(store, SOURCE, url, gap if t["named"] else None, claim)
+            for uid in units:
+                for role in _maestro_roles(pack, t):
+                    claim(uid, "credit", {"role": role}, ref=store.maestro_entity())
+                _issue_details(uid, rel, claim)
             continue
-        claim(uid, "on_release", f"discogs:{rel['id']}")
-        for cat in rel["catalogues"]:
-            claim(uid, "catalogue", cat)
-        if rel["year"]:
-            claim(uid, "release_year", rel["year"])
+        uid = match_unit(store, t["title"], rel["year"])
+        if uid is not None:
+            _issue_details(uid, rel, claim)
 
 
 def _artist_id(pack_data: dict) -> int:

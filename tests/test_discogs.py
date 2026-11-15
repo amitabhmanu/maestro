@@ -188,3 +188,69 @@ def test_enrich_mode_adds_details_to_existing_recordings_only(store_for):
     assert cat == {late, roses}            # the 1956 record carries the 1955 take, the latest before it
     assert not s.conn.execute("SELECT 1 FROM claim WHERE source_id = 'discogs' AND field IN "
                               "('title', 'xref', 'credit')").fetchall()   # no lineage
+
+
+def _rafi_soundtrack(rid, title, year, tracks, genres=("Stage & Screen",), master=0, rafi_tracks=""):
+    return {"id": rid, "title": title, "year": year, "master_id": master, "artists": [{"id": 1, "name": "Naushad"}],
+            "extraartists": [{"id": 386904, "name": "Mohammed Rafi", "role": "Vocals", "tracks": rafi_tracks}],
+            "labels": [{"name": "HMV", "catno": f"N {rid}"}], "genres": list(genres),
+            "tracklist": [{"position": f"A{i}", "type_": "track", "title": t} for i, t in enumerate(tracks, 1)]}
+
+
+def test_soundtrack_sightings_credit_songs_in_canon_films_and_list_the_rest(store_for):
+    from test_resolve import film, song
+
+    from maestro.completeness import load_units
+
+    s = store_for("rafi")
+    src = next(x for x in s.pack.data["sources"] if x["id"] == "discogs")
+    assert src["unit_mode"] == "enrich" and src["soundtrack_sightings"]
+    baiju = film(s, "hfgk_online", "f1", "Baiju Bawra", 1952)
+    rakhwale = song(s, "hfgk_online", "s1", "O Duniya Ke Rakhwale Sun Dard Bhare Mere Naale", baiju)
+    s.upsert_claim(rakhwale, "title_hi", value="ओ दुनिया के रखवाले सुन दर्द भरे मेरे नाले", source_id="hfgk_online")
+    tu = song(s, "hfgk_online", "s2", "Tu Ganga Ki Mauj Main Jamuna Ka Dhara", baiju)
+    lata = song(s, "hfgk_online", "s3", "Mohe Bhool Gaye Sanwariya", baiju, rafi=False)   # not his: never matched
+    before = s.conn.execute("SELECT count(*) AS n FROM entity").fetchone()["n"]
+
+    # An LP reissue (1975) of the 1952 film: Hindi-script and Latin titles; one song the film lacks.
+    rel = _rafi_soundtrack(9001, "Hindustani Film - Baiju Bawra = बैजू बावरा", 1975,
+                           ["ओ दुनिया के रखवाले - १", "Tu Ganga Ki Mauj", "Mohe Bhool Gaye Sanwariya", "Insaan Bano"], master=4,
+                           rafi_tracks="A1, A2, A4")
+    discogs.extract(_ctx(s, discogs.release_url(9001), json.dumps(rel).encode()))
+    # A compilation: details only, as before.
+    comp = _rafi_soundtrack(9002, "The Golden Collection", 1995, ["Tu Ganga Ki Mauj Mein"])
+    discogs.extract(_ctx(s, discogs.release_url(9002), json.dumps(comp).encode()))
+
+    assert s.conn.execute("SELECT count(*) AS n FROM entity").fetchone()["n"] == before
+    credited = {r["entity_id"] for r in s.conn.execute(
+        "SELECT entity_id FROM claim WHERE source_id = 'discogs' AND field = 'credit' AND status = 'active'")}
+    assert credited == {rakhwale, tu}
+    gaps = [r["value"] for r in s.conn.execute(
+        "SELECT value FROM claim WHERE field = 'listing_gap' AND source_id = 'discogs' AND status = 'active'")]
+    assert [g["title"] for g in gaps] == ["Insaan Bano"]
+    assert {g["reason"] for g in gaps} == {"song_not_in_film"}
+    assert not s.conn.execute("SELECT 1 FROM claim WHERE entity_id = %s AND source_id = 'discogs'", (lata,)).fetchall()
+
+    units = load_units(s)
+    assert units[rakhwale].lineages == {"hfgk", "discogs"} and units[tu].lineages == {"hfgk", "discogs"}
+
+    # A second pressing of the same master gives no second gap.
+    again = {**rel, "id": 9003}
+    discogs.extract(_ctx(s, discogs.release_url(9003), json.dumps(again).encode()))
+    assert s.conn.execute("SELECT count(*) AS n FROM claim WHERE field = 'listing_gap' AND source_id = 'discogs' "
+                          "AND status = 'active'").fetchone()["n"] == 1
+
+    # A whole-record credit (no track list) still confirms his songs but lists no gaps: it covers
+    # the other singers' songs too.
+    whole = _rafi_soundtrack(9004, "Baiju Bawra", 1952, ["Bachpan Ki Mohabbat Ko"], master=5)
+    discogs.extract(_ctx(s, discogs.release_url(9004), json.dumps(whole).encode()))
+    assert s.conn.execute("SELECT count(*) AS n FROM claim WHERE field = 'listing_gap' AND source_id = 'discogs' "
+                          "AND status = 'active'").fetchone()["n"] == 1
+
+
+def test_placement_reads_devanagari_titles():
+    from maestro.placement import deva_key, is_devanagari
+
+    assert is_devanagari("ओ दुनिया के रखवाले") and not is_devanagari("O Duniya Ke Rakhwale")
+    assert deva_key("मिली ख़ाक में मोहब्बत") == deva_key("मिली खाक में मोहब्बत")
+    assert deva_key("ओ दुनिया के रखवाले - १") == "ओ दुनिया के रखवाले"

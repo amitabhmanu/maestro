@@ -149,7 +149,7 @@ def test_reread_supersedes_a_gap_once_the_song_is_placed(store_for):
     assert gaps()["Chaudhavi Ka Chand Ho, Ya Aaftab Ho"] == "film_not_in_canon"
     f = film(s, "hfgk_online", "100", "Chaudhvin Ka Chand", 1960)
     u = song(s, "hfgk_online", "101", "Chaudhvin Ka Chand Ho Ya Aaftab Ho", f)
-    s._hgm_canon_index = None
+    s.__dict__.pop("_placement_index", None)
     _run(s, SEED, "page1.html")
     assert "Chaudhavi Ka Chand Ho, Ya Aaftab Ho" not in gaps() and _values(s, u, "raga") == ["Pahadi"]
     n = len(_values(s, s.maestro_entity(), "listing_gap"))
