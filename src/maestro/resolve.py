@@ -41,9 +41,30 @@ TIE_MARGIN = 0.03  # two candidates this close (a song and its reprise) always g
 
 # ---- normalisation -------------------------------------------------------------
 
+# Cyrillic and Greek letters drawn like Latin ones. Some pages slip them into Latin names
+# ("Chitragupт", "Nirupа Roy"), and the name then fails to match itself.
+_LOOKALIKES = str.maketrans(
+    "аеорсухткмніјѕ"
+    "АВЕКМНОРСТХІЈЅ"
+    "οαιν"
+    "ΑΒΕΖΗΙΚΜΝΟΡΤΥΧ",
+    "aeopcyxtkmnijs"
+    "ABEKMHOPCTXIJS"
+    "oaiv"
+    "ABEZHIKMNOPTYX",
+)
+_HAS_LATIN = re.compile(r"[A-Za-z]")
+
+
+def fix_lookalikes(text: str) -> str:
+    """Turn Cyrillic or Greek look-alike letters into Latin ones, only in words that also hold Latin letters."""
+    return re.sub(r"\w+", lambda m: m.group(0).translate(_LOOKALIKES) if _HAS_LATIN.search(m.group(0))
+                  else m.group(0), text or "")
+
+
 def fold(text: str) -> str:
     """Lower-case, strip accents and punctuation, collapse spaces. Keeps letters of any script."""
-    text = unicodedata.normalize("NFKD", text or "")
+    text = unicodedata.normalize("NFKD", fix_lookalikes(text or ""))
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
     text = text.replace("‘", "'").replace("’", "'").replace("`", "'")
     text = re.sub(r"['\"]", "", text.lower())
@@ -66,6 +87,19 @@ def load_lexicon(pack_dir: Path, rel: str | None) -> dict[str, str]:
     return table
 
 
+def load_display_names(pack_dir: Path, rel: str | None) -> dict[str, str]:
+    """The canonical spellings of a `variant<TAB>canonical` table as written, keyed by the folded
+    variant and by the folded canonical name."""
+    if not rel or not (Path(pack_dir) / rel).is_file():
+        return {}
+    names = {}
+    with (Path(pack_dir) / rel).open(encoding="utf-8") as fh:
+        for row in csv.reader(fh, delimiter="\t"):
+            if len(row) >= 2 and row[0].strip() and not row[0].startswith("#"):
+                names[fold(row[0])] = names[fold(row[1])] = row[1].strip()
+    return names
+
+
 _PART_WORDS = {"pt", "part"}
 
 
@@ -74,6 +108,7 @@ class Normaliser:
     translit: dict[str, str] = field(default_factory=dict)
     people: dict[str, str] = field(default_factory=dict)
     containers: dict[str, str] = field(default_factory=dict)
+    people_names: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def for_store(cls, store: Store) -> "Normaliser":
@@ -83,6 +118,7 @@ class Normaliser:
             translit=load_lexicon(pack_dir, lex.get("transliteration")),
             people=load_lexicon(pack_dir, lex.get("people_aliases")),
             containers=load_lexicon(pack_dir, lex.get("container_aliases")),
+            people_names=load_display_names(pack_dir, lex.get("people_aliases")),
         )
 
     def _words(self, text: str) -> str:
@@ -91,6 +127,10 @@ class Normaliser:
     def person(self, name: str) -> str:
         key = fold(name)
         return self.people.get(key, self._words(key))
+
+    def person_name(self, name: str) -> str | None:
+        """The pack's preferred spelling of a person's name ("Manna De" -> "Manna Dey"), if it has one."""
+        return self.people_names.get(fold(name))
 
     def title(self, title: str) -> str:
         # Drop a trailing language or version tag such as "(Telugu)" or "[2]".

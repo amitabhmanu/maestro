@@ -45,6 +45,21 @@ def test_fold_and_normaliser():
     assert n.title("Man Tadpat Hari Darshan Ko Aaj (Hindi)") == "man tarpat hari darshan ko aaj"
 
 
+def test_lookalike_letters_fold_to_latin():
+    # Cyrillic letters inside a Latin name ("Chitragupт") fold as their Latin twins.
+    assert fold("Chitragupт") == fold("Chitragupt") == "chitragupt"
+    assert fold("Nirupа Roy") == "nirupa roy"
+    assert fold("Москва") == "москва"  # a Cyrillic word stays
+
+
+def test_pack_people_aliases_set_the_key_and_the_name(store_for):
+    n = Normaliser.for_store(store_for("rafi"))
+    assert n.person("Manna De") == n.person("Mannade") == n.person("Manna Dey") == "manna dey"
+    assert n.person_name("MANNA DE") == "Manna Dey" and n.person_name("Manna Dey") == "Manna Dey"
+    assert n.person("Suman [?]") == "suman kalyanpur" and n.person_name("Suman [?]") == "Suman Kalyanpur"
+    assert n.person_name("Suman [2]") is None and n.person("Suman [2]") == "suman 2"
+
+
 def test_cross_source_duplicates_merge_and_same_source_ones_queue(store_for):
     s = store_for("rafi")
     sdb_a = person(s, "hfgk_online", "10", "S. D. Burman")

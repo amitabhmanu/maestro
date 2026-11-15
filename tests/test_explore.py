@@ -61,6 +61,25 @@ def test_private_claims_stay_out(store_for):
     assert secret in {u["id"] for u in snapshot(s, include_private=True)["units"]}
 
 
+def test_person_names_prefer_the_pack_spelling_and_untagged_labels(store_for):
+    s = store_for("rafi")
+    manna = person(s, "hfgk_online", "3700", "Manna De")
+    suman_q = person(s, "hfgk_online", "29102", "Suman [?]")
+    suman = person(s, "hfgk_online", "4777", "Suman Kalyanpur")
+    s.merge_entities(suman_q, suman, "review")  # the tagged record is the merge root
+    chitra = person(s, "hfgk_online", "77", "Chitragupт")
+    iqbal = person(s, "hfgk_online", "88", "Iqbal [2]")
+    a = song(s, "hfgk_online", "100", "Song A")
+    for p in (manna, suman, chitra, iqbal):
+        s.upsert_claim(a, "credit", ref_entity_id=p, value={"role": "singer"}, source_id="hfgk_online")
+    people = snapshot(s)["people"]
+    assert people[str(manna)] == {"name": "Manna Dey", "aliases": ["Manna De"]}
+    root = str(next(int(k) for k in people if int(k) in (suman_q, suman)))
+    assert people[root] == {"name": "Suman Kalyanpur", "aliases": ["Suman [?]"]}
+    assert people[str(chitra)] == {"name": "Chitragupt"}
+    assert people[str(iqbal)] == {"name": "Iqbal [2]"}  # a tag that tells two people apart stays
+
+
 def test_xref_links():
     assert _xref_link("wikidata", "film:Q3225241") == "https://www.wikidata.org/wiki/Q3225241"
     assert _xref_link("musicbrainz", "work:348be3d3-a436-452a-9848-deb64186113d").startswith("https://musicbrainz.org/work/")

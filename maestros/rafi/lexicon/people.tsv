@@ -1,0 +1,10 @@
+# People aliases for the Rafi canon: variant<TAB>canonical. Names are folded before matching
+# (case, accents and punctuation ignored, so "Suman [?]" is read as "suman"). The canonical
+# spelling is also the name the explorer shows. Add a row whenever the user corrects a name.
+#
+# HFGK spells Dey as "De".
+Manna De	Manna Dey
+Mannade	Manna Dey
+K C De	K C Dey
+# HFGK's "Suman [?]" (not sure which Suman) is Suman Kalyanpur in Rafi's songs (user, 2026-11-15).
+Suman [?]	Suman Kalyanpur
