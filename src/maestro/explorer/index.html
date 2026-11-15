@@ -107,6 +107,7 @@ main { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: m
 .row:hover { background: var(--hover); }
 .row.sel { background: var(--accent-soft); }
 .row .yr { font-family: var(--f-mono); color: var(--ink-2); padding-top: 1px; }
+.row .yr .posth { margin-left: 2px; color: var(--muted); }
 .row .t { font-weight: 500; overflow-wrap: anywhere; }
 .row .alt { color: var(--muted); font-size: 12.5px; }
 .row .meta { color: var(--ink-2); font-size: 12.5px; margin-top: 2px; overflow-wrap: anywhere; }
@@ -744,10 +745,15 @@ function popMeter(u) {
   const n = u._pop;
   return `<span class="pop" title="${n ? `Popularity ${n} of 100: ${esc(u.pop.evidence.slice(0, 3).map(e => e.note).join("; "))}` : "No popularity evidence yet"}"><span class="bar"><i style="width:${n}%"></i></span>${n || "–"}</span>`;
 }
+const posthumous = (u, d) => !!(d.maestro.died && u.year && u.year > d.maestro.died);
+function yrCell(u, d) {
+  const p = posthumous(u, d);
+  return `<div class="yr"${p ? ` title="Released after ${esc(d.maestro.name)}'s death (${d.maestro.died})"` : ""}>${u.year || "—"}${p ? `<span class="posth" aria-label="released after death">†</span>` : ""}</div>`;
+}
 function rowHtml(u, d) {
   const alt = (u.title_alt_script || [])[0];
   return `<div class="row${S.sel === u.id ? " sel" : ""}" data-u="${u.id}" tabindex="0" role="button">
-    <div class="yr">${u.year || "—"}</div>
+    ${yrCell(u, d)}
     <div style="min-width:0"><div class="t">${esc(u.title)}${alt ? ` <span class="alt">${esc(alt)}</span>` : ""}</div><div class="meta">${unitMeta(u, d)}</div></div>
     <div class="side">${tagBadge(u)}${popMeter(u)}${linDots(u._lin)}<span class="tier ${esc(u.tier || "")}" title="${esc(u.tier ? "Tier " + u.tier + ": " + (d.tiers[u.tier] || {}).label : "No tier yet")}">${esc(u.tier || "–")}</span></div></div>`;
 }
@@ -813,7 +819,7 @@ function detailHtml(u, d) {
   const me = d.maestro.person_id;
   const dl = [];
   const add = (k, v) => { if (v != null && v !== "" && !(Array.isArray(v) && !v.length)) dl.push(`<dt>${esc(k)}</dt><dd>${v}</dd>`); };
-  add("Year", u.year ? `<span class="mono">${u.year}</span>` : null);
+  add("Year", u.year ? `<span class="mono">${u.year}</span>${posthumous(u, d) ? ` <span class="muted">released after ${esc(d.maestro.name)}'s death in ${d.maestro.died}</span>` : ""}` : null);
   add("Tier", u.tier ? `<span class="tier ${esc(u.tier)}">${esc(u.tier)}</span> ${esc((d.tiers[u.tier] || {}).label)}${u.tier_basis ? ` <span class="muted">(from the ${u.tier_basis === "container" ? esc(d.contWord) : "source"})</span>` : ""}` : `<span class="muted">not assigned yet</span>`);
   if (u._c) add(cap(d.contWord), `<button class="linklike" data-cont="${u.container}">${esc(u._c.title)}</button>${u._c.year ? ` <span class="mono muted">${u._c.year}</span>` : ""}${u.position ? ` <span class="muted">· no. ${esc(u.position)}</span>` : ""}`);
   const roles = Object.keys(u.credits).sort((a, b) => (b === d.perfRole) - (a === d.perfRole));
@@ -886,7 +892,7 @@ function renderGems(res) {
   const mine = [...res].filter(u => u._tag).sort((a, b) => tagRank(b) - tagRank(a) || a._reach - b._reach), gems = mine.slice(0, 40);
   const rare = mine.filter(u => u._tag.rare).length;
   const leads = [...res].filter(u => u.pop && u.pop.lead).sort((a, b) => b.pop.lead.score - a.pop.lead.score || a._pop - b._pop).slice(0, 25);
-  const item = (u, extra, badge = "") => `<div class="row" data-u="${u.id}" tabindex="0" role="button"><div class="yr">${u.year || "—"}</div>
+  const item = (u, extra, badge = "") => `<div class="row" data-u="${u.id}" tabindex="0" role="button">${yrCell(u, d)}
     <div style="min-width:0"><div class="t">${esc(u.title)}</div><div class="meta">${unitMeta(u, d)}</div>${extra}</div>
     <div class="side">${badge}${popMeter(u)}</div></div>`;
   const sig = Object.entries(P.signals || {}).map(([k, v]) => `<li><b>${esc(k.replace(/_/g, " "))}</b> <span class="muted">· ${esc(FACET_LABEL[v.facet] || v.facet)} · ${v.units.toLocaleString()} ${esc(d.unitWord)}s</span></li>`).join("");
