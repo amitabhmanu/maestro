@@ -294,7 +294,7 @@ def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
         gem = gemness.scores(summary)
         if gem:
             unit["gemness"] = gem
-    popularity = {k: pop[k] for k in ("signals", "facets_present", "gems", "listed_without_data",
+    popularity = {k: pop[k] for k in ("signals", "facets_present", "gems", "low_rule", "listed_without_data",
                                        "unmatched_mentions")}
 
     # Containers: title, year and facts from every merged record.
