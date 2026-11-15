@@ -95,13 +95,17 @@ def canon_index(store, exclude_source: str | None = None):
 
 def film_roots(store, film_title: str, film_year: int | None, exclude_source: str | None = None,
                later_issue: bool = False) -> list[int]:
-    """The canon films a listing's film names: same key, years at most one apart (or unknown). With
+    """The canon films (with songs of the maestro) a listing's film names: same key, years at most one
+    apart (or unknown). With
     `later_issue` (the listing's year is its issue's, maybe a reissue's), a key held by one film only
     is that film when the issue is not older than it."""
     from maestro.resolve import _squash_container
 
-    films, _songs, norm, _groups = canon_index(store, exclude_source)
-    cands = films.get(_squash_container(norm.container(film_title)), {})
+    films, songs, norm, _groups = canon_index(store, exclude_source)
+    # A film counts only when the canon holds some of the maestro's songs in it (another film of
+    # the same name, kept by some source, is not his).
+    cands = {root: years for root, years in films.get(_squash_container(norm.container(film_title)), {}).items()
+             if songs.get(root)}
     roots = [root for root, years in cands.items()
              if not years or not film_year or any(abs(y - film_year) <= 1 for y in years)]
     if not roots and later_issue and film_year and len(cands) == 1:

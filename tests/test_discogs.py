@@ -92,7 +92,7 @@ def test_extract_writes_units_containers_and_matches_hfgk(store_for):
     resolve(s)
     merged = s.conn.execute("SELECT ref_entity_id FROM claim WHERE field = 'same_as' AND entity_id = %s", (a1,)).fetchall()
     assert [r["ref_entity_id"] for r in merged] == [hfgk_song]
-    assert s.coverage_report()["units_per_lineage"]["discogs"] >= 1
+    assert s.coverage_report()["units_per_lineage"]["musicbrainz"] >= 1   # Rafi's pack files Discogs with MusicBrainz
 
 
 def test_api_token_is_sent_but_never_stored(tmp_path, monkeypatch):
@@ -227,15 +227,20 @@ def test_soundtrack_sightings_credit_songs_in_canon_films_and_list_the_rest(stor
     assert credited == {rakhwale, tu}
     gaps = [r["value"] for r in s.conn.execute(
         "SELECT value FROM claim WHERE field = 'listing_gap' AND source_id = 'discogs' AND status = 'active'")]
+    assert gaps == []                      # a 1975 LP of a 1952 film confirms songs but lists no gaps
+    original = {**rel, "id": 9005, "year": 1952}
+    discogs.extract(_ctx(s, discogs.release_url(9005), json.dumps(original).encode()))
+    gaps = [r["value"] for r in s.conn.execute(
+        "SELECT value FROM claim WHERE field = 'listing_gap' AND source_id = 'discogs' AND status = 'active'")]
     assert [g["title"] for g in gaps] == ["Insaan Bano"]
     assert {g["reason"] for g in gaps} == {"song_not_in_film"}
     assert not s.conn.execute("SELECT 1 FROM claim WHERE entity_id = %s AND source_id = 'discogs'", (lata,)).fetchall()
 
     units = load_units(s)
-    assert units[rakhwale].lineages == {"hfgk", "discogs"} and units[tu].lineages == {"hfgk", "discogs"}
+    assert units[rakhwale].lineages == {"hfgk", "musicbrainz"} and units[tu].lineages == {"hfgk", "musicbrainz"}  # one release lineage
 
     # A second pressing of the same master gives no second gap.
-    again = {**rel, "id": 9003}
+    again = {**original, "id": 9003}
     discogs.extract(_ctx(s, discogs.release_url(9003), json.dumps(again).encode()))
     assert s.conn.execute("SELECT count(*) AS n FROM claim WHERE field = 'listing_gap' AND source_id = 'discogs' "
                           "AND status = 'active'").fetchone()["n"] == 1

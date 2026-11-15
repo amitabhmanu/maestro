@@ -273,7 +273,7 @@ def _enrich(ctx, rel: dict, claim) -> None:
     that film's song list instead (`maestro.placement`): a track that matches a song there also
     credits the maestro on it, a sighting from a lineage of its own, and a track that matches none
     becomes a `listing_gap` claim on the maestro (reason `song_not_in_film`) when the track itself
-    names the maestro. Compilations, and
+    names the maestro and the record dates from the film's own time (a year either side). Compilations, and
     soundtracks of films the canon lacks, add details only."""
     from maestro.lyrics import first_line
     from maestro.placement import film_roots, place, record_gap
@@ -282,6 +282,9 @@ def _enrich(ctx, rel: dict, claim) -> None:
     source = next((x for x in pack.get("sources", []) if x["id"] == SOURCE), {})
     in_film = bool(source.get("soundtrack_sightings") and rel["soundtrack"]
                    and film_roots(store, rel["title"], rel["year"], later_issue=True))
+    # Gaps only from a record of the film's own time: a later LP or CD named after a film is often a
+    # compilation of its songs and others, or a different film of that name.
+    original = in_film and bool(film_roots(store, rel["title"], rel["year"]))
     for t in rel["tracks"]:
         if not _counts(pack, t):
             continue
@@ -294,7 +297,7 @@ def _enrich(ctx, rel: dict, claim) -> None:
                                       "url": url, "reason": why}
             # Only a track that names the maestro itself can be missing from the film: a credit for the
             # whole record also covers the other singers' songs on it.
-            record_gap(store, SOURCE, url, gap if t["named"] else None, claim)
+            record_gap(store, SOURCE, url, gap if t["named"] and original else None, claim)
             for uid in units:
                 for role in _maestro_roles(pack, t):
                     claim(uid, "credit", {"role": role}, ref=store.maestro_entity())
