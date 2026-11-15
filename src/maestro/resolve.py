@@ -637,11 +637,64 @@ def resolve_units(store: Store, norm: Normaliser, stats: ResolveStats) -> None:
         if len({s for _k, r in entries for s in r["sources"]}) > 1:
             _match_titles(store, groups, distinct, stats, entries, {"catalogue": cat})
 
+    _match_reused(store, norm, groups, distinct, stats, unit_recs, container_of)
+
     if store.pack.data["canon_model"].get("match_titles_across_containers"):
         if _has_kind_containers(store):
             _match_floating_by_title(store, norm, groups, distinct, stats, unit_recs, container_of)
         else:
             _match_uncontained_by_title(store, norm, groups, distinct, stats, unit_recs)
+
+
+def _match_reused(store, norm, groups, distinct, stats, unit_recs, container_of) -> None:
+    """A recording put in a container dated after the pack's `identity.reissues_after` (an old song
+    reused in a new film, a soundtrack only a later release dates) is not a new offering: it is the
+    same recording as a unit of a like title in a container dated no later than that year. A clear
+    best match (as within one film) merges; weaker or tied candidates go to review. A late unit with
+    no earlier twin (a shelved film's song released late) is left as it is."""
+    cutoff = store.pack.data["identity"].get("reissues_after")
+    if not cutoff:
+        return
+    first: dict[int, int] = {}  # container group -> its earliest year
+    for cid, y in _years(store).items():
+        g = groups.find(cid)
+        first[g] = min(first.get(g, y), y)
+    early: dict[int, str] = {}
+    late: dict[int, str] = {}
+    for r in unit_recs:
+        c = container_of.get(r["id"])
+        key = norm.title(r["label"])
+        if c is None or not key:
+            continue
+        y = first.get(groups.find(c))
+        if y is None:
+            continue
+        (early if y <= cutoff else late).setdefault(groups.find(r["id"]), key)
+    late = {g: k for g, k in late.items() if g not in early}
+    for g0, key in sorted(late.items()):
+        g = groups.find(g0)
+        if g in early:
+            continue  # joined an earlier unit in this pass
+        cands = sorted(((title_similarity(key, ck, CLEAR_TITLE_RATIO), c) for c, ck in early.items()
+                        if groups.can_join(g, c) and tuple(sorted((g, c))) not in distinct), reverse=True)
+        cands = [(sim, c) for sim, c in cands if sim >= CLEAR_TITLE_RATIO]
+        if not cands:
+            continue
+        sim, c = cands[0]
+        lead = sim - cands[1][0] if len(cands) > 1 else 1.0
+        if lead >= TIE_MARGIN and (sim >= AUTO_TITLE_RATIO or lead >= CLEAR_MARGIN):
+            keep, other = sorted((g, c))
+            store.merge_entities(keep, other, f"title {key!r} ~ {early[c]!r} ({sim:.2f}): a recording reused "
+                                              f"after {cutoff} is the earlier unit, not a new one")
+            groups.union(keep, other)
+            early[groups.find(keep)] = early.pop(c)
+            stats.merged["unit"] += 1
+        else:
+            for sim, c in cands[:3]:
+                if queue_review(store, "unit_reused", [g, c],
+                                {"labels": [key, early[c]], "similarity": round(sim, 3),
+                                 "candidates": len(cands), "reissues_after": cutoff}, priority=1):
+                    stats.queued["unit"] += 1
 
 
 def _has_kind_containers(store: Store) -> bool:

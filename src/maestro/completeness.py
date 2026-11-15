@@ -73,6 +73,7 @@ def load_units(store: Store, groups: Groups | None = None) -> dict[int, Unit]:
              AND c.field IN ('tier', 'year', 'part_of', 'credit', 'xref', 'title', 'live', 'work_kind')""",
         (ids,),
     ).fetchall()
+    in_containers: dict[int, set[int]] = defaultdict(set)
     for r in rows:
         u = units[members[r["entity_id"]]]
         f = r["field"]
@@ -80,8 +81,8 @@ def load_units(store: Store, groups: Groups | None = None) -> dict[int, Unit]:
             u.tier = r["value"]
         elif f == "year" and isinstance(r["value"], int) and u.year is None:
             u.year = r["value"]
-        elif f == "part_of" and u.container is None:
-            u.container = groups.find(r["ref_entity_id"])
+        elif f == "part_of":
+            in_containers[u.id].add(groups.find(r["ref_entity_id"]))
         elif f == "credit" and r["ref_entity_id"] is not None:
             u.credits[(r["value"] or {}).get("role")].add(groups.find(r["ref_entity_id"]))
         elif f == "live" and r["value"] is True:
@@ -94,6 +95,10 @@ def load_units(store: Store, groups: Groups | None = None) -> dict[int, Unit]:
             u.lineages.add(r["lineage"])
 
     years = container_years(store, groups)
+    for uid, cs in in_containers.items():
+        # A recording in several containers (its film, a later film reusing it) belongs to the
+        # earliest-dated one; undated containers come last.
+        units[uid].container = min(cs, key=lambda c: (years.get(c, 10**4), c))
     for u in units.values():
         if u.year is None and u.container is not None:
             u.year = years.get(u.container)
