@@ -375,7 +375,7 @@ def resolve_containers(store: Store, norm: Normaliser, stats: ResolveStats) -> N
     blocks: dict[tuple, list[dict]] = defaultdict(list)
     for r in recs:
         r["key"] = norm.container(r["label"])
-        r["squashed"] = _squash(r["key"].replace(" ", ""))
+        r["squashed"] = _squash_container(r["key"])
         r["year"] = years.get(r["id"])
         blocks[(r["key"], r["year"])].append(r)
     # Containers dated to different days (two recording sessions at one studio) are different.
@@ -398,7 +398,12 @@ def resolve_containers(store: Store, norm: Normaliser, stats: ResolveStats) -> N
         return a["year"] is None or b["year"] is None or abs(a["year"] - b["year"]) <= 1
 
     def candidates(r, pool):
-        return [o for o in pool if o is not r and close_years(r, o) and groups.can_join(o["id"], r["id"])]
+        """One record per other group: records an earlier merge already joined are one candidate."""
+        out: dict[int, dict] = {}
+        for o in pool:
+            if o is not r and close_years(r, o) and groups.can_join(o["id"], r["id"]):
+                out.setdefault(groups.find(o["id"]), o)
+        return list(out.values())
 
     for r in recs:
         near = candidates(r, by_squash.get(r["squashed"], []))
@@ -419,8 +424,10 @@ def resolve_containers(store: Store, norm: Normaliser, stats: ResolveStats) -> N
         if r["year"] is None or not r["squashed"]:
             continue
         pool = [o for y in (r["year"] - 1, r["year"], r["year"] + 1) for o in by_year.get(y, [])]
-        similar = [o for o in candidates(r, pool) if o["id"] > r["id"]
-                   and SequenceMatcher(None, r["squashed"], o["squashed"]).ratio() >= NEAR_TITLE_RATIO]
+        similar = {groups.find(o["id"]): o for o in pool
+                   if o is not r and o["id"] > r["id"] and close_years(r, o) and groups.can_join(o["id"], r["id"])
+                   and SequenceMatcher(None, r["squashed"], o["squashed"]).ratio() >= NEAR_TITLE_RATIO}
+        similar = list(similar.values())
         if len(similar) == 1:
             a, b = sorted((groups.find(r["id"]), groups.find(similar[0]["id"])))
             if a != b and (a, b) not in distinct and queue_review(
@@ -431,6 +438,12 @@ def resolve_containers(store: Store, norm: Normaliser, stats: ResolveStats) -> N
 
 _SQUASH = [("oo", "u"), ("ee", "i"), ("q", "k"), ("w", "v"), ("ph", "f"), ("aye", "ae"), ("ay", "ai"),
            ("ai", "e"), ("au", "o")]
+
+
+def _squash_container(key: str) -> str:
+    """A container title's squash key, a little looser than a unit title's: a word-final "h" after a
+    vowel goes ("Kya Yeh Bombay Hai"/"Kya Ye Bombay Hai") and "th" is "t" ("Grihasthi"/"Grihasti")."""
+    return _squash(re.sub(r"(?<=[aeiou])h\b", "", key).replace(" ", "").replace("th", "t"))
 
 
 def _squash(text: str) -> str:
