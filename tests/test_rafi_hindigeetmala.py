@@ -52,7 +52,7 @@ def test_extract_queues_pages_and_writes_units(store_for):
     assert _values(s, container, "year") == [1960]
 
     ghazal = s.entity_by_xref("hindigeetmala", "song:zulmat_kade_men_mere_shab_rafi", "song")
-    assert _values(s, ghazal, "tier") == ["B"] and _values(s, ghazal, "category") == ["Non-Film (Mohammed Rafi)"]
+    assert _values(s, ghazal, "tier") == [] and _values(s, ghazal, "category") == ["Non-Film (Mohammed Rafi)"]
     assert _values(s, ghazal, "part_of") == []
     assert s.entity_by_xref("hindigeetmala", "movie:non_film_mohammed_rafi", "container") is None
     roles = {r["value"]["role"] for r in s.conn.execute(
@@ -70,3 +70,24 @@ def test_songs_match_hfgk_films(store_for):
     merged = {r["ref_entity_id"] for r in s.conn.execute(
         "SELECT ref_entity_id FROM claim WHERE field = 'same_as' AND status = 'active' AND entity_id IN (%s, %s)", (u, chand))}
     assert merged & {u, chand}
+
+
+def test_film_already_merged_across_sources_is_one_candidate(store_for):
+    # HFGK's Boot Polish is merged with MusicBrainz's and Atul's; Hindi Geetmala dates it a year later.
+    s = store_for("rafi")
+    hfgk = film(s, "hfgk_online", "3330", "Boot Polish", 1953)
+    mb = s.find_or_create_by_xref("container", "musicbrainz", "rg1", "Boot Polish")
+    atul = film(s, "atulsongaday", "f1", "Boot Polish", 1953)
+    resolve(s)
+    from maestro.resolve import Groups
+    assert Groups(s).find(mb) == Groups(s).find(atul) == Groups(s).find(hfgk)
+    hgm = film(s, "hindigeetmala", "movie:boot_polish", "Boot Polish", 1954)
+    resolve(s)
+    assert Groups(s).find(hgm) == Groups(s).find(hfgk)
+
+
+def test_film_spellings_with_th_and_final_h_match():
+    from maestro.resolve import _squash_container
+    assert _squash_container("ghar grihasthi") == _squash_container("ghar grihasti")
+    assert _squash_container("kya yeh bombay hai") == _squash_container("kya ye bombay hai")
+    assert _squash_container("pyaasa") == _squash_container("pyasa")

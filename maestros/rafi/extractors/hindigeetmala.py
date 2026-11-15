@@ -7,7 +7,8 @@ lyricist, actors on screen and the site's categories (moods, and ragas such as "
 
 A song becomes a unit keyed by the site's song page, in a film container keyed by its film page.
 Albums named "Non-Film (...)" are not films: their songs stay uncontained with that category.
-Film songs with a year are Tier A, non-film songs Tier B, as the pack defines them.
+Film songs with a year are Tier A. Non-film songs get no tier from this source: the site lists only a
+handful, and a third Tier B lineage with so few songs throws the estimate off (6,085 for 234 on a test).
 """
 
 from __future__ import annotations
@@ -106,6 +107,5 @@ def extract(ctx) -> None:
             else:
                 claim(song, "category", c)
         if sings:
-            tier = "B" if non_film else ("A" if film["year"] else None)
-            if tier:
-                store.upsert_claim(song, "tier", value=tier, source_id="claude", kind="decided", extractor=EXTRACTOR)
+            if not non_film and film["year"]:
+                store.upsert_claim(song, "tier", value="A", source_id="claude", kind="decided", extractor=EXTRACTOR)
