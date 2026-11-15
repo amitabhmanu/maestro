@@ -396,7 +396,7 @@ def test_title_similarity_floor_is_exact_at_or_above_it():
 
 def test_reissued_soundtracks_join_their_film_and_never_date_a_song(store_for):
     """Rafi died in 1980: a soundtrack MusicBrainz dates 2017 is the 1960 film put out again, a CD of two
-    old films is no film, and only a container another source also lists keeps a late date."""
+    old films is no film, and a late date counts only when two sources give it (a shelved film released late)."""
     from maestro.completeness import container_years, load_units
 
     s = store_for("rafi")
@@ -407,6 +407,8 @@ def test_reissued_soundtracks_join_their_film_and_never_date_a_song(store_for):
     shelved = film(s, "hfgk_online", "301", "Rat Ki Uljhan", None)
     shelved_mb = film(s, "musicbrainz", "release-group:c", "Rat Ki Uljhan", 2024)
     late_film = film(s, "hfgk_online", "302", "Love And God", 1986)
+    aahat = film(s, "hfgk_online", "303", "Aahat", 2010)
+    aahat_mb = film(s, "musicbrainz", "release-group:e", "Aahat", 2011)
     song(s, "hfgk_online", "3000", "Saranga Teri Yaad Mein", old)
     u_re = song(s, "musicbrainz", "rec-1", "Saranga Teri Yaad Mein", reissue)
     u_combo = song(s, "musicbrainz", "rec-2", "Udhar Tum Haseen Ho", combo)
@@ -420,11 +422,13 @@ def test_reissued_soundtracks_join_their_film_and_never_date_a_song(store_for):
     years = container_years(s, groups)
     assert years[groups.find(old)] == 1960
     assert groups.find(combo) not in years
-    assert years[groups.find(shelved)] == 2024  # HFGK lists it too: a shelved film released late
+    assert groups.find(shelved) not in years  # HFGK lists it undated: 2024 is only MusicBrainz's reissue
+    assert groups.find(aahat) == groups.find(aahat_mb)
+    assert years[groups.find(aahat)] == 2010  # two sources date it: a shelved film released late
     units = load_units(s, groups)
     assert units[groups.find(u_re)].year == 1960
     assert units[groups.find(u_combo)].year is None
-    assert units[groups.find(u_shelved)].year == 2024
+    assert units[groups.find(u_shelved)].year is None
     assert units[groups.find(u_late)].year == 1986
 
 

@@ -158,12 +158,12 @@ def container_years(store: Store, groups: Groups) -> dict[int, int]:
     """Each container group's year: the first dated claim on any of its records.
 
     With the pack's `identity.reissues_after`, a later date is a reissue's (a soundtrack put out again
-    decades on): it counts only when no record of the group has an earlier date and another source
-    also lists the container (a shelved film released late), so a song on a CD of two old films, or
-    reused in a new film, gets no year rather than the year of that release."""
+    decades on): it counts only when no record of the group has an earlier date and a second source
+    gives the same year, give or take one (a shelved film released late). A song on a CD of two old
+    films, or on an online reissue only one source dates, gets no year rather than that release's."""
     cutoff = store.pack.data["identity"].get("reissues_after")
     out: dict[int, int] = {}
-    late: dict[int, tuple[int, str]] = {}
+    late: dict[int, list[tuple[int, str]]] = defaultdict(list)
     for r in store.conn.execute(
         """SELECT c.entity_id, c.source_id, (c.value #>> '{}')::int AS y FROM claim c JOIN entity e ON e.id = c.entity_id
            WHERE e.type = 'container' AND c.field = 'year' AND c.status = 'active'
@@ -173,17 +173,14 @@ def container_years(store: Store, groups: Groups) -> dict[int, int]:
         if cutoff is None or r["y"] <= cutoff:
             out.setdefault(g, r["y"])
         else:
-            late.setdefault(g, (r["y"], r["source_id"]))
-    if late:
-        listed: dict[int, set[str]] = defaultdict(set)
-        for r in store.conn.execute(
-            """SELECT c.entity_id, c.source_id FROM claim c JOIN entity e ON e.id = c.entity_id
-               WHERE e.type = 'container' AND c.field = 'xref' AND c.status = 'active'"""
-        ).fetchall():
-            listed[groups.find(r["entity_id"])].add(r["source_id"])
-        for g, (y, source) in late.items():
-            if g not in out and listed[g] - {source}:
+            late[g].append((r["y"], r["source_id"]))
+    for g, dated in late.items():
+        if g in out:
+            continue
+        for y, source in dated:
+            if any(s != source and abs(y2 - y) <= 1 for y2, s in dated):
                 out[g] = y
+                break
     return out
 
 

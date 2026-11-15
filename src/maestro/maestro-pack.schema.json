@@ -58,7 +58,7 @@
         },
         "reissues_after": {
           "type": "integer", "minimum": 1800, "maximum": 2100,
-          "description": "Last year in which the maestro's work still had first releases: the end of `active` plus the posthumous releases of work recorded before it. A container a source dates later is a reissue, a compilation or a later film reusing a recording. Resolution matches it to the one container of that title dated no later than this year, and its date is never a unit's year unless another source also lists the container (a shelved film released late)."
+          "description": "Last year in which the maestro's work still had first releases: the end of `active` plus the posthumous releases of work recorded before it. A container a source dates later is a reissue, a compilation or a later film reusing a recording. Resolution matches it to the one container of that title dated no later than this year, and its date is never a unit's year unless a second source gives the same year, give or take one (a shelved film released late)."
         },
         "_why": {"$ref": "#/$defs/evidence"}
       }
