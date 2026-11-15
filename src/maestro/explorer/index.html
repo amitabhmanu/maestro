@@ -119,7 +119,12 @@ main { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: m
 .pop { display: inline-flex; align-items: center; gap: 5px; font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); }
 .pop .bar { width: 34px; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; display: block; }
 .pop .bar i { display: block; height: 100%; background: var(--accent); }
-.gem { font-size: 11px; font-weight: 600; letter-spacing: .02em; color: var(--warn); border: 1px solid currentColor; border-radius: 999px; padding: 0 6px; line-height: 16px; }
+.gem { font-size: 11px; font-weight: 600; letter-spacing: .02em; color: var(--warn); border: 1px solid currentColor; border-radius: 999px; padding: 0 6px; line-height: 16px; white-space: nowrap; }
+.gem.rare { background: var(--warn); color: var(--panel); border-color: var(--warn); }
+.tagbox { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r); display: grid; gap: 6px; font-size: 13px; }
+.tagbox .btn { justify-self: start; }
+.tagbox .why { margin: 0; }
+.tagtools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 4px 0 12px; font-size: 12.5px; }
 .why { margin: 4px 0 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--ink-2); }
 .why li::before { content: "· "; color: var(--muted); }
 .facetbars { display: grid; grid-template-columns: 96px minmax(0, 1fr) 30px; gap: 4px 8px; align-items: center; font-size: 12.5px; }
@@ -241,7 +246,7 @@ td.n, th.n { text-align: right; font-family: var(--f-mono); }
     <nav class="maestros" id="maestros" aria-label="Maestro"></nav>
     <nav class="views" aria-label="View">
       <a href="#browse" id="v-browse">Browse</a>
-      <a href="#gems" id="v-gems">Hits &amp; gems</a>
+      <a href="#gems" id="v-gems">Gems &amp; hits</a>
       <a href="#map" id="v-map">Map</a>
       <a href="#insights" id="v-insights">Insights</a>
       <a href="#coverage" id="v-coverage">Coverage</a>
@@ -258,6 +263,7 @@ td.n, th.n { text-align: right; font-family: var(--f-mono); }
 <div class="backdrop" id="backdrop"></div>
 <div class="tip" id="tip" hidden></div>
 <input type="file" id="file" accept=".json,application/json" hidden>
+<input type="file" id="tagfile" accept=".json,application/json" hidden>
 
 <script>
 "use strict";
@@ -341,7 +347,6 @@ function prep(d) {
     u._perf = d.perfRole ? (u.credits[d.perfRole] || []).length : null;
     u._lin = u.lineages.length;
     u._pop = u.pop ? u.pop.score : 0;
-    u._gem = u.pop && u.pop.gem ? u.pop.gem.score : 0;
     u._reach = reachOf(u, d);
     if (!u.gemness && !d.gemness) u.gemness = provisionalGemness(u.pop);
     for (const [role, ids] of Object.entries(u.credits)) for (const p of ids) if (p !== me) {
@@ -388,7 +393,8 @@ function prep(d) {
   d.tierWords = tierWords(d.tiers, d);
   d.byId = new Map(d.units.map(u => [u.id, u]));
   d.hasPop = d.units.some(u => u._pop > 0);
-  d.gemCount = d.units.filter(u => u._gem).length;
+  d.low = lowRule(d);
+  bindTags(d);
   if (!d.gemness) d.gemness = GEMNESS_FALLBACK; // snapshots written before gemness models: same rule, in the page
   return d;
 }
@@ -453,7 +459,7 @@ function parseQuery(raw, d) {
     take(/\b(?:group|chorus|ensemble|qawwali)\s*(?:songs?|numbers?)?\b/g, () => { f.perf = "group"; });
   }
   take(/\blive\b/g, () => { f.live = true; });
-  take(/\b(?:(?:rare|hidden|forgotten|overlooked)\s+)?(?:gems?|deep\s+cuts?|underrated|rarities|rare\s+ones?)\b/g, () => { f.gems = true; f.sort = "gem"; });
+  take(/\b(?:(?:my|our|tagged)\s+)?(?:(rare|hidden|forgotten|overlooked)\s+)?(?:gems?|deep\s+cuts?|underrated|rarities|rare\s+ones?)\b/g, m => { f.gems = m[1] || /rar/.test(m[0]) ? "rare" : "all"; f.sort = "gem"; });
   take(/\b(?:most\s+popular|biggest\s+hits?|popular|hits|best\s+known|famous|well[\s-]known)\s*(?:first)?\b/g, () => { f.sort = "popular"; });
 
   let toks = fold(s).split(" ").filter(Boolean);
@@ -557,7 +563,7 @@ function applyFilter(d, f) {
     if (f.containers.length && !f.containers.includes(u.container)) continue;
     if (f.langs.length && !f.langs.includes(u._lang)) continue;
     if (f.live && !u.live) continue;
-    if (f.gems && !u._gem) continue;
+    if (f.gems && !(u._tag && (f.gems !== "rare" || u._tag.rare))) continue;
     if (f.minLin != null && u._lin < f.minLin) continue;
     if (f.maxLin != null && u._lin > f.maxLin) continue;
     if (f.perf && u._perf != null) {
@@ -574,7 +580,7 @@ function applyFilter(d, f) {
     "title": (a, b) => a.title.localeCompare(b.title),
     "lineages": (a, b) => a._lin - b._lin || (a.year || 9999) - (b.year || 9999),
     "popular": (a, b) => b._pop - a._pop || (b.pop ? b.pop.evidence.length : 0) - (a.pop ? a.pop.evidence.length : 0) || (a.year || 9999) - (b.year || 9999),
-    "gem": (a, b) => b._gem - a._gem || a._pop - b._pop || (a.year || 9999) - (b.year || 9999),
+    "gem": (a, b) => tagRank(b) - tagRank(a) || a._reach - b._reach || (a.year || 9999) - (b.year || 9999),
   }[f.sort] || ((a, b) => 0);
   out.sort(by);
   if (words.length && f.sort === "year") { // titles that start with the words come first
@@ -601,14 +607,14 @@ function chipList(f, d) {
   if (f.maxLin != null) c.push(["sources", "one lineage only", g => { g.maxLin = null; }]);
   if (f.minLin != null) c.push(["sources", `${f.minLin}+ lineages`, g => { g.minLin = null; }]);
   if (f.live) c.push(["kind", "live", g => { g.live = false; }]);
-  if (f.gems) c.push(["only", "rare gems", g => { g.gems = false; if (g.sort === "gem") g.sort = "year"; }]);
+  if (f.gems) c.push(["only", f.gems === "rare" ? "your rare gems" : "your gems", g => { g.gems = false; if (g.sort === "gem") g.sort = "year"; }]);
   if (f.noTier) c.push(["tier", "none assigned", g => { g.noTier = false; }]);
   if (f.noYear) c.push(["year", "unknown", g => { g.noYear = false; }]);
   if (f.text) c.push(["words", f.text, g => { g.text = ""; }]);
   if (f.sort !== "year") c.push(["sort", SORTS[f.sort] || f.sort, g => { g.sort = "year"; }]);
   return c;
 }
-const SORTS = { year: "oldest first", "year-desc": "newest first", title: "A–Z", lineages: "least confirmed first", popular: "most popular first", gem: "best gems first" };
+const SORTS = { year: "oldest first", "year-desc": "newest first", title: "A–Z", lineages: "least confirmed first", popular: "most popular first", gem: "your gems first" };
 function renderChips() {
   const el = document.getElementById("chips");
   const chips = chipList(S.f, S.d);
@@ -636,7 +642,7 @@ function examples(d) {
   if (lyr) out.push(`lyrics by ${lyr}`);
   const otherTier = d.tierKeys.find(t => t !== d.tierKeys[0]);
   if (otherTier) out.push(`tier ${otherTier} newest first`);
-  if (d.hasPop) out.splice(1, 0, d.gemCount ? "rare gems" : "most popular first");
+  if (d.hasPop) out.splice(1, 0, d.tagCount ? "my rare gems" : "most popular first");
   out.push("only in one source");
   return out.slice(0, 4);
 }
@@ -743,7 +749,7 @@ function rowHtml(u, d) {
   return `<div class="row${S.sel === u.id ? " sel" : ""}" data-u="${u.id}" tabindex="0" role="button">
     <div class="yr">${u.year || "—"}</div>
     <div style="min-width:0"><div class="t">${esc(u.title)}${alt ? ` <span class="alt">${esc(alt)}</span>` : ""}</div><div class="meta">${unitMeta(u, d)}</div></div>
-    <div class="side">${u._gem ? `<span class="gem" title="${esc((u.pop.gem.reasons || []).join("; "))}">gem</span>` : ""}${popMeter(u)}${linDots(u._lin)}<span class="tier ${esc(u.tier || "")}" title="${esc(u.tier ? "Tier " + u.tier + ": " + (d.tiers[u.tier] || {}).label : "No tier yet")}">${esc(u.tier || "–")}</span></div></div>`;
+    <div class="side">${tagBadge(u)}${popMeter(u)}${linDots(u._lin)}<span class="tier ${esc(u.tier || "")}" title="${esc(u.tier ? "Tier " + u.tier + ": " + (d.tiers[u.tier] || {}).label : "No tier yet")}">${esc(u.tier || "–")}</span></div></div>`;
 }
 function renderBrowse(res) {
   const d = S.d, main = document.getElementById("main");
@@ -798,6 +804,8 @@ function wireMain(main) {
   const x = document.getElementById("closedetail"); if (x) x.onclick = () => { S.sel = null; render(); };
   const fd = document.getElementById("facets"); if (fd) fd.ontoggle = () => { if (innerWidth <= 760) lsSet("facets", fd.open ? "open" : "closed"); };
   main.querySelectorAll("[data-apply]").forEach(b => b.onclick = () => { S.f = JSON.parse(b.dataset.apply); location.hash = "#browse"; render(); });
+  main.querySelectorAll("[data-tag]").forEach(b => b.onclick = () => { const u = S.d.byId.get(+b.dataset.tag); if (u) setTag(u, !u._tag); });
+  main.querySelectorAll("[data-tagx]").forEach(b => b.onclick = () => b.dataset.tagx === "export" ? downloadTags() : document.getElementById("tagfile").click());
 }
 function openUnit(id) { S.sel = id; if (!["browse", "map"].includes(S.view)) location.hash = "#browse"; render(); const el = document.getElementById("detail"); if (el) el.scrollTop = 0; }
 
@@ -829,6 +837,7 @@ function detailHtml(u, d) {
     ${(u.title_alt_script || []).map(t => `<div class="script">${esc(t)}</div>`).join("")}
     ${u.alt_titles ? `<div class="muted" style="margin-top:6px;font-size:13px">Also listed as: ${esc(u.alt_titles.join(" · "))}</div>` : ""}
     ${mediaHtml(u, d)}
+    ${tagBox(u, d)}
     <dl>${dl.join("")}</dl>
     ${popDetail(u, d)}
     <h4>Evidence · ${linDots(u._lin)} ${u._lin} independent lineage${u._lin === 1 ? "" : "s"}</h4>
@@ -861,8 +870,7 @@ function popDetail(u, d) {
   const p = u.pop;
   if (!p) return `<h4>Popularity</h4><div class="muted" style="font-size:13px">No chart, award, article or reissue found for this ${esc(d.unitWord)} yet.</div>`;
   const facets = (d.popularity.facets_present || []).map(f => `<span>${esc(FACET_LABEL[f] || f)}</span><span class="b" style="width:${p.facets[f] || 0}%;${p.facets[f] ? "" : "background:var(--line);width:100%;opacity:.5"}"></span><span class="mono">${p.facets[f] || "–"}</span>`).join("");
-  const gem = p.gem ? `<div style="margin-top:10px"><span class="gem">gem ${p.gem.score}</span><ul class="why">${p.gem.reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul></div>`
-    : p.lead ? `<div style="margin-top:10px"><span class="muted">Worth a listen (no expert word yet)</span><ul class="why">${p.lead.reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul></div>` : "";
+  const gem = p.lead ? `<div style="margin-top:10px"><span class="muted">Worth a listen (no expert word yet)</span><ul class="why">${p.lead.reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul></div>` : "";
   return `<h4>Popularity · <span class="mono">${p.score}</span> of 100</h4>
     <div class="facetbars">${facets}</div>
     <ul class="why" style="margin-top:8px">${p.evidence.map(e => `<li>${e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.note)}</a>` : esc(e.note)} <span class="muted">(${esc(e.source)})</span></li>`).join("")}</ul>${gem}`;
@@ -875,20 +883,22 @@ function renderGems(res) {
   }
   const scope = isBlank(S.f) ? "the whole canon" : "the " + plural(res.length, d.unitWord) + " that match your search";
   const hits = [...res].filter(u => u._pop).sort((a, b) => b._pop - a._pop || b.pop.evidence.length - a.pop.evidence.length).slice(0, 25);
-  const gems = [...res].filter(u => u._gem).sort((a, b) => b._gem - a._gem || a._pop - b._pop).slice(0, 40);
+  const mine = [...res].filter(u => u._tag).sort((a, b) => tagRank(b) - tagRank(a) || a._reach - b._reach), gems = mine.slice(0, 40);
+  const rare = mine.filter(u => u._tag.rare).length;
   const leads = [...res].filter(u => u.pop && u.pop.lead).sort((a, b) => b.pop.lead.score - a.pop.lead.score || a._pop - b._pop).slice(0, 25);
-  const item = (u, extra) => `<div class="row" data-u="${u.id}" tabindex="0" role="button"><div class="yr">${u.year || "—"}</div>
+  const item = (u, extra, badge = "") => `<div class="row" data-u="${u.id}" tabindex="0" role="button"><div class="yr">${u.year || "—"}</div>
     <div style="min-width:0"><div class="t">${esc(u.title)}</div><div class="meta">${unitMeta(u, d)}</div>${extra}</div>
-    <div class="side">${popMeter(u)}</div></div>`;
+    <div class="side">${badge}${popMeter(u)}</div></div>`;
   const sig = Object.entries(P.signals || {}).map(([k, v]) => `<li><b>${esc(k.replace(/_/g, " "))}</b> <span class="muted">· ${esc(FACET_LABEL[v.facet] || v.facet)} · ${v.units.toLocaleString()} ${esc(d.unitWord)}s</span></li>`).join("");
   const missing = (P.listed_without_data || []).map(x => x.replace(/_/g, " ")).join(", ");
   const unm = P.unmatched_mentions || [];
   main.innerHTML = `<div class="stack">
     ${answerHtml()}
     <div class="grid2">
-      <div class="panel"><h2>Rare gems</h2><div class="sub">In ${scope}: ${esc(d.unitWord)}s that experts single out but few people know. ${gems.length ? "Who praised each is listed under it." : ""}</div>
-        <div class="ledger">${gems.map(u => item(u, `<ul class="why">${u.pop.gem.reasons.slice(0, 3).map(r => `<li>${esc(r)}</li>`).join("")}</ul>`)).join("") || `<div class="empty">No gems here yet. ${P.gems && P.gems.needs ? "Gems need " + esc(P.gems.needs) + "." : "Gems need an expert's word and little reach."}</div>`}</div>
-        ${d.gemCount > 40 ? `<button class="btn more" type="button" data-apply='${esc(JSON.stringify({ ...S.f, gems: true, sort: "gem" }))}'>Browse all ${d.gemCount.toLocaleString()} gems</button>` : ""}
+      <div class="panel"><h2>Your gems</h2><div class="sub">In ${scope}: the ${esc(d.unitWord)}s you tagged${mine.length ? ` (${mine.length.toLocaleString()}, ${rare.toLocaleString()} of them rare)` : ""}. A tagged ${esc(d.unitWord)} is a <span class="gem rare">rare gem</span> when its popularity is low: ${esc(LOW_RULE_TEXT)}. Otherwise it stays a <span class="gem">gem</span>.</div>
+        ${tagTools(d)}
+        <div class="ledger">${gems.map(u => item(u, `<ul class="why">${lowWhy(u, d).slice(0, 2).map(r => `<li>${esc(r)}</li>`).join("")}</ul>`, tagBadge(u))).join("") || `<div class="empty">No gems tagged ${isBlank(S.f) ? "yet" : "among these"}. Open any ${esc(d.unitWord)} and press <b>Tag as gem</b>.</div>`}</div>
+        ${mine.length > 40 ? `<button class="btn more" type="button" data-apply='${esc(JSON.stringify({ ...S.f, gems: "all", sort: "gem" }))}'>Browse all ${mine.length.toLocaleString()} of your gems</button>` : ""}
         ${leads.length ? `<h2 style="margin-top:18px">Worth a listen</h2><div class="sub">No expert word yet, but a strong team, a hit beside them, or reissues without chart success. Leads, not gems.</div>
         <div class="ledger">${leads.map(u => item(u, `<ul class="why">${u.pop.lead.reasons.slice(0, 2).map(r => `<li>${esc(r)}</li>`).join("")}</ul>`)).join("")}</div>` : ""}</div>
       <div class="panel"><h2>Biggest hits</h2><div class="sub">In ${scope}, by popularity: the share of the canon each ${esc(d.unitWord)} beats on its strongest evidence, plus agreement across kinds of evidence.</div>
@@ -920,6 +930,162 @@ function personCard(res) {
       ${roles.slice(0, 3).map(([r, n]) => `<div><b>${n.toLocaleString()}</b><span>as ${esc(r === d.perfRole ? "co-" + roleName(r) : roleName(r))}</span></div>`).join("")}</div>
     ${partners.length ? `<div style="margin-top:8px;font-size:13px">${partners.join(" · ")}</div>` : ""}</div>`;
 }
+
+// ---------------------------------------------------------------- the user's gem tags
+// Gems are only what the user tags. A tagged unit whose popularity is low (the rule maestro-score
+// uses: src/maestro/popularity.py low_popularity) is a rare gem; any other tagged unit is a gem.
+// Tags live in the page's own store (db capability) when the page runs as an Artifact, else in this
+// browser; either way they can be exported (format maestro-gem-tags/1, read by maestro-score
+// --picks-file) and imported again.
+const LOW_REISSUES = 2, COUNT_Q = 0.9, COUNT_SHARE = 0.2, COUNT_DISTINCT = 20; // as in popularity.py
+const LOW_RULE_TEXT = "no chart, award or hit list, no cover or article, and outside the top 10% of releases, listeners and views (2 releases or fewer never count)";
+const POP_FACETS = ["contemporary", "penetration", "enduring"];
+function strengthOf(e) { const m = String(e.note || "").replace(/(\d),(?=\d{3}\b)/g, "$1").match(/\d+(?:\.\d+)?/); return m ? +m[0] : 1; }
+// Count thresholds: from the snapshot when it carries them, else derived here from the evidence notes.
+function lowRule(d) {
+  const P = d.popularity || {}, facet = Object.fromEntries(Object.entries(P.signals || {}).map(([k, v]) => [k, v.facet]));
+  let thr = P.low_rule && P.low_rule.count_thresholds;
+  if (!thr) {
+    thr = {}; const vals = {};
+    for (const u of d.units) {
+      const best = {};
+      for (const e of u.pop ? u.pop.evidence : []) if (facet[e.signal] === "enduring") best[e.signal] = Math.max(best[e.signal] || 0, strengthOf(e));
+      for (const [k, v] of Object.entries(best)) (vals[k] ||= []).push(v);
+    }
+    for (const [k, v] of Object.entries(vals)) {
+      v.sort((a, b) => a - b);
+      const top = v[Math.min(v.length - 1, Math.floor(v.length * COUNT_Q))];
+      if (k === "reissues") thr[k] = Math.max(LOW_REISSUES, top);
+      else if (v.length / Math.max(1, d.units.length) > COUNT_SHARE || new Set(v).size >= COUNT_DISTINCT) thr[k] = top;
+    }
+  }
+  return { facet, thr };
+}
+function popularBecause(u, d) { // the evidence that makes a unit popular, strongest first
+  const out = [], { facet, thr } = d.low;
+  for (const e of u.pop ? u.pop.evidence : []) {
+    const k = e.signal, n = strengthOf(e);
+    if (k in thr ? n > thr[k] : k === "reissues" ? n > LOW_REISSUES : POP_FACETS.includes(facet[k])) out.push(e.note);
+  }
+  return out;
+}
+function isLow(u, d) { return u.pop && typeof u.pop.low === "boolean" ? u.pop.low : !popularBecause(u, d).length; }
+function lowWhy(u, d) {
+  if (isLow(u, d)) return [u.pop ? "low popularity: no chart, award or article, and not in the top 10% of any count" : "no popularity evidence at all"];
+  const why = popularBecause(u, d);
+  return why.length ? why.map(w => "popular: " + w) : [`popular (${u._reach} of 100)`];
+}
+
+const TAGS = { map: new Map(), mode: "local", db: null, dl: null, ready: true, readOnly: false, msg: null };
+const tagDocId = (slug, id) => `${slug}~${id}`;
+function loadLocalTags() {
+  try { const a = JSON.parse(lsGet("gemTags") || "[]"); TAGS.map = new Map(a.filter(t => t && t.maestro && t.unit != null).map(t => [tagDocId(t.maestro, t.unit), t])); }
+  catch { TAGS.map = new Map(); }
+}
+function saveLocalTags() { lsSet("gemTags", JSON.stringify([...TAGS.map.values()])); }
+// Attach tags to units; a tag whose unit id changed (a rebuilt canon) is found again by title and year.
+function bindTags(d) {
+  const slug = d.maestro.slug; let n = 0;
+  d.unboundTags = [];
+  for (const u of d.units) u._tag = null;
+  for (const [id, t] of TAGS.map) {
+    if (t.maestro !== slug) continue;
+    let u = d.byId.get(+t.unit);
+    if (!u || fold(u.title) !== fold(t.title)) u = d.units.find(x => !x._tag && fold(x.title) === fold(t.title) && (!t.year || !x.year || x.year === t.year)) || null;
+    if (!u) { d.unboundTags.push(t); continue; }
+    u._tag = { id, rec: t, rare: isLow(u, d) }; n++;
+  }
+  d.tagCount = n;
+}
+function onTagsChanged() { for (const d of Object.values(S.snaps)) bindTags(d); if (S.d) render(); }
+const tagRank = u => u._tag ? (u._tag.rare ? 2 : 1) : 0;
+function tagBadge(u) { return u._tag ? `<span class="gem${u._tag.rare ? " rare" : ""}" title="Tagged by you${u._tag.rare ? ", with low popularity" : ""}">${u._tag.rare ? "rare gem" : "gem"}</span>` : ""; }
+function tagRecord(u, d) { return { maestro: d.maestro.slug, unit: u.id, title: u.title, year: u.year || null, container: u._c ? u._c.title : null, tagged_at: new Date().toISOString() }; }
+async function setTag(u, on) {
+  const d = S.d, id = u._tag ? u._tag.id : tagDocId(d.maestro.slug, u.id), before = TAGS.map.get(id);
+  if (on) TAGS.map.set(id, tagRecord(u, d)); else TAGS.map.delete(id);
+  onTagsChanged();
+  if (TAGS.mode !== "db") return saveLocalTags();
+  try { if (on) await TAGS.db.doc("gem_tags/" + id).set(TAGS.map.get(id)); else await TAGS.db.doc("gem_tags/" + id).delete(); }
+  catch (e) {
+    if (before) TAGS.map.set(id, before); else TAGS.map.delete(id);
+    if (e && e.code === "invalid_argument") { TAGS.readOnly = true; TAGS.msg = "You can see these gem tags but not change them."; }
+    else TAGS.msg = `That tag was not saved (${(e && e.code) || "error"}). Try again.`;
+    onTagsChanged();
+  }
+}
+function tagStoreNote() {
+  if (TAGS.mode === "pending") return "Loading your tags…";
+  return TAGS.mode === "db" ? "Tags are saved with this page, so they follow you to any device." : "Tags are saved in this browser only: export them to keep a copy.";
+}
+function tagBox(u, d) {
+  const low = isLow(u, d), why = popularBecause(u, d).slice(0, 2);
+  const line = low ? (d.hasPop ? "Popularity is low, so a gem tag makes this a rare gem." : "No popularity evidence, so a gem tag makes this a rare gem.")
+    : `Popular${why.length ? ` (${why.join("; ")})` : ""}, so a gem tag makes this a gem, not a rare gem.`;
+  const off = TAGS.mode === "pending" || TAGS.readOnly;
+  return `<div class="tagbox">${u._tag ? `<div>${tagBadge(u)} <span class="muted">tagged by you</span></div>` : ""}
+    <div class="muted">${esc(line)}</div>
+    <button class="btn${u._tag ? "" : " primary"}" type="button" data-tag="${u.id}"${off ? " disabled" : ""}>${u._tag ? "Remove gem tag" : "☆ Tag as gem"}</button>
+    ${TAGS.msg ? `<div class="muted">${esc(TAGS.msg)}</div>` : ""}</div>`;
+}
+function tagTools(d) {
+  const lost = d.unboundTags || [];
+  return `<div class="tagtools"><span class="muted">${esc(tagStoreNote())}</span>
+    <button class="btn" type="button" data-tagx="export"${TAGS.map.size ? "" : " disabled"}>Export tags</button>
+    <button class="btn" type="button" data-tagx="import"${TAGS.mode === "pending" || TAGS.readOnly ? " disabled" : ""}>Import tags…</button></div>
+    ${TAGS.msg ? `<div class="sub">${esc(TAGS.msg)}</div>` : ""}
+    ${lost.length ? `<div class="sub">${plural(lost.length, "tag")} no longer match${lost.length === 1 ? "es" : ""} a ${esc(d.unitWord)} in this snapshot: ${esc(lost.slice(0, 5).map(t => t.title).join(" · "))}${lost.length > 5 ? " …" : ""}. They stay saved and come back if the ${esc(d.unitWord)} returns.</div>` : ""}`;
+}
+function tagExport() {
+  const tags = [...TAGS.map].map(([id, t]) => {
+    const d = S.snaps[t.maestro], u = d && d.units.find(x => x._tag && x._tag.id === id);
+    return u ? { ...t, unit: u.id, title: u.title, year: u.year || null, rare: u._tag.rare, reach: u._reach } : { ...t };
+  }).sort((a, b) => a.maestro.localeCompare(b.maestro) || (a.year || 9999) - (b.year || 9999));
+  return JSON.stringify({ format: "maestro-gem-tags/1", exported_at: new Date().toISOString(),
+    about: "Units tagged as gems in the canon explorer. rare = low popularity when exported. Record them as picks with: maestro-score --pack maestros/<slug> --picks-file <this file>",
+    tags }, null, 1);
+}
+async function downloadTags() {
+  const filename = `gem-tags-${new Date().toISOString().slice(0, 10)}.json`, data = tagExport();
+  if (TAGS.dl) { try { await TAGS.dl.save({ filename, data }); return; } catch (e) { if (e && e.code === "declined") return; } }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], { type: "application/json" })); a.download = filename;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+async function importTags(text) {
+  let x; try { x = JSON.parse(text); } catch { x = null; }
+  if (!x || x.format !== "maestro-gem-tags/1" || !Array.isArray(x.tags)) { TAGS.msg = "That file is not a gem tag export."; return onTagsChanged(); }
+  let added = 0;
+  for (const t of x.tags) {
+    if (!t || typeof t.maestro !== "string" || t.unit == null || typeof t.title !== "string") continue;
+    const id = tagDocId(t.maestro, t.unit); if (TAGS.map.has(id)) continue;
+    const rec = { maestro: t.maestro, unit: +t.unit, title: t.title, year: t.year || null, container: t.container || null, tagged_at: t.tagged_at || new Date().toISOString() };
+    if (TAGS.mode === "db") { try { await TAGS.db.doc("gem_tags/" + id).set(rec); } catch (e) { TAGS.msg = `Import stopped after ${added} tags (${(e && e.code) || "error"}).`; break; } }
+    TAGS.map.set(id, rec); added++;
+  }
+  if (TAGS.mode !== "db") saveLocalTags();
+  if (!TAGS.msg || !TAGS.msg.startsWith("Import stopped")) TAGS.msg = `Imported ${plural(added, "new tag")}.`;
+  onTagsChanged();
+}
+async function initTags() {
+  loadLocalTags();
+  if (!(window.claude && typeof window.claude.use === "function")) return;
+  window.claude.use("downloads").then(x => { TAGS.dl = x; }).catch(() => {});
+  TAGS.mode = "pending";
+  let db = null; try { db = await window.claude.use("db"); } catch {}
+  if (!db) { TAGS.mode = "local"; return onTagsChanged(); }
+  TAGS.db = db;
+  const slow = setTimeout(() => { if (TAGS.mode === "pending") { TAGS.msg = "Your saved tags have not loaded yet."; onTagsChanged(); } }, 10000);
+  db.collection("gem_tags").onSnapshot(snap => {
+    clearTimeout(slow);
+    if (TAGS.mode === "pending") TAGS.msg = null;
+    TAGS.mode = "db"; TAGS.map = new Map(snap.docs.map(x => [x.id, x.data()])); onTagsChanged();
+  }, e => {
+    clearTimeout(slow);
+    TAGS.mode = "local"; TAGS.db = null; loadLocalTags();
+    TAGS.msg = "The page's tag store is unavailable, so tags are kept in this browser for now."; onTagsChanged();
+  });
+}
+document.getElementById("tagfile").onchange = async e => { const f = e.target.files[0]; e.target.value = ""; if (f) importTags(await f.text()); };
 
 // ---------------------------------------------------------------- map: popularity × gemness
 // x: popularity as reach (charts, listeners, reissues; expert esteem left out, since experts speak on the
@@ -966,7 +1132,8 @@ function renderMap(res) {
         <label><input type="checkbox" id="unrated"${showUnrated ? " checked" : ""}> show unrated (${unrated.toLocaleString()})</label></div>
       <div class="mapbox" id="mapbox"><canvas id="map" role="img" aria-label="Scatter of ${esc(d.unitWord)}s: popularity across, gemness up"></canvas></div>
       <div class="legend">${Object.entries(BASIS).map(([b, [lbl, v]]) => `<span><i class="dot${b === "lead" ? " ring" : ""}" style="background:var(${v});border-color:var(${v})"></i>${esc(lbl)} · <span class="mono">${byBasis(b).toLocaleString()}</span></span>`).join("")}
-        <span><i class="dot" style="background:var(--t-none);width:6px;height:6px"></i>Unrated (no gemness evidence yet) · <span class="mono">${unrated.toLocaleString()}</span></span></div>
+        <span><i class="dot" style="background:var(--t-none);width:6px;height:6px"></i>Unrated (no gemness evidence yet) · <span class="mono">${unrated.toLocaleString()}</span></span>
+        <span><i class="dot ring" style="border-color:var(--warn)"></i>Tagged by you · <span class="mono">${res.filter(u => u._tag).length.toLocaleString()}</span></span></div>
       <div class="sub" style="margin:10px 0 0">${esc(M.about)}</div></div>
     <div class="panel"><h2>Top left: good and overlooked</h2><div class="sub">Highest gemness with the least popularity, in ${scope}.</div>
       <div class="ledger">${rated.sort((a, b) => (gemOf(b, model).score - b._reach) - (gemOf(a, model).score - a._reach)).slice(0, 15).map(u => { const g = gemOf(u, model); return `<div class="row${S.sel === u.id ? " sel" : ""}" data-u="${u.id}" tabindex="0" role="button"><div class="yr">${u.year || "—"}</div>
@@ -1023,12 +1190,14 @@ function drawMap(res, model, showUnrated) {
       pts.push({ u, x, y, r: 6, g });
     }
   }
+  ctx.lineWidth = 2; ctx.strokeStyle = css("--warn"); // the user's own gem tags, on top
+  for (const p of pts) if (p.u._tag) { ctx.beginPath(); ctx.arc(p.x, p.y, 7, 0, 2 * Math.PI); ctx.stroke(); }
   const sel = S.sel != null ? pts.find(p => p.u.id === S.sel) : null;
   if (sel) { ctx.beginPath(); ctx.arc(sel.x, sel.y, 8, 0, 2 * Math.PI); ctx.lineWidth = 2; ctx.strokeStyle = css("--ink"); ctx.stroke(); }
   const hit = e => { const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top; let best = null, bd = 100;
     for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i], dd = (p.x - mx) ** 2 + (p.y - my) ** 2; if (dd < bd && dd <= (p.r + 4) ** 2) { bd = dd; best = p; } } return best; };
   cv.onmousemove = e => { const p = hit(e); if (!p) return hideTip();
-    showTip(e, `<b>${esc(p.u.title)}</b>${p.u.year ? ` <span class="mono">${p.u.year}</span>` : ""}<br>popularity ${p.u._reach} · ${p.g ? `gemness ${p.g.score} <span style="opacity:.75">(${esc(BASIS[p.g.basis][0].toLowerCase())})</span>` : "gemness unrated"}`); };
+    showTip(e, `<b>${esc(p.u.title)}</b>${p.u.year ? ` <span class="mono">${p.u.year}</span>` : ""}<br>popularity ${p.u._reach} · ${p.g ? `gemness ${p.g.score} <span style="opacity:.75">(${esc(BASIS[p.g.basis][0].toLowerCase())})</span>` : "gemness unrated"}${p.u._tag ? `<br>your ${p.u._tag.rare ? "rare gem" : "gem"}` : ""}`); };
   cv.onmouseleave = hideTip;
   cv.onclick = e => { const p = hit(e); if (p) { hideTip(); openUnit(p.u.id); } };
 }
@@ -1192,7 +1361,8 @@ function filterFromTool(x) {
   f.maxLin = num(x.max_lineages); f.minLin = num(x.min_lineages);
   if (x.no_tier === true) f.noTier = true;
   if (["year", "year-desc", "title", "lineages", "popular", "gem"].includes(x.sort)) f.sort = x.sort;
-  if (x.gems_only === true) f.gems = true;
+  if (x.gems_only === true) f.gems = x.rare_only === true ? "rare" : "all";
+  else if (x.rare_only === true) f.gems = "rare";
   f._notFound = notFound;
   return f;
 }
@@ -1208,7 +1378,8 @@ function brief(u) {
   for (const [r, ids] of Object.entries(u.credits)) { const o = ids.filter(p => p !== me).map(pname); if (o.length) c[r] = o; }
   return { title: u.title, year: u.year, tier: u.tier, [d.contWord]: u._c ? u._c.title : null, credits: c, lineages: u._lin,
     ...(u.media ? { links: u.media.map(m => `${m.kind} on ${m.site}`) } : {}),
-    ...(u.pop ? { popularity: u.pop.score, evidence: u.pop.evidence.slice(0, 3).map(e => e.note), ...(u.pop.gem ? { gem: u.pop.gem.reasons } : {}) } : {}) };
+    ...(u.pop ? { popularity: u.pop.score, evidence: u.pop.evidence.slice(0, 3).map(e => e.note) } : {}),
+    low_popularity: isLow(u, d), ...(u._tag ? { user_tag: u._tag.rare ? "rare gem" : "gem" } : {}) };
 }
 const FILTER_SCHEMA = {
   type: "object", properties: {
@@ -1220,8 +1391,9 @@ const FILTER_SCHEMA = {
     languages: { type: "array", items: { type: "string" } },
     performers: { type: "string", enum: ["solo", "duet", "trio", "group"] },
     min_lineages: { type: "integer" }, max_lineages: { type: "integer" }, no_tier: { type: "boolean" },
-    gems_only: { type: "boolean", description: "only rare gems: quality evidence but little popularity" },
-    sort: { type: "string", enum: ["year", "year-desc", "title", "lineages", "popular", "gem"], description: "popular = most popular first; gem = best gems first" },
+    gems_only: { type: "boolean", description: "only units the user tagged as gems" },
+    rare_only: { type: "boolean", description: "only the user's rare gems: tagged as gems and low popularity" },
+    sort: { type: "string", enum: ["year", "year-desc", "title", "lineages", "popular", "gem"], description: "popular = most popular first; gem = the user's gems first (rare gems first)" },
   },
 };
 async function askClaude() {
@@ -1263,7 +1435,7 @@ async function askClaude() {
       inputSchema: { type: "object", properties: { filter: FILTER_SCHEMA }, required: ["filter"] },
       execute: x => { const f = filterFromTool(x.filter || {}); delete f._notFound; S.f = f; S.limit = 150; const n = applyFilter(d, f).length; step(`showing ${n}`); setTimeout(render, 0); return { shown: n }; } },
   ];
-  const prompt = `You help a music researcher explore the canon of ${d.maestro.name}: every ${d.unitWord} in a sourced database. Use the tools to look things up; never answer from memory about what the canon holds. Names in tool input should be written as the canon spells them (see frequent_collaborators, or use lookup_person). When the answer is a set of ${d.unitWord}s, call show_results with the filter so the list appears on the page. Then answer in 1 to 4 plain sentences with the numbers you found. Popularity (0 to 100, a rank within this canon from charts, awards, articles and reissues) and rare gems (praised by experts or picked by the user, with little reach) are in each result when known: sort with popular or gem, or set gems_only. If the canon lacks the data to answer (for example ragas or lyrics), say so briefly.
+  const prompt = `You help a music researcher explore the canon of ${d.maestro.name}: every ${d.unitWord} in a sourced database. Use the tools to look things up; never answer from memory about what the canon holds. Names in tool input should be written as the canon spells them (see frequent_collaborators, or use lookup_person). When the answer is a set of ${d.unitWord}s, call show_results with the filter so the list appears on the page. Then answer in 1 to 4 plain sentences with the numbers you found. Popularity (0 to 100, a rank within this canon from charts, awards, articles and reissues) is in each result when known. Gems are only the units the user tagged (user_tag); a tagged unit with low popularity is a rare gem. Sort with popular or gem, or set gems_only or rare_only. Never call an untagged unit a gem. If the canon lacks the data to answer (for example ragas or lyrics), say so briefly.
 
 Canon context (JSON):
 ${JSON.stringify(context)}
@@ -1308,5 +1480,6 @@ S.group = lsGet("group") || "none";
 if (window.claude && typeof window.claude.use === "function") {
   window.claude.use("sample").then(s => { if (s) { S.sample = s; document.getElementById("askbtn").hidden = false; } }).catch(() => {});
 }
+initTags();
 boot();
 </script>

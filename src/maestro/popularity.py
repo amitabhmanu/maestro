@@ -130,6 +130,7 @@ class Scored:
     gem_reasons: list[str] = field(default_factory=list)
     lead: float = 0.0  # worth a listen, no expert word yet
     lead_reasons: list[str] = field(default_factory=list)
+    low: bool = True  # low popularity (`low_popularity`): the user's gem tags show as rare gems
     facet_of: dict[str, str] = field(default_factory=dict, repr=False)
 
 
@@ -406,6 +407,9 @@ def score_canon(store: Store, include_private: bool = False) -> dict[str, Any]:
 
     gems = _score_gems(scored, maestro, present, pack.container, set(pack.data["roles"]["in_scope"]),
                        facet_of, picks, not_gems, load_lists(pack))
+    thresholds = count_thresholds(scored, facet_of)
+    for s in scored.values():
+        s.low = low_popularity(s, thresholds)
 
     return {
         "maestro": pack.slug,
@@ -417,6 +421,10 @@ def score_canon(store: Store, include_private: bool = False) -> dict[str, Any]:
                  "needs": None if any(s.gem for s in scored.values()) else
                  "expert gem lists (lists that claim their units are good and overlooked, with at least "
                  f"{LIST_PURITY_MIN:.0%} low-popularity units), or your own picks of low-popularity units"},
+        "low_rule": {"count_thresholds": thresholds, "low": sum(1 for s in scored.values() if s.low),
+                     "rule": "no chart, award or hit list, no cover or reuse, no article, and outside the top "
+                             f"{1 - COUNT_POPULAR_QUANTILE:.0%} of each count (releases: never popular at "
+                             f"{LOW_POP_REISSUES} or fewer)"},
         "listed_without_data": sorted(set(facet_of) - set(signals)),
         "unmatched_mentions": unmatched,
         "ignored_mentions": dict(ignored),
@@ -675,6 +683,7 @@ def unit_summary(s: Scored) -> dict[str, Any] | None:
     out: dict[str, Any] = {
         "score": round(100 * s.popularity),
         "reach": round(100 * s.reach),  # popularity without expert esteem
+        "low": s.low,  # low popularity: a unit the user tags as a gem is then a rare gem
         "facets": {f: round(100 * x) for f, x in s.facets.items() if x},
         "evidence": [{"signal": e.signal, "note": e.note, "source": e.source, **({"url": e.url} if e.url else {})}
                      for e in ordered_evidence(s)],
@@ -704,6 +713,15 @@ def resolve_reasons(reasons: list[str], people: dict[int, str], titles: dict[int
     return out
 
 
+def explorer_tags(path: str, slug: str) -> list[int]:
+    """Unit ids of one maestro's gem tags in a file the canon explorer exported."""
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    if data.get("format") != "maestro-gem-tags/1":
+        raise SystemExit(f"{path}: not a gem tag export from the canon explorer")
+    return [int(t["unit"]) for t in data.get("tags", []) if t.get("maestro") == slug]
+
+
 # ---- CLI --------------------------------------------------------------------------------
 
 def main(argv: list[str] | None = None) -> int:
@@ -713,6 +731,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--top", type=int, default=20, help="how many popular units and gems to list")
     p.add_argument("--pick", type=int, nargs="+", metavar="UNIT", help="record the user's pick: a gem (also calibrates the experts)")
     p.add_argument("--not-gem", type=int, nargs="+", metavar="UNIT", help="record that the user says a unit is not a gem")
+    p.add_argument("--picks-file", metavar="FILE",
+                   help="record as picks the gem tags exported from the canon explorer (JSON) for this maestro")
     p.add_argument("--json", action="store_true", help="print every scored unit as JSON")
     p.add_argument("--include-private", action="store_true")
     args = p.parse_args(argv)
@@ -722,9 +742,16 @@ def main(argv: list[str] | None = None) -> int:
     dsn = config.dsn_for(pack.slug, args.dsn)
     if not dsn:
         p.error(f"--dsn (or {config.dsn_env_name(pack.slug)} or MAESTRO_DSN) is required")
+    if args.picks_file:
+        args.pick = (args.pick or []) + explorer_tags(args.picks_file, pack.slug)
     store = Store.connect(dsn, pack)
     try:
         if args.pick:
+            known = {r["id"] for r in store.conn.execute(
+                "SELECT id FROM entity WHERE id = ANY(%s)", (args.pick,)).fetchall()}
+            if set(args.pick) - known:
+                p.error(f"no such unit(s) in this store: {sorted(set(args.pick) - known)} "
+                        "(tags hold the unit ids of the snapshot they were made on)")
             for uid in args.pick:
                 store.upsert_claim(uid, "pick", value=True, source_id="user", kind="decided")
             store.conn.commit()

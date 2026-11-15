@@ -2,6 +2,8 @@
 
 import importlib.util
 import json
+
+import pytest
 from types import SimpleNamespace
 
 from maestro.explore import snapshot
@@ -120,6 +122,9 @@ def test_mentions_match_and_score(store_for):
     summary = unit_summary(u[hit])
     assert summary["score"] > 80 and summary["evidence"][0]["source"] == "wikipedia"
     assert summary["reach"] == round(100 * u[hit].reach)  # the explorer map's popularity axis
+    # Low popularity, the rule that makes a gem the user tags a rare gem in the explorer.
+    assert summary["low"] is False and unit_summary(u[plain[0]])["low"] is True
+    assert res["low_rule"]["low"] == sum(1 for x in u.values() if x.low)
     json.dumps(summary)
 
 
@@ -192,6 +197,18 @@ def test_snapshot_carries_popularity(store_for):
     assert units[hit]["pop"]["evidence"][0]["note"] == "won"
     assert "pop" not in units[plain[1]]
     assert snap["popularity"]["signals"]["filmfare"]["units"] == 1
+    assert units[hit]["pop"]["low"] is False and "low_rule" in snap["popularity"]
+
+
+def test_picks_from_explorer_tags(tmp_path):
+    from maestro.popularity import explorer_tags
+    f = tmp_path / "tags.json"
+    f.write_text(json.dumps({"format": "maestro-gem-tags/1", "tags": [
+        {"maestro": "rafi", "unit": 12, "title": "A"}, {"maestro": "eddy-arnold", "unit": 7, "title": "B"}]}))
+    assert explorer_tags(str(f), "rafi") == [12]
+    f.write_text("{}")
+    with pytest.raises(SystemExit):
+        explorer_tags(str(f), "rafi")
 
 
 def test_wikidata_articles_parse():
