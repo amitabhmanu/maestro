@@ -82,6 +82,7 @@ lexicon:
   transliteration: lexicon/translit.tsv
   container_aliases: lexicon/film_aliases.tsv
   people_aliases: lexicon/people.tsv
+  not_people: lexicon/not_people.tsv
 collaborators:
   composers: [Laxmikant-Pyarelal, Shankar-Jaikishan, O. P. Nayyar, Kalyanji-Anandji, Naushad, S. D. Burman, Ravi, Madan Mohan]
   co_singers: [Lata Mangeshkar, Asha Bhosle, Geeta Dutt, Shamshad Begum]

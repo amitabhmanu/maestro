@@ -1,0 +1,8 @@
+# Credit names that are not a person: name<TAB>shown as. Resolve turns a credit to such a record
+# into a plain note on the song ("Singer: Chorus") and drops the record from people lists.
+# Names are folded before matching (case, accents and punctuation ignored).
+Korus	Chorus
+Chorus	Chorus
+Chorus Vocal	Chorus
+Female Chorus	Female chorus
+Male Chorus	Male chorus

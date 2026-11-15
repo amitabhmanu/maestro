@@ -12,6 +12,7 @@ from maestro.resolve import (
     open_reviews,
     resolve,
     review_questions,
+    unlink_non_people,
 )
 
 
@@ -487,3 +488,23 @@ def test_a_recording_reused_in_a_later_film_is_the_original_song(store_for):
     assert units[g.find(late_only)].year == 2010
     assert g.find(twin) not in {g.find(x) for x in units if x != g.find(twin)}
     assert any(i["kind"] == "unit_reused" for i in open_reviews(s, limit=100))
+
+
+def test_credits_to_a_chorus_become_unlinked_credits(store_for):
+    s = store_for("rafi")
+    korus = person(s, "hfgk_online", "28083", "Korus")
+    suman = person(s, "hfgk_online", "4777", "Suman Kalyanpur")
+    a = song(s, "hfgk_online", "100", "Song A")
+    for p in (korus, suman):
+        s.upsert_claim(a, "credit", ref_entity_id=p, value={"role": "singer"}, source_id="hfgk_online")
+    assert resolve(s).as_dict()["unlinked_credits"] == 1
+    active = s.conn.execute("SELECT field, value, ref_entity_id FROM claim WHERE entity_id = %s AND status = 'active'"
+                            " AND field LIKE 'credit%%'", (a,)).fetchall()
+    assert {"field": "credit_unlinked", "value": {"role": "singer", "name": "Chorus"}, "ref_entity_id": None} in active
+    assert not any(r["ref_entity_id"] == korus for r in active)
+    assert any(r["ref_entity_id"] == suman for r in active)
+    # A re-crawl that credits Korus again is turned once more; the unlinked claim is not doubled.
+    s.upsert_claim(a, "credit", ref_entity_id=korus, value={"role": "singer"}, source_id="hfgk_online")
+    assert unlink_non_people(s) == 1
+    assert s.conn.execute("SELECT count(*) AS n FROM claim WHERE entity_id = %s AND field = 'credit_unlinked'"
+                          " AND status = 'active'", (a,)).fetchone()["n"] == 1

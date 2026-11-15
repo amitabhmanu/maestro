@@ -4,7 +4,8 @@ Stages (design doc, component 5), cheapest first:
 
 1. Normalise names and titles: Unicode folding, punctuation, and the pack's lexicons
    (`lexicon.transliteration`, `lexicon.people_aliases`, `lexicon.container_aliases`: TSV files of
-   `variant<TAB>canonical`, relative to the pack folder).
+   `variant<TAB>canonical`, relative to the pack folder). `lexicon.not_people` lists credit names
+   that are no person (a chorus); credits to them become `credit_unlinked` claims first.
 2. Block: only records that share a normalised key (and, for units, a resolved container) are compared.
 3. Decide: records from *different* sources with the same key are merged automatically (a reversible
    `same_as` claim). Records that one source keeps apart (two ids in the same source) are never merged
@@ -263,9 +264,11 @@ def decide_review(store: Store, item_id: int, decision: str, note: str | None = 
 class ResolveStats:
     merged: dict[str, int] = field(default_factory=lambda: defaultdict(int))
     queued: dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    unlinked: int = 0  # credits to records that name no person (`unlink_non_people`)
 
-    def as_dict(self) -> dict[str, dict[str, int]]:
-        return {"merged": dict(self.merged), "queued": dict(self.queued)}
+    def as_dict(self) -> dict[str, Any]:
+        return {"merged": dict(self.merged), "queued": dict(self.queued),
+                **({"unlinked_credits": self.unlinked} if self.unlinked else {})}
 
 
 def _records(store: Store, type_: str) -> list[dict[str, Any]]:
@@ -997,10 +1000,39 @@ def _match_titles(store, groups, distinct, stats, entries, context) -> None:
             stats.queued["unit"] += 1
 
 
+def unlink_non_people(store: Store) -> int:
+    """Turn credits to records that name no person into `credit_unlinked` claims.
+
+    Some sources file a chorus or a group under a person id ("Chorus Vocal", HFGK's "Korus"). The
+    pack's `lexicon.not_people` table (`name<TAB>shown as`) lists those names; each active credit to
+    such a record is superseded by a `credit_unlinked` claim carrying the shown name, the way a
+    source's unnamed credits are kept. It runs on every resolve, so a re-crawl or replay is corrected
+    again. Returns the number of credits turned.
+    """
+    names = load_display_names(store.pack.path.parent, store.pack.data.get("lexicon", {}).get("not_people"))
+    if not names:
+        return 0
+    ids = [r["id"] for r in store.conn.execute("SELECT id, label FROM entity WHERE type = 'person'").fetchall()
+           if fold(r["label"]) in names]
+    rows = store.conn.execute(
+        """SELECT c.*, e.label FROM claim c JOIN entity e ON e.id = c.ref_entity_id
+           WHERE c.ref_entity_id = ANY(%s) AND c.field = 'credit' AND c.status = 'active' ORDER BY c.id""",
+        (ids,)).fetchall()
+    for r in rows:
+        role = (r["value"] or {}).get("role") if isinstance(r["value"], dict) else None
+        store.upsert_claim(r["entity_id"], "credit_unlinked", value={"role": role, "name": names[fold(r["label"])]},
+                           source_id=r["source_id"], kind=r["kind"], confidence=r["confidence"],
+                           extractor=r["extractor"], extractor_version=r["extractor_version"],
+                           raw_page_id=r["raw_page_id"], private=r["visibility"] == "private")
+        store.conn.execute("UPDATE claim SET status = 'superseded' WHERE id = %s", (r["id"],))
+    return len(rows)
+
+
 def resolve(store: Store) -> ResolveStats:
     """Run every resolution pass once. Safe to re-run: existing merges and reviews are kept."""
     norm = Normaliser.for_store(store)
     stats = ResolveStats()
+    stats.unlinked = unlink_non_people(store)
     resolve_people(store, norm, stats)
     resolve_containers(store, norm, stats)
     resolve_units(store, norm, stats)
