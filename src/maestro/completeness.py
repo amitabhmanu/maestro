@@ -93,7 +93,7 @@ def load_units(store: Store, groups: Groups | None = None) -> dict[int, Unit]:
         if r["source_kind"] in ("structured", "semi", "prose") and r["entity_id"] in crediting:
             u.lineages.add(r["lineage"])
 
-    years = _container_years(store, groups)
+    years = container_years(store, groups)
     for u in units.values():
         if u.year is None and u.container is not None:
             u.year = years.get(u.container)
@@ -154,14 +154,36 @@ def _settle_pending_matches(store: Store, groups: Groups, units: dict[int, Unit]
                 break
 
 
-def _container_years(store: Store, groups: Groups) -> dict[int, int]:
+def container_years(store: Store, groups: Groups) -> dict[int, int]:
+    """Each container group's year: the first dated claim on any of its records.
+
+    With the pack's `identity.reissues_after`, a later date is a reissue's (a soundtrack put out again
+    decades on): it counts only when no record of the group has an earlier date and another source
+    also lists the container (a shelved film released late), so a song on a CD of two old films, or
+    reused in a new film, gets no year rather than the year of that release."""
+    cutoff = store.pack.data["identity"].get("reissues_after")
     out: dict[int, int] = {}
+    late: dict[int, tuple[int, str]] = {}
     for r in store.conn.execute(
-        """SELECT c.entity_id, (c.value #>> '{}')::int AS y FROM claim c JOIN entity e ON e.id = c.entity_id
+        """SELECT c.entity_id, c.source_id, (c.value #>> '{}')::int AS y FROM claim c JOIN entity e ON e.id = c.entity_id
            WHERE e.type = 'container' AND c.field = 'year' AND c.status = 'active'
              AND jsonb_typeof(c.value) = 'number' ORDER BY c.id"""
     ).fetchall():
-        out.setdefault(groups.find(r["entity_id"]), r["y"])
+        g = groups.find(r["entity_id"])
+        if cutoff is None or r["y"] <= cutoff:
+            out.setdefault(g, r["y"])
+        else:
+            late.setdefault(g, (r["y"], r["source_id"]))
+    if late:
+        listed: dict[int, set[str]] = defaultdict(set)
+        for r in store.conn.execute(
+            """SELECT c.entity_id, c.source_id FROM claim c JOIN entity e ON e.id = c.entity_id
+               WHERE e.type = 'container' AND c.field = 'xref' AND c.status = 'active'"""
+        ).fetchall():
+            listed[groups.find(r["entity_id"])].add(r["source_id"])
+        for g, (y, source) in late.items():
+            if g not in out and listed[g] - {source}:
+                out[g] = y
     return out
 
 

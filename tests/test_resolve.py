@@ -3,6 +3,7 @@
 import pytest
 
 from maestro.resolve import (
+    Groups,
     Normaliser,
     apply_groups,
     decide_review,
@@ -32,7 +33,8 @@ def song(s, source, xid, title, film=None, composer=None, rafi=True):
 
 def film(s, source, xid, title, year):
     f = s.find_or_create_by_xref("container", source, xid, title)
-    s.upsert_claim(f, "year", value=year, source_id=source)
+    if year is not None:
+        s.upsert_claim(f, "year", value=year, source_id=source)
     return f
 
 
@@ -390,3 +392,47 @@ def test_title_similarity_floor_is_exact_at_or_above_it():
             b = a.replace("a", "aa", 1)
         exact, fast = title_similarity(a, b), title_similarity(a, b, 0.8)
         assert (fast == exact) if exact >= 0.8 else fast < 0.8
+
+
+def test_reissued_soundtracks_join_their_film_and_never_date_a_song(store_for):
+    """Rafi died in 1980: a soundtrack MusicBrainz dates 2017 is the 1960 film put out again, a CD of two
+    old films is no film, and only a container another source also lists keeps a late date."""
+    from maestro.completeness import container_years, load_units
+
+    s = store_for("rafi")
+    assert s.pack.data["identity"]["reissues_after"] == 1986
+    old = film(s, "hfgk_online", "300", "Saranga", 1960)
+    reissue = film(s, "musicbrainz", "release-group:a", "Saranga", 2017)
+    combo = film(s, "musicbrainz", "release-group:b", "Aar Paar / Mr. & Mrs. 55", 2000)
+    shelved = film(s, "hfgk_online", "301", "Rat Ki Uljhan", None)
+    shelved_mb = film(s, "musicbrainz", "release-group:c", "Rat Ki Uljhan", 2024)
+    late_film = film(s, "hfgk_online", "302", "Love And God", 1986)
+    song(s, "hfgk_online", "3000", "Saranga Teri Yaad Mein", old)
+    u_re = song(s, "musicbrainz", "rec-1", "Saranga Teri Yaad Mein", reissue)
+    u_combo = song(s, "musicbrainz", "rec-2", "Udhar Tum Haseen Ho", combo)
+    u_shelved = song(s, "hfgk_online", "3010", "Gul Khilen Ya Na Khilen", shelved)
+    u_late = song(s, "hfgk_online", "3020", "Allah Tere Sath Hai", late_film)
+
+    resolve(s)
+    groups = Groups(s)
+    assert groups.find(reissue) == groups.find(old)
+    assert groups.find(shelved_mb) == groups.find(shelved)  # no year on one side: merged as before
+    years = container_years(s, groups)
+    assert years[groups.find(old)] == 1960
+    assert groups.find(combo) not in years
+    assert years[groups.find(shelved)] == 2024  # HFGK lists it too: a shelved film released late
+    units = load_units(s, groups)
+    assert units[groups.find(u_re)].year == 1960
+    assert units[groups.find(u_combo)].year is None
+    assert units[groups.find(u_shelved)].year == 2024
+    assert units[groups.find(u_late)].year == 1986
+
+
+def test_a_late_soundtrack_with_two_earlier_films_of_its_title_stays_apart(store_for):
+    s = store_for("rafi")
+    a = film(s, "hfgk_online", "400", "Naya Daur", 1957)
+    b = film(s, "hfgk_online", "401", "Naya Daur", 1978)
+    re = film(s, "musicbrainz", "release-group:d", "Naya Daur", 2003)
+    resolve(s)
+    g = Groups(s)
+    assert g.find(re) not in {g.find(a), g.find(b)}

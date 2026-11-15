@@ -416,6 +416,8 @@ def resolve_containers(store: Store, norm: Normaliser, stats: ResolveStats) -> N
                 groups.union(a, b)
                 stats.merged["container"] += 1
 
+    _match_reissues(store, groups, distinct, stats, recs)
+
     by_year: dict[int, list[dict]] = defaultdict(list)
     for r in recs:
         if r["year"] is not None and r["squashed"]:
@@ -434,6 +436,35 @@ def resolve_containers(store: Store, norm: Normaliser, stats: ResolveStats) -> N
                     store, "container_near_title", [a, b],
                     {"labels": [r["label"], similar[0]["label"]], "years": [r["year"], similar[0]["year"]]}, priority=2):
                 stats.queued["container"] += 1
+
+
+def _match_reissues(store: Store, groups: Groups, distinct: set, stats: ResolveStats, recs: list[dict]) -> None:
+    """A container dated after the pack's `identity.reissues_after` (a soundtrack reissued on CD or
+    online decades later) is the film of the same spelling key dated no later than that year, when
+    exactly one such film exists and no source lists both."""
+    cutoff = store.pack.data["identity"].get("reissues_after")
+    if not cutoff:
+        return
+    early: dict[str, set[int]] = defaultdict(set)
+    for r in recs:
+        if r["squashed"] and r["year"] is not None and r["year"] <= cutoff:
+            early[r["squashed"]].add(groups.find(r["id"]))
+    dated_early = {g for gs in early.values() for g in gs}
+    for r in recs:
+        if r["year"] is None or r["year"] <= cutoff or not r["squashed"]:
+            continue
+        g = groups.find(r["id"])
+        if g in dated_early:
+            continue  # already joined to its film
+        cands = {groups.find(c) for c in early.get(r["squashed"], ())}
+        cands = {c for c in cands if c != g and groups.can_join(c, g) and tuple(sorted((c, g))) not in distinct}
+        if len(cands) == 1:
+            a, b = sorted((g, cands.pop()))
+            store.merge_entities(a, b, f"container {r['label']!r} dated {r['year']}, after "
+                                       f"{cutoff}: a reissue of the only earlier container of that title")
+            groups.union(a, b)
+            dated_early.add(groups.find(a))
+            stats.merged["container"] += 1
 
 
 _SQUASH = [("oo", "u"), ("ee", "i"), ("q", "k"), ("w", "v"), ("ph", "f"), ("aye", "ae"), ("ay", "ai"),
