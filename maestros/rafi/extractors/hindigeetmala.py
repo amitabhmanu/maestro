@@ -7,7 +7,14 @@ lyricist, actors on screen and the site's categories (moods, and ragas such as "
 
 A song becomes a unit keyed by the site's song page, in a film container keyed by its film page.
 Albums named "Non-Film (...)" are not films: their songs stay uncontained with that category.
-Film songs with a year are Tier A. Non-film songs get no tier from this source: the site lists only a
+Film songs with a year are Tier A.
+
+With the pack's `unit_mode: enrich` (Amitabh's choice, 15 Nov 2026) the site adds details only: each
+song is placed in the canon's own film (same film-title key, years at most one apart, exactly one
+such film) and matched to that film's song by title. A matched song gains the site's ragas, actors on
+screen and categories; nothing that counts as a sighting (title, credit, part_of, tier) is written, so
+the site adds no lineage. A song the canon cannot place becomes a `listing_gap` claim on the maestro
+(reason `film_not_in_canon` or `song_not_in_film`), the list Amitabh checks by hand. Non-film songs get no tier from this source: the site lists only a
 handful, and a third Tier B lineage with so few songs throws the estimate off (6,085 for 234 on a test).
 """
 
@@ -65,6 +72,92 @@ def _person(store, path: str, name: str) -> int:
     return store.find_or_create_by_xref("person", SOURCE, path, name)
 
 
+GAP_FIELD = "listing_gap"
+
+
+def _canon_index(store):
+    """Per film-title key, the canon's films (merge roots) and their years; per film, its songs' titles."""
+    from maestro.resolve import Groups, Normaliser, _squash_container
+
+    cached = getattr(store, "_hgm_canon_index", None)
+    if cached is not None:
+        return cached
+    norm, groups = Normaliser.for_store(store), Groups(store)
+    films: dict[str, dict[int, set[int]]] = {}
+    for r in store.conn.execute(
+            """SELECT e.id, e.label, (SELECT min((c.value #>> '{}')::int) FROM claim c WHERE c.entity_id = e.id
+                     AND c.field = 'year' AND c.status = 'active' AND jsonb_typeof(c.value) = 'number') AS year
+               FROM entity e WHERE e.type = 'container'
+                 AND NOT EXISTS (SELECT 1 FROM claim x WHERE x.entity_id = e.id AND x.field = 'xref'
+                                 AND x.source_id = %s AND x.status = 'active')""", (SOURCE,)).fetchall():
+        key = _squash_container(norm.container(r["label"]))
+        if key:
+            years = films.setdefault(key, {}).setdefault(groups.find(r["id"]), set())
+            if r["year"]:
+                years.add(r["year"])
+    songs: dict[int, list[tuple[int, str]]] = {}
+    for r in store.conn.execute(
+            """SELECT e.id, e.label, p.ref_entity_id AS film FROM entity e
+               JOIN claim p ON p.entity_id = e.id AND p.field = 'part_of' AND p.status = 'active'
+               WHERE e.type = %s""", (store.pack.unit,)).fetchall():
+        key = norm.title(r["label"])
+        if key:
+            songs.setdefault(groups.find(r["film"]), []).append((groups.find(r["id"]), key))
+    cached = store._hgm_canon_index = (films, songs, norm, groups)
+    return cached
+
+
+def place(store, film: dict, title: str) -> tuple[list[int], str]:
+    """The canon songs a listing names (one, or the versions of one song that tie), or none with the
+    reason it could not be placed. The thresholds are resolve's own for titles in one film."""
+    from maestro.resolve import (AUTO_TITLE_RATIO, CLEAR_MARGIN, CLEAR_TITLE_RATIO, TIE_MARGIN,
+                                 _squash_container, title_similarity)
+
+    films, songs, norm, _groups = _canon_index(store)
+    roots = [root for root, years in films.get(_squash_container(norm.container(film["title"])), {}).items()
+             if not years or not film["year"] or any(abs(y - film["year"]) <= 1 for y in years)]
+    if len(roots) != 1:
+        return [], "film_not_in_canon" if not roots else "film_ambiguous"
+    key = norm.title(title)
+    best: dict[int, float] = {}
+    for unit, k in songs.get(roots[0], []):
+        best[unit] = max(best.get(unit, 0.0), title_similarity(key, k))
+    ranked = sorted(best.items(), key=lambda x: -x[1])
+    if not ranked or ranked[0][1] < CLEAR_TITLE_RATIO:
+        return [], "song_not_in_film"
+    top = ranked[0][1]
+    tied = [u for u, sim in ranked if top - sim < TIE_MARGIN]
+    if top >= AUTO_TITLE_RATIO:
+        return tied, "matched"          # versions of one song ("... (Sad)") all get the details
+    rest = ranked[len(tied)][1] if len(ranked) > len(tied) else 0.0
+    if len(tied) == 1 and top - rest >= CLEAR_MARGIN:
+        return tied, "matched"
+    return [], "song_not_in_film"
+
+
+def _enrich(ctx, data: dict, claim) -> None:
+    from maestro.lyrics import first_line
+
+    store, maestro = ctx.store, ctx.store.maestro_entity()
+    for s in data["songs"]:
+        film = s["film"]
+        if film is None or NON_FILM.match(film["title"]):
+            continue
+        units, why = place(store, film, s["title"])
+        if not units:
+            claim(maestro, GAP_FIELD, {"title": first_line(s["title"]), "film": film["title"], "year": film["year"],
+                                       "url": urljoin(BASE, f"song/{s['key']}.htm"), "reason": why})
+            continue
+        for unit in units:
+            for path, name in s["actors"]:
+                claim(unit, "on_screen", ref=_person(store, path, name))
+            for c in s["categories"]:
+                if c.lower().startswith("raga - "):
+                    claim(unit, "raga", c[7:].strip())
+                else:
+                    claim(unit, "category", c)
+
+
 def extract(ctx) -> None:
     data = parse(ctx.page.text)
     if "page=" not in ctx.page.url:
@@ -77,6 +170,11 @@ def extract(ctx) -> None:
     def claim(eid, field, value=None, ref=None):
         store.upsert_claim(eid, field, value=value, ref_entity_id=ref, source_id=SOURCE,
                            extractor=EXTRACTOR, extractor_version="1", raw_page_id=raw)
+
+    source = next((x for x in store.pack.data.get("sources", []) if x["id"] == SOURCE), {})
+    if source.get("unit_mode") == "enrich":
+        _enrich(ctx, data, claim)
+        return
 
     for s in data["songs"]:
         film = s["film"]
