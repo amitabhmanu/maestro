@@ -440,3 +440,35 @@ def test_a_late_soundtrack_with_two_earlier_films_of_its_title_stays_apart(store
     resolve(s)
     g = Groups(s)
     assert g.find(re) not in {g.find(a), g.find(b)}
+
+
+def test_a_recording_reused_in_a_later_film_is_the_original_song(store_for):
+    """'Aaj Mausam Bada Beimaan Hai' (Loafer, 1973) in Monsoon Wedding (2001) is not a new song; a
+    shelved film's song with no earlier twin stays; two earlier twins go to review."""
+    from maestro.completeness import load_units
+
+    s = store_for("rafi")
+    loafer = film(s, "hfgk_online", "500", "Loafer", 1973)
+    orig = song(s, "hfgk_online", "5000", "Aaj Mausam Bada Beimaan Hai, Bada Beimaan Hai Aaj Mausam", loafer)
+    monsoon = film(s, "musicbrainz", "release-group:m", "Monsoon Wedding", 2001)
+    film(s, "atulsongaday", "Monsoon Wedding", "Monsoon Wedding", 2001)
+    reused = song(s, "musicbrainz", "rec-m", "Aaj Mausam Bada Beimann Hai (Today the Weather Plays Tricks on Me)",
+                  monsoon)
+    shelved = film(s, "hfgk_online", "501", "Aahat", 2010)
+    film(s, "musicbrainz", "release-group:n", "Aahat", 2010)
+    late_only = song(s, "hfgk_online", "5010", "Zamana Hai Pyar Ka Suno Dilwalo", shelved)
+    a = film(s, "hfgk_online", "502", "Dosti", 1964)
+    b = film(s, "hfgk_online", "503", "Dost", 1974)
+    song(s, "hfgk_online", "5020", "Gadi Bula Rahi Hai Seeti Baja Rahi Hai", a)
+    song(s, "hfgk_online", "5021", "Gadi Bula Rahi Hai Seeti Baja Rahi Hai", b)
+    later = film(s, "musicbrainz", "release-group:o", "Train Songs", 2005)
+    twin = song(s, "musicbrainz", "rec-o", "Gadi Bula Rahi Hai", later)
+
+    resolve(s)
+    g = Groups(s)
+    assert g.find(reused) == g.find(orig)
+    units = load_units(s, g)
+    assert units[g.find(orig)].year == 1973
+    assert units[g.find(late_only)].year == 2010
+    assert g.find(twin) not in {g.find(x) for x in units if x != g.find(twin)}
+    assert any(i["kind"] == "unit_reused" for i in open_reviews(s, limit=100))
