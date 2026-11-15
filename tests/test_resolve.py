@@ -19,7 +19,7 @@ def person(s, source, xid, name):
     return s.find_or_create_by_xref("person", source, xid, name)
 
 
-def song(s, source, xid, title, film=None, composer=None, rafi=True):
+def song(s, source, xid, title, film=None, composer=None, rafi=True, tier="A"):
     u = s.find_or_create_by_xref("song", source, xid, title)
     if film:
         s.upsert_claim(u, "part_of", ref_entity_id=film, value={"position": 1}, source_id=source)
@@ -27,7 +27,8 @@ def song(s, source, xid, title, film=None, composer=None, rafi=True):
         s.upsert_claim(u, "credit", ref_entity_id=composer, value={"role": "composer"}, source_id=source)
     if rafi:
         s.upsert_claim(u, "credit", ref_entity_id=s.maestro_entity(), value={"role": "singer"}, source_id=source)
-        s.upsert_claim(u, "tier", value="A", source_id="claude", kind="decided")
+        if tier:
+            s.upsert_claim(u, "tier", value=tier, source_id="claude", kind="decided")
     return u
 
 
@@ -453,16 +454,20 @@ def test_a_recording_reused_in_a_later_film_is_the_original_song(store_for):
     monsoon = film(s, "musicbrainz", "release-group:m", "Monsoon Wedding", 2001)
     film(s, "atulsongaday", "Monsoon Wedding", "Monsoon Wedding", 2001)
     reused = song(s, "musicbrainz", "rec-m", "Aaj Mausam Bada Beimann Hai (Today the Weather Plays Tricks on Me)",
-                  monsoon)
+                  monsoon, tier=None)
     shelved = film(s, "hfgk_online", "501", "Aahat", 2010)
     film(s, "musicbrainz", "release-group:n", "Aahat", 2010)
-    late_only = song(s, "hfgk_online", "5010", "Zamana Hai Pyar Ka Suno Dilwalo", shelved)
+    late_only = song(s, "hfgk_online", "5010", "Zamana Hai Pyar Ka Suno Dilwalo", shelved, tier="C")
+    # A shelved film's own song (HFGK gives it a tier) is never matched away, even to a like title.
+    zamana = film(s, "mohdrafi", "Zamana", "Zamana", 1960)
+    lookalike = song(s, "mohdrafi", "zamana-1", "Zamana Hai Pyar Ka Suno Dilwalo Re", zamana)
     a = film(s, "hfgk_online", "502", "Dosti", 1964)
     b = film(s, "hfgk_online", "503", "Dost", 1974)
     song(s, "hfgk_online", "5020", "Gadi Bula Rahi Hai Seeti Baja Rahi Hai", a)
     song(s, "hfgk_online", "5021", "Gadi Bula Rahi Hai Seeti Baja Rahi Hai", b)
     later = film(s, "musicbrainz", "release-group:o", "Train Songs", 2005)
-    twin = song(s, "musicbrainz", "rec-o", "Gadi Bula Rahi Hai", later)
+    twin = song(s, "musicbrainz", "rec-o", "Gadi Bula Rahi Hai Seeti Baja Rahi Hai", later, tier=None)
+    loose = song(s, "musicbrainz", "rec-p", "Gadi Chali", later, tier=None)
 
     resolve(s)
     g = Groups(s)
@@ -470,5 +475,43 @@ def test_a_recording_reused_in_a_later_film_is_the_original_song(store_for):
     units = load_units(s, g)
     assert units[g.find(orig)].year == 1973
     assert units[g.find(late_only)].year == 2010
-    assert g.find(twin) not in {g.find(x) for x in units if x != g.find(twin)}
-    assert any(i["kind"] == "unit_reused" for i in open_reviews(s, limit=100))
+    assert g.find(late_only) != g.find(lookalike)
+    reused_reviews = [i for i in open_reviews(s, limit=100) if i["kind"] == "unit_reused"]
+    assert len(reused_reviews) == 2 and all(g.find(twin) in i["subject_ids"] for i in reused_reviews)
+    assert not any(g.find(loose) in i["subject_ids"] for i in open_reviews(s, limit=100))
+
+
+def test_reuse_matching_respects_credits_named_films_and_original_years(store_for):
+    """A later film's song with no Rafi credit is not matched; a CD named after two films only gives
+    songs of those films; a merged late copy's own year never dates the original."""
+    from maestro.completeness import load_units
+
+    s = store_for("rafi")
+    bhai = film(s, "hfgk_online", "600", "Bhai Bahen", 1969)
+    orig = song(s, "hfgk_online", "6000", "Dheere Dheere Muhabbat Javan Ho Gaee", bhai)
+    aashiqui = film(s, "atulsongaday", "Aashiqui", "Aashiqui", 1990)
+    film(s, "musicbrainz", "release-group:q", "Aashiqui", 1990)
+    other = song(s, "atulsongaday", "dheere", "Dheere Dheere Muhabbat Javan Ho Gaee", aashiqui, rafi=False, tier=None)
+    s.upsert_claim(other, "year", value=1990, source_id="atulsongaday")
+
+    ddd = film(s, "hfgk_online", "601", "Dil Deke Dekho", 1959)
+    song(s, "hfgk_online", "6010", "Bolo Bolo Kuchh To Bolo Jee", ddd)
+    film(s, "hfgk_online", "602", "Zamane Ko Dikhana Hai", 1981)
+    combo = film(s, "musicbrainz", "release-group:r", "Zamaane Ko Dikhana Hain / Abdullah", 1996)
+    cd_song = song(s, "musicbrainz", "rec-r", "Bolo Bolo Kuchh To Bolo Jee", combo, tier=None)
+
+    loafer = film(s, "hfgk_online", "603", "Loafer", 1973)
+    aaj = song(s, "hfgk_online", "6030", "Aaj Mausam Bada Beimaan Hai", loafer)
+    monsoon = film(s, "musicbrainz", "release-group:s", "Monsoon Wedding", 2001)
+    copy = song(s, "musicbrainz", "rec-s", "Aaj Mausam Bada Beimaan Hai", monsoon, tier=None)
+    s.upsert_claim(copy, "year", value=2001, source_id="musicbrainz")
+
+    resolve(s)
+    g = Groups(s)
+    assert g.find(other) != g.find(orig)
+    assert g.find(cd_song) not in {g.find(x) for x in (orig, aaj)}
+    assert any(i["kind"] == "unit_reused" and g.find(cd_song) in i["subject_ids"] for i in open_reviews(s, limit=100))
+    assert g.find(copy) == g.find(aaj)
+    units = load_units(s, g)
+    assert units[g.find(aaj)].year == 1973
+    assert units[g.find(orig)].year == 1969

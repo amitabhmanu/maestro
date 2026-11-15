@@ -646,12 +646,27 @@ def resolve_units(store: Store, norm: Normaliser, stats: ResolveStats) -> None:
             _match_uncontained_by_title(store, norm, groups, distinct, stats, unit_recs)
 
 
+REUSE_KEY_LETTERS = 5  # titles are compared only when one opens like the other, from its first or second word
+
+
+def _opening_keys(key: str) -> set[str]:
+    words = key.split()
+    return {k for k in (_squash("".join(words[i:]))[:REUSE_KEY_LETTERS] for i in range(min(2, len(words))))
+            if len(k) == REUSE_KEY_LETTERS}
+
+
 def _match_reused(store, norm, groups, distinct, stats, unit_recs, container_of) -> None:
-    """A recording put in a container dated after the pack's `identity.reissues_after` (an old song
-    reused in a new film, a soundtrack only a later release dates) is not a new offering: it is the
-    same recording as a unit of a like title in a container dated no later than that year. A clear
-    best match (as within one film) merges; weaker or tied candidates go to review. A late unit with
-    no earlier twin (a shelved film's song released late) is left as it is."""
+    """A recording found only in containers dated after the pack's `identity.reissues_after` (an old
+    song reused in a new film, a compilation only a later release dates) is not a new offering: it is
+    the canon song of a like title in a container dated no later than that year.
+
+    Only units credited to the maestro that no source has given a tier are matched: a song a register
+    lists (a shelved film's song released late) is an original, and a source's list of a later film's
+    songs without credits names other singers' songs too. Candidates are canon songs with a tier, so
+    copies that are themselves floating never multiply the choices. When the late container's title
+    names films of the canon (a CD of two old soundtracks), only songs of those films are candidates,
+    and a match elsewhere goes to review. A clear best match (similarity >= AUTO_TITLE_RATIO, leading
+    the next by TIE_MARGIN) merges; a tie at that level goes to review; looser titles are left."""
     cutoff = store.pack.data["identity"].get("reissues_after")
     if not cutoff:
         return
@@ -659,6 +674,9 @@ def _match_reused(store, norm, groups, distinct, stats, unit_recs, container_of)
     for cid, y in _years(store).items():
         g = groups.find(cid)
         first[g] = min(first.get(g, y), y)
+    tiered: set[int] = set()
+    for r in store.conn.execute("SELECT DISTINCT entity_id FROM claim WHERE field = 'tier' AND status = 'active'"):
+        tiered.add(groups.find(r["entity_id"]))
     early: dict[int, str] = {}
     late: dict[int, str] = {}
     for r in unit_recs:
@@ -670,24 +688,61 @@ def _match_reused(store, norm, groups, distinct, stats, unit_recs, container_of)
         if y is None:
             continue
         (early if y <= cutoff else late).setdefault(groups.find(r["id"]), key)
-    late = {g: k for g, k in late.items() if g not in early}
+    maestro = store.maestro_entity()
+    credited = {groups.find(r["entity_id"]) for r in store.conn.execute(
+        """SELECT DISTINCT entity_id FROM claim WHERE field = 'credit' AND status = 'active'
+             AND ref_entity_id = %s""", (maestro,)).fetchall()}
+    late = {g: k for g, k in late.items() if g not in early and g not in tiered and g in credited}
+    early = {g: k for g, k in early.items() if g in tiered}
+    # Which canon films a late container's title names ("Aar Paar / Mr. & Mrs. 55", a CD of two).
+    def film_key(label: str) -> str:  # "Mr. & Mrs. 55" and "Mr And Mrs 55" alike
+        return _squash_container(norm.container(re.sub(r"(?i)\band\b|&", " ", label)))
+
+    ckeys: dict[int, set[str]] = defaultdict(set)
+    clabels: dict[int, list[str]] = defaultdict(list)
+    for r in _records(store, "container"):
+        g = groups.find(r["id"])
+        clabels[g].append(r["label"])
+        k = film_key(r["label"])
+        if k:
+            ckeys[g].add(k)
+    film_of: dict[int, int] = {}
+    for r in unit_recs:
+        c = container_of.get(r["id"])
+        if c is not None:
+            film_of.setdefault(groups.find(r["id"]), groups.find(c))
+    early_films = {c for c, y in first.items() if y <= cutoff}
+
+    def named_films(c: int) -> set[int]:
+        parts = [p for label in clabels.get(c, []) for p in re.split(r"\s*(?:/|,| - )\s*", label) if p]
+        text = " ".join(film_key(p) for p in parts)
+        return {f for f in early_films if f != c and any(len(k) >= 4 and k in text for k in ckeys[f])}
+    index: dict[str, set[int]] = defaultdict(set)
+    for g, key in early.items():
+        for k in _opening_keys(key):
+            index[k].add(g)
     for g0, key in sorted(late.items()):
         g = groups.find(g0)
-        if g in early:
-            continue  # joined an earlier unit in this pass
-        cands = sorted(((title_similarity(key, ck, CLEAR_TITLE_RATIO), c) for c, ck in early.items()
-                        if groups.can_join(g, c) and tuple(sorted((g, c))) not in distinct), reverse=True)
-        cands = [(sim, c) for sim, c in cands if sim >= CLEAR_TITLE_RATIO]
+        pool = {groups.find(c) for k in _opening_keys(key) for c in index.get(k, ())}
+        cands = sorted(((title_similarity(key, early[c], AUTO_TITLE_RATIO), c) for c in pool
+                        if c in early and groups.can_join(g, c) and tuple(sorted((g, c))) not in distinct),
+                       reverse=True)
+        cands = [(sim, c) for sim, c in cands if sim >= AUTO_TITLE_RATIO]
         if not cands:
             continue
+        named = named_films(film_of[g0]) if g0 in film_of else set()
+        outside = bool(named) and not any(film_of.get(c) in named for _s, c in cands)
+        if named and not outside:
+            cands = [(s_, c) for s_, c in cands if film_of.get(c) in named]
         sim, c = cands[0]
-        lead = sim - cands[1][0] if len(cands) > 1 else 1.0
-        if lead >= TIE_MARGIN and (sim >= AUTO_TITLE_RATIO or lead >= CLEAR_MARGIN):
+        if not outside and (len(cands) == 1 or sim - cands[1][0] >= TIE_MARGIN):
             keep, other = sorted((g, c))
             store.merge_entities(keep, other, f"title {key!r} ~ {early[c]!r} ({sim:.2f}): a recording reused "
                                               f"after {cutoff} is the earlier unit, not a new one")
             groups.union(keep, other)
-            early[groups.find(keep)] = early.pop(c)
+            if keep != c:
+                early[keep] = early.pop(c)
+                film_of[keep] = film_of.get(c)
             stats.merged["unit"] += 1
         else:
             for sim, c in cands[:3]:
