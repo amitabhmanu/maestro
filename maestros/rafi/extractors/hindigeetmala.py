@@ -20,6 +20,7 @@ handful, and a third Tier B lineage with so few songs throws the estimate off (6
 
 from __future__ import annotations
 
+import json
 import re
 from html import unescape
 from urllib.parse import urljoin
@@ -147,9 +148,17 @@ def _enrich(ctx, data: dict, claim) -> None:
         if film is None or NON_FILM.match(film["title"]):
             continue
         units, why = place(store, film, s["title"])
-        if not units:
-            claim(maestro, GAP_FIELD, {"title": first_line(s["title"]), "film": film["title"], "year": film["year"],
-                                       "url": urljoin(BASE, f"song/{s['key']}.htm"), "reason": why})
+        url = urljoin(BASE, f"song/{s['key']}.htm")
+        gap = None if units else {"title": first_line(s["title"]), "film": film["title"], "year": film["year"],
+                                  "url": url, "reason": why}
+        # A re-read (after a fix, or once the canon has the film) supersedes this listing's earlier gap
+        # when the outcome changed; claims are never deleted.
+        store.conn.execute(
+            """UPDATE claim SET status = 'superseded' WHERE entity_id = %s AND field = %s AND source_id = %s
+                 AND status = 'active' AND value ->> 'url' = %s AND value IS DISTINCT FROM %s::jsonb""",
+            (maestro, GAP_FIELD, SOURCE, url, json.dumps(gap) if gap else None))
+        if gap:
+            claim(maestro, GAP_FIELD, gap)
             continue
         for unit in units:
             for path, name in s["actors"]:
