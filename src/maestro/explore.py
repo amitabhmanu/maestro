@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from maestro.completeness import completeness_report, load_units
+from maestro.completeness import container_years, completeness_report, load_units
 from maestro import gemness
 from maestro.lyrics import Policy as LyricsPolicy
 from maestro.lyrics import beyond_first_line, first_line
@@ -342,8 +342,14 @@ def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
     labels = {r["id"]: r["label"] for r in store.conn.execute(
         "SELECT id, label FROM entity WHERE id = ANY(%s)", (list(containers | people),)).fetchall()}
     out_containers = {}
+    cyears = container_years(store, groups)  # a reissue's date is not the film's year
     for cid in sorted(containers):
         d = cfacts.get(cid, {})
+        if "year" in d:
+            if cid in cyears:
+                d["year"] = cyears[cid]
+            else:
+                del d["year"]
         titles = d.pop("titles", [])
         title = labels.get(cid) or (titles[0] if titles else str(cid))
         alt = [t for t in titles if t != title]
