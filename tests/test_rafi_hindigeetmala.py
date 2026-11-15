@@ -129,3 +129,29 @@ def test_place_gives_versions_of_one_song_the_details(store_for):
     b = song(s, "hfgk_online", "3", "Pardesiyon Se Na Ankhiyan Milana", f)
     units, why = hgm.place(s, {"title": "Jab Jab Phool Khile", "year": 1965}, "Pardesiyon Se Na Aankhiyan Milana (Sad)")
     assert why == "matched" and set(units) == {a, b}
+
+
+def test_place_searches_a_film_the_canon_holds_twice(store_for):
+    s = store_for("rafi")
+    hfgk = film(s, "hfgk_online", "6373", "Pyasa", 1957)
+    atul = film(s, "atulsongaday", "f1", "Pyaasa", 1957)
+    u = song(s, "hfgk_online", "1", "Jinhen Naaz Hai Hind Par Woh Kahan Hain", hfgk)
+    song(s, "atulsongaday", "2", "Sar Jo Tera Chakraye", atul)
+    units, why = hgm.place(s, {"title": "Pyaasa", "year": 1957}, "Jinhe Naaz Hai Hind Par Wo Kahan Hain")
+    assert why == "matched" and units == [u]
+    assert hgm.place(s, {"title": "Pyaasa", "year": 1957}, "Ye Duniya Agar Mil Bhi Jaye")[1] == "song_not_in_film"
+
+
+def test_reread_supersedes_a_gap_once_the_song_is_placed(store_for):
+    s = store_for("rafi")
+    _run(s, SEED, "page1.html")
+    gaps = lambda: {g["title"]: g["reason"] for g in _values(s, s.maestro_entity(), "listing_gap")}
+    assert gaps()["Chaudhavi Ka Chand Ho, Ya Aaftab Ho"] == "film_not_in_canon"
+    f = film(s, "hfgk_online", "100", "Chaudhvin Ka Chand", 1960)
+    u = song(s, "hfgk_online", "101", "Chaudhvin Ka Chand Ho Ya Aaftab Ho", f)
+    s._hgm_canon_index = None
+    _run(s, SEED, "page1.html")
+    assert "Chaudhavi Ka Chand Ho, Ya Aaftab Ho" not in gaps() and _values(s, u, "raga") == ["Pahadi"]
+    n = len(_values(s, s.maestro_entity(), "listing_gap"))
+    _run(s, SEED, "page1.html")                     # the same outcome again: nothing new, nothing superseded
+    assert len(_values(s, s.maestro_entity(), "listing_gap")) == n
