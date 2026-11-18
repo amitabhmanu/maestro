@@ -395,8 +395,9 @@ def _page_source() -> str:
     return resources.files("maestro").joinpath("explorer/index.html").read_text("utf-8")
 
 
-def write_site(out: Path, snaps: list[dict[str, Any]]) -> list[Path]:
-    """Write index.html, canon/<slug>.json per snapshot and canon/index.json (merged with earlier runs)."""
+def write_site(out: Path, snaps: list[dict[str, Any]], registers: list[dict[str, Any]] | None = None) -> list[Path]:
+    """Write index.html, canon/<slug>.json per snapshot, canon/films/<slug>.json per film register
+    (the Films view) and canon/index.json (merged with earlier runs)."""
     (out / "canon").mkdir(parents=True, exist_ok=True)
     (out / "index.html").write_text(_page_source(), "utf-8")
     written = [out / "index.html"]
@@ -405,6 +406,7 @@ def write_site(out: Path, snaps: list[dict[str, Any]]) -> list[Path]:
         index = json.loads(idx_path.read_text("utf-8"))
     except (OSError, ValueError):
         index = {"maestros": []}
+    index.setdefault("maestros", [])
     for snap in snaps:
         m = snap["maestro"]
         path = out / "canon" / f"{m['slug']}.json"
@@ -415,6 +417,15 @@ def write_site(out: Path, snaps: list[dict[str, Any]]) -> list[Path]:
             "file": f"canon/{m['slug']}.json", "generated_at": snap["generated_at"],
         }]
     index["maestros"].sort(key=lambda x: x["name"])
+    for reg in registers or []:
+        r = reg["register"]
+        (out / "canon" / "films").mkdir(exist_ok=True)
+        path = out / "canon" / "films" / f"{r['slug']}.json"
+        path.write_text(json.dumps(reg, ensure_ascii=False, separators=(",", ":"), default=str), "utf-8")
+        written.append(path)
+        index["registers"] = [x for x in index.get("registers", []) if x["slug"] != r["slug"]] + [{
+            "slug": r["slug"], "name": r["name"], "films": len(reg["films"]),
+            "file": f"canon/films/{r['slug']}.json", "generated_at": reg["generated_at"]}]
     idx_path.write_text(json.dumps(index, ensure_ascii=False, indent=1), "utf-8")
     written.append(idx_path)
     return written
@@ -453,7 +464,7 @@ def main(argv: list[str] | None = None) -> int:
     pairs = [m.split("=", 1) if "=" in m else [m, None] for m in args.maestro]
     if not pairs and args.pack:
         pairs = [[args.pack, args.dsn]]
-    snaps = []
+    snaps, registers = [], []
     for pack_dir, dsn in pairs:
         pack = load_pack(pack_dir)
         dsn = config.dsn_for(pack.slug, dsn)
@@ -461,6 +472,12 @@ def main(argv: list[str] | None = None) -> int:
             p.error(f"no store for {pack.slug}: give {pack_dir}=DSN or set {config.dsn_env_name(pack.slug)}")
         store = Store.connect(dsn, pack)
         try:
+            if store.is_register:  # a film register: the page's Films view
+                from maestro.films import films_snapshot
+
+                registers.append(films_snapshot(store))
+                print(f"{pack.data['identity']['name']}: {len(registers[-1]['films'])} films")
+                continue
             snaps.append(snapshot(store, include_private=args.include_private))
         finally:
             store.close()
@@ -477,10 +494,10 @@ def main(argv: list[str] | None = None) -> int:
             path.write_text(json.dumps(snap, ensure_ascii=False, separators=(",", ":"), default=str), "utf-8")
             n = sum(1 for u in snap["units"] if u.get("media"))
             print(f"{snap['maestro']['name']}: links for {n} of {len(snap['units'])} {snap['maestro']['unit']}s")
-    if not snaps and not (args.out / "canon" / "index.json").exists():
+    if not snaps and not registers and not (args.out / "canon" / "index.json").exists():
         p.error("give --maestro PACK=DSN (or --pack and --dsn), or --out a folder written earlier")
-    if snaps or not (args.out / "index.html").exists():
-        write_site(args.out, snaps)
+    if snaps or registers or not (args.out / "index.html").exists():
+        write_site(args.out, snaps, registers)
     else:
         (args.out / "index.html").write_text(_page_source(), "utf-8")  # refresh the page only
     print(f"wrote {args.out}/")

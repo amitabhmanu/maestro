@@ -294,7 +294,19 @@ class Store:
             rows = cur.fetchmany(QUERY_ROW_LIMIT) if cur.description else []
         return rows
 
+    @property
+    def is_register(self) -> bool:
+        return self.pack.data["identity"].get("kind") == "register"
+
     def _canon_units_sql(self) -> str:
+        if self.is_register:
+            # A register's canon is every unit of its unit type that is not merged away.
+            return """
+                SELECT e.id, e.label FROM entity e
+                WHERE e.type = %(unit)s
+                  AND NOT EXISTS (SELECT 1 FROM claim s WHERE s.entity_id = e.id
+                                  AND s.field = 'same_as' AND s.status = 'active')
+            """
         # A canon unit is an entity of the pack's unit type, not merged away, with an active
         # credit to the maestro in an in-scope role.
         return """

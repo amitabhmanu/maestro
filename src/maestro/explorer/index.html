@@ -63,6 +63,9 @@ h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
 .ask .field { flex: 1; min-width: 0; position: relative; }
 .ask input { width: 100%; border: 1.5px solid var(--line); background: var(--bg); border-radius: var(--r); padding: 9px 12px; font-size: 15px; }
 .ask input:focus { border-color: var(--accent); outline: none; }
+.fq input, .ftools input { width: 100%; border: 1.5px solid var(--line); background: var(--bg); color: var(--ink); border-radius: var(--r); padding: 8px 12px; font-size: 15px; }
+.ftools input { width: 4.6em; padding: 5px 6px; font-size: 13px; }
+.fq input:focus, .ftools input:focus { border-color: var(--accent); outline: none; }
 .btn { border: 1px solid var(--line); background: var(--panel); border-radius: var(--r); padding: 6px 12px; font-weight: 500; white-space: nowrap; }
 .btn:hover { background: var(--hover); }
 .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
@@ -251,6 +254,7 @@ td.n, th.n { text-align: right; font-family: var(--f-mono); }
       <a href="#map" id="v-map">Map</a>
       <a href="#insights" id="v-insights">Insights</a>
       <a href="#coverage" id="v-coverage">Coverage</a>
+      <a href="#films" id="v-films" hidden>Films</a>
     </nav>
   </div>
   <form class="ask" id="askform" autocomplete="off">
@@ -286,7 +290,7 @@ const lsGet = k => { try { return localStorage.getItem(k); } catch { return null
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 
 // ---------------------------------------------------------------- state
-const S = { index: [], snaps: {}, slug: null, d: null, f: blank(), view: "browse", limit: 150, sel: null, group: "none", answer: null, sample: null, busy: null };
+const S = { index: [], registers: [], snaps: {}, slug: null, d: null, f: blank(), view: "browse", limit: 150, sel: null, group: "none", answer: null, sample: null, busy: null };
 function blank() { return { text: "", yFrom: null, yTo: null, tiers: [], people: [], containers: [], langs: [], perf: null, minLin: null, maxLin: null, live: false, noTier: false, noYear: false, gems: false, sort: "year" }; }
 
 // ---------------------------------------------------------------- loading
@@ -294,8 +298,12 @@ async function boot() {
   try {
     const r = await fetch("canon/index.json");
     if (!r.ok) throw new Error(r.status);
-    S.index = (await r.json()).maestros || [];
+    const idx = await r.json();
+    S.index = idx.maestros || [];
+    S.registers = idx.registers || [];
   } catch { S.index = []; }
+  document.getElementById("v-films").hidden = !S.registers.length;
+  if (!S.index.length && S.registers.length) { location.hash = "#films"; return render(); }
   if (!S.index.length) return renderDrop();
   const want = lsGet("maestro") ;
   await selectMaestro(S.index.some(m => m.slug === want) ? want : S.index[0].slug);
@@ -658,15 +666,20 @@ function renderMaestros() {
 }
 function setView() {
   const v = (location.hash || "#browse").slice(1);
-  S.view = ["browse", "gems", "map", "insights", "coverage"].includes(v) ? v : "browse";
-  for (const k of ["browse", "gems", "map", "insights", "coverage"]) {
+  S.view = ["browse", "gems", "map", "insights", "coverage"].includes(v) || (v === "films" && S.registers.length) ? v : "browse";
+  for (const k of ["browse", "gems", "map", "insights", "coverage", "films"]) {
     const a = document.getElementById("v-" + k);
     if (k === S.view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   }
 }
 function render() {
+  setView();
+  const films = S.view === "films";
+  document.getElementById("askform").style.display = films ? "none" : "";
+  document.getElementById("chips").style.display = films ? "none" : "";
+  if (films) { document.getElementById("backdrop").classList.toggle("on", FS.sel != null && innerWidth <= 1180); return renderFilms(); }
   if (!S.d) return;
-  setView(); renderChips();
+  renderChips();
   const res = applyFilter(S.d, S.f);
   S.res = res;
   if (S.view === "browse") renderBrowse(res);
@@ -1469,8 +1482,8 @@ document.getElementById("q").addEventListener("input", () => { clearTimeout(tmr)
 document.getElementById("askform").addEventListener("submit", e => { e.preventDefault(); clearTimeout(tmr); runQuery(); });
 document.getElementById("askbtn").onclick = askClaude;
 document.getElementById("clearbtn").onclick = () => { document.getElementById("q").value = ""; S.f = blank(); S.answer = null; S.sel = null; render(); };
-document.getElementById("backdrop").onclick = () => { S.sel = null; render(); };
-document.addEventListener("keydown", e => { if (e.key === "Escape" && S.sel != null) { S.sel = null; render(); } if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); document.getElementById("q").focus(); } });
+document.getElementById("backdrop").onclick = () => { S.sel = null; FS.sel = null; render(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape" && S.view === "films" && FS.sel != null) { FS.sel = null; render(); return; } if (e.key === "Escape" && S.sel != null) { S.sel = null; render(); } if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); document.getElementById("q").focus(); } });
 addEventListener("hashchange", render);
 let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(render, 200); });
 document.getElementById("file").onchange = async e => { const f = e.target.files[0]; if (!f) return; try { addSnapshot(JSON.parse(await f.text())); } catch (err) { alertBox(`That file is not a canon snapshot (${err.message}).`); } };
@@ -1480,6 +1493,148 @@ function alertBox(msg) { document.getElementById("main").insertAdjacentHTML("aft
 function renderDrop() {
   renderMaestros();
   document.getElementById("main").innerHTML = `<div class="dropzone"><h1>No canon loaded</h1><p>Write snapshots with <span class="mono">maestro-explore --maestro maestros/&lt;slug&gt;=&lt;dsn&gt;</span> and open this page from that folder, or drop a canon snapshot (<span class="mono">canon/&lt;slug&gt;.json</span>) here.</p><button class="btn primary" type="button" onclick="document.getElementById('file').click()">Open a snapshot…</button></div>`;
+}
+
+// ---------------------------------------------------------------- films (a film register: every film, apart from any maestro)
+const FS = { d: null, loading: null, q: "", flag: "", src: "", yFrom: "", yTo: "", sort: "year", limit: 200, sel: null };
+const FLAG_WORDS = {
+  no_wikidata: ["No Wikidata item", "No source outside its own list knows this film yet: a gap in Wikidata, or a title too different to match."],
+  not_in_hfgk: ["Not in HFGK", "Dated inside HFGK's years, but HFGK has no film by this title and year: a non-Hindi or dubbed film, a different title, or a gap."],
+  year_mismatch: ["Years differ", "Sources give different years (censor, release and premiere dates often differ by one)."],
+  composer_mismatch: ["Music directors differ", "Two sources name music directors and share no one."],
+  title_spelling: ["Title spelt differently", "HFGK and Wikidata spell the title differently enough to check."],
+  song_count_mismatch: ["Song counts differ", "Two sources give different numbers of songs."],
+  duplicate_in_source: ["Listed twice", "A source lists this film twice."],
+  match_review: ["Match needs a decision", "More than one Wikidata film fits; a person picks."],
+};
+const SRC_WORDS = { hfgk_online: "HFGK", wikidata: "Wikidata", wikipedia: "Wikipedia" };
+const flagWord = k => (FLAG_WORDS[k] || [roleName(k)])[0];
+async function loadFilms() {
+  if (FS.d || FS.loading) return FS.loading;
+  const reg = S.registers[0];
+  FS.loading = (async () => {
+    const r = await fetch(reg.file);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    for (const f of d.films) {
+      f._k = fold([f.title, f.title_hi, ...(f.alt || []), ...f.md, ...f.lyr, ...f.sing, ...f.dir].join(" "));
+      f._kinds = new Set(f.flags.map(x => x.kind));
+    }
+    d.byId = new Map(d.films.map(f => [f.id, f]));
+    FS.d = d;
+  })();
+  try { await FS.loading; } catch (e) { FS.err = e.message; } finally { FS.loading = null; }
+  render();
+}
+function filmMatches(f) {
+  if (FS.flag === "any" ? !f.flags.length : FS.flag === "none" ? f.flags.length : FS.flag && !f._kinds.has(FS.flag)) return false;
+  if (FS.src === "only_hfgk") { if (f.src.some(x => x !== "hfgk_online")) return false; }
+  else if (FS.src && !f.src.includes(FS.src)) return false;
+  if (FS.yFrom && !(f.year >= +FS.yFrom)) return false;
+  if (FS.yTo && !(f.year <= +FS.yTo)) return false;
+  for (const w of fold(FS.q).split(" ").filter(Boolean)) {
+    if (/^(1[89]|20)\d\d$/.test(w)) { if (f.year !== +w) return false; continue; }
+    const dec = w.match(/^(1[89]|20)(\d)0s$/); if (dec) { const y = +(dec[1] + dec[2] + "0"); if (!(f.year >= y && f.year <= y + 9)) return false; continue; }
+    if (!f._k.includes(w) && !squash(f._k.replace(/ /g, "")).includes(squash(w))) return false;
+  }
+  return true;
+}
+const FILM_SORTS = { year: "Year", title: "Title", songs: "Most songs", flags: "Most flags" };
+function canonLinks(f) { // films the loaded maestro canons hold, by HFGK film id
+  if (!f.hfgk) return [];
+  const out = [];
+  for (const d of Object.values(S.snaps)) {
+    for (const [cid, c] of Object.entries(d.containers || {})) {
+      if ((c.links || []).some(l => l.source === "hfgk_online" && new RegExp(`film\\.php\\?id=${f.hfgk}$`).test(l.url))) {
+        const n = d.units.filter(u => String(u.container) === cid).length;
+        out.push({ slug: d.maestro.slug, name: d.maestro.name, cid: +cid, n, word: d.unitWord });
+      }
+    }
+  }
+  return out;
+}
+function filmDetail(f) {
+  const dl = [];
+  const add = (k, v) => { if (v != null && v !== "" && !(Array.isArray(v) && !v.length)) dl.push(`<dt>${esc(k)}</dt><dd>${v}</dd>`); };
+  const names = xs => xs.map(n => `<button class="linklike" data-fq="${esc(n)}">${esc(n)}</button>`).join(", ");
+  add("Year", f.year ? `<span class="mono">${f.year}</span>` : esc(f.period || "unknown"));
+  add(f.md.length > 1 ? "Music directors" : "Music director", names(f.md));
+  add(f.lyr.length > 1 ? "Lyricists" : "Lyricist", names(f.lyr));
+  add(f.sing.length > 1 ? "Singers" : "Singer", names(f.sing));
+  add(f.dir.length > 1 ? "Directors" : "Director", names(f.dir));
+  add("Songs", f.songs != null ? `<span class="mono">${f.songs}</span>${f.songs_listed != null ? ` <span class="muted">(${f.songs_listed} stored)</span>` : ""}` : `<span class="muted">no song list yet</span>`);
+  add("Sources", esc(f.src.map(s => SRC_WORDS[s] || s).join(" · ")));
+  const links = [];
+  if (f.wikidata) links.push(["Wikidata", `https://www.wikidata.org/wiki/${f.wikidata}`]);
+  if (f.imdb) links.push(["IMDb", `https://www.imdb.com/title/${f.imdb}/`]);
+  if (f.wikipedia) links.push(["Wikipedia", `https://en.wikipedia.org/wiki/${encodeURIComponent(f.wikipedia.replace(/ /g, "_"))}`]);
+  if (f.hfgk) links.push(["HFGK", `https://hamraaz.org/filmssite/public/film.php?id=${f.hfgk}`]);
+  const canon = canonLinks(f);
+  return `<button class="btn x" id="closefilm" type="button" aria-label="Close">×</button>
+    <h2>${esc(f.title)}</h2>
+    ${f.title_hi ? `<div class="script">${esc(f.title_hi)}</div>` : ""}
+    ${f.alt && f.alt.length ? `<div class="muted" style="margin-top:6px;font-size:13px">Also listed as: ${esc(f.alt.join(" · "))}</div>` : ""}
+    <dl>${dl.join("")}</dl>
+    ${canon.length ? `<h4>In a maestro's canon</h4><ul>${canon.map(c => `<li class="src"><button class="linklike" data-canon="${esc(c.slug)}" data-cid="${c.cid}">${esc(c.name)}: ${plural(c.n, c.word)}</button></li>`).join("")}</ul>` : ""}
+    ${f.flags.length ? `<h4>To check</h4><ul>${f.flags.map(x => `<li class="src" style="display:block"><b>${esc(flagWord(x.kind))}</b>${x.severity === "major" ? ` <span class="muted">(more than a year)</span>` : ""}<div class="muted" style="font-size:13px">${esc(x.detail)}</div></li>`).join("")}</ul>` : `<h4>To check</h4><div class="muted">Nothing: the sources agree.</div>`}
+    ${links.length ? `<h4>Pages</h4><ul>${links.map(([k, u]) => `<li class="src"><a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(k)}</a><span class="muted">${esc(u.replace(/^https?:\/\/(www\.)?/, "").slice(0, 48))}</span></li>`).join("")}</ul>` : ""}`;
+}
+function renderFilms() {
+  const main = document.getElementById("main");
+  if (!FS.d) {
+    main.innerHTML = `<div class="empty">${FS.err ? `Could not load the film list (${esc(FS.err)}). Run maestro-explore with the register again.` : "Loading every film…"}</div>`;
+    if (!FS.err) loadFilms();
+    return;
+  }
+  const d = FS.d, all = d.films;
+  let res = all.filter(filmMatches);
+  if (FS.sort === "title") res = res.slice().sort((a, b) => a.title.localeCompare(b.title));
+  else if (FS.sort === "songs") res = res.slice().sort((a, b) => (b.songs || 0) - (a.songs || 0));
+  else if (FS.sort === "flags") res = res.slice().sort((a, b) => b.flags.length - a.flags.length || (a.year || 9999) - (b.year || 9999));
+  const sel = FS.sel != null ? d.byId.get(FS.sel) : null;
+  const flagCounts = new Map(); for (const f of res) for (const k of f._kinds) flagCounts.set(k, (flagCounts.get(k) || 0) + 1);
+  const withSongs = res.filter(f => f.songs != null).length, songs = res.reduce((n, f) => n + (f.songs || 0), 0);
+  const [y0, y1] = d.hfgk_years || [];
+  const rows = res.slice(0, FS.limit).map(f => `<div class="row" tabindex="0" data-film="${f.id}">
+      <div class="yr mono">${f.year || "—"}</div>
+      <div class="mainc"><div class="t">${esc(f.title)}${f.title_hi ? ` <span class="muted">${esc(f.title_hi)}</span>` : ""}</div>
+        <div class="meta">${esc([f.md.join(", "), f.songs != null ? plural(f.songs, "song") : null, f.sing.slice(0, 3).join(", ") + (f.sing.length > 3 ? ` +${f.sing.length - 3}` : "")].filter(Boolean).join(" · "))}</div></div>
+      <div class="side">${f.year && f.year < 1931 ? `<span class="muted" title="Hindi talkies began in 1931">silent</span> ` : ""}${f.flags.length ? f.flags.slice(0, 2).map(x => `<span class="tier" title="${esc(x.detail)}">${esc(flagWord(x.kind))}</span>`).join(" ") : ""}</div>
+    </div>`).join("");
+  const opt = (v, l, cur) => `<option value="${esc(v)}"${v === cur ? " selected" : ""}>${esc(l)}</option>`;
+  main.innerHTML = `<div class="browse${sel ? " has-detail" : ""}" style="grid-template-columns:minmax(0,1fr)${sel && innerWidth > 1180 ? " 420px" : ""}">
+    <section style="min-width:0">
+      <div class="panel"><h2>${esc(S.registers[0].name)}: every film</h2>
+        <div class="sub">Films from Wikidata, Wikipedia's yearly lists and HFGK${y0 ? ` (songs and credits for ${y0}–${y1})` : ""}, matched film by film. Separate from any maestro's canon.</div>
+        <div class="stats" style="display:flex;gap:18px;flex-wrap:wrap;margin-top:10px">
+          <div><b class="mono">${res.length.toLocaleString()}</b> <span class="muted">films${res.length !== all.length ? ` of ${all.length.toLocaleString()}` : ""}</span></div>
+          <div><b class="mono">${withSongs.toLocaleString()}</b> <span class="muted">with song lists</span></div>
+          <div><b class="mono">${songs.toLocaleString()}</b> <span class="muted">songs</span></div>
+          <div><b class="mono">${res.filter(f => f.flags.length).length.toLocaleString()}</b> <span class="muted">to check</span></div>
+        </div></div>
+      <div class="list-head" style="flex-wrap:wrap;gap:8px">
+        <div class="fq" style="flex:1 1 260px;min-width:0"><input id="fq" type="search" aria-label="Search films" placeholder="Title, music director, singer, lyricist, year or 1960s" value="${esc(FS.q)}"></div>
+        <div class="tools ftools" style="flex-wrap:wrap">
+          <label class="muted" for="fy0">Years</label><input id="fy0" class="mono" inputmode="numeric" size="4" placeholder="from" value="${esc(FS.yFrom)}"><input id="fy1" class="mono" inputmode="numeric" size="4" placeholder="to" value="${esc(FS.yTo)}">
+          <label class="muted" for="fflag">Check</label><select id="fflag">${opt("", "all films", FS.flag)}${opt("any", "any flag", FS.flag)}${opt("none", "nothing to check", FS.flag)}${Object.keys(FLAG_WORDS).map(k => opt(k, `${flagWord(k)}${flagCounts.has(k) ? ` (${flagCounts.get(k).toLocaleString()})` : ""}`, FS.flag)).join("")}</select>
+          <label class="muted" for="fsrc">Source</label><select id="fsrc">${opt("", "any", FS.src)}${Object.entries(SRC_WORDS).map(([k, v]) => opt(k, `in ${v}`, FS.src)).join("")}${opt("only_hfgk", "only in HFGK", FS.src)}</select>
+          <label class="muted" for="fsort">Sort</label><select id="fsort">${Object.entries(FILM_SORTS).map(([k, v]) => opt(k, v, FS.sort)).join("")}</select>
+        </div></div>
+      ${FS.flag && FLAG_WORDS[FS.flag] ? `<div class="sub" style="margin:0 0 8px">${esc(FLAG_WORDS[FS.flag][1])}</div>` : ""}
+      <div class="ledger">${rows || `<div class="empty">No film matches. Clear a filter above.</div>`}</div>
+      ${res.length > FS.limit ? `<button class="btn more" id="fmore" type="button">Show ${Math.min(400, res.length - FS.limit)} more</button>` : ""}
+    </section>
+    ${sel ? `<aside class="detail" id="detail" aria-label="Film details">${filmDetail(sel)}</aside>` : ""}
+  </div>`;
+  const q = document.getElementById("fq");
+  let t; q.oninput = () => { clearTimeout(t); t = setTimeout(() => { FS.q = q.value; FS.limit = 200; renderFilms(); const n = document.getElementById("fq"); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 180); };
+  const bind = (id, key) => { document.getElementById(id).onchange = e => { FS[key] = e.target.value.trim(); FS.limit = 200; renderFilms(); }; };
+  bind("fy0", "yFrom"); bind("fy1", "yTo"); bind("fflag", "flag"); bind("fsrc", "src"); bind("fsort", "sort");
+  const more = document.getElementById("fmore"); if (more) more.onclick = () => { FS.limit += 400; renderFilms(); };
+  main.querySelectorAll("[data-film]").forEach(r => { const open = () => { FS.sel = +r.dataset.film; render(); const el = document.getElementById("detail"); if (el) el.scrollTop = 0; }; r.onclick = open; r.onkeydown = e => { if (e.key === "Enter") open(); }; });
+  main.querySelectorAll("[data-fq]").forEach(b => b.onclick = () => { FS.q = b.dataset.fq; FS.sel = null; FS.limit = 200; render(); });
+  main.querySelectorAll("[data-canon]").forEach(b => b.onclick = async () => { await selectMaestro(b.dataset.canon); S.f = blank(); S.f.containers = [+b.dataset.cid]; location.hash = "#browse"; render(); });
+  const x = document.getElementById("closefilm"); if (x) x.onclick = () => { FS.sel = null; render(); };
 }
 S.group = lsGet("group") || "none";
 

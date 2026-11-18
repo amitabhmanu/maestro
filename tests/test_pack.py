@@ -3,7 +3,7 @@ import copy
 import pytest
 import yaml
 
-from conftest import PILOTS, ROOT
+from conftest import PACKS, PILOTS, ROOT
 from maestro.cli import validate_main
 from maestro.pack import PackError, load_pack, validate
 
@@ -12,7 +12,7 @@ def raw(slug="rafi"):
     return yaml.safe_load((ROOT / "maestros" / slug / "maestro.yaml").read_text("utf-8"))
 
 
-@pytest.mark.parametrize("slug", PILOTS)
+@pytest.mark.parametrize("slug", PACKS)
 def test_pilot_packs_are_valid(slug):
     pack = load_pack(ROOT / "maestros" / slug)
     assert pack.slug == slug
@@ -21,6 +21,13 @@ def test_pilot_packs_are_valid(slug):
 def test_pilots_cover_different_canon_models():
     units = {load_pack(ROOT / "maestros" / s).unit for s in PILOTS}
     assert units == {"song", "recording", "work"}
+
+
+def test_register_kind():
+    assert load_pack(ROOT / "maestros" / "hindi-films").data["identity"]["kind"] == "register"
+    data = raw()
+    data["identity"]["kind"] = "band"
+    assert any("identity/kind" in p for p in validate(data))
 
 
 def test_unknown_unit_is_refused():
