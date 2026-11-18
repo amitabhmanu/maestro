@@ -942,7 +942,7 @@ function personCard(res) {
 // uses: src/maestro/popularity.py low_popularity) is a rare gem; any other tagged unit is a gem.
 // Tags live in the page's own store (db capability) when the page runs as an Artifact, else in this
 // browser; either way they can be exported (format maestro-gem-tags/1, read by maestro-score
-// --picks-file) and imported again.
+// --picks-file) and imported again. maestro-gem-tags merges them into a ledger that never loses a tag.
 const LOW_REISSUES = 2, COUNT_Q = 0.9, COUNT_SHARE = 0.2, COUNT_DISTINCT = 20; // as in popularity.py
 const LOW_RULE_TEXT = "no chart, award or hit list, no cover or article, and outside the top 10% of releases, listeners and views (2 releases or fewer never count)";
 const POP_FACETS = ["contemporary", "penetration", "enduring"];
