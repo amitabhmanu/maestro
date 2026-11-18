@@ -19,7 +19,7 @@ anything built on it goes live.
 ## Build
 
 ```
-uv run maestro-run --pack maestros/hindi-films            # or crawl each sweep:
+# Crawl each sweep (maestro-run plans the same three, but its resolve step is untested on a register):
 uv run maestro-crawl --pack maestros/hindi-films --seed "<films_url('Q1568')>" --extractor wikidata_language_films
 uv run maestro-crawl --pack maestros/hindi-films --seed https://en.wikipedia.org/wiki/Lists_of_Indian_films --extractor wikipedia_year --max-jobs 200
 uv run maestro-crawl --pack maestros/hindi-films --seed https://hamraaz.org/filmssite/public/index.php --extractor hfgk --max-jobs 7000
