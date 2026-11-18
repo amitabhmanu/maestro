@@ -757,24 +757,43 @@ function rowHtml(u, d) {
     <div style="min-width:0"><div class="t">${esc(u.title)}${alt ? ` <span class="alt">${esc(alt)}</span>` : ""}</div><div class="meta">${unitMeta(u, d)}</div></div>
     <div class="side">${tagBadge(u)}${popMeter(u)}${linDots(u._lin)}<span class="tier ${esc(u.tier || "")}" title="${esc(u.tier ? "Tier " + u.tier + ": " + (d.tiers[u.tier] || {}).label : "No tier yet")}">${esc(u.tier || "–")}</span></div></div>`;
 }
+// Group the sorted results: each film (by id) or year is one block, the blocks are
+// ordered by the chosen sort applied to the group, and units keep that sort inside it.
+function groupUnits(res, mode, sort, d) {
+  const groups = new Map();
+  for (const u of res) {
+    const key = mode === "year" ? (u.year || null) : (u.container != null ? u.container : null);
+    let g = groups.get(key);
+    if (!g) groups.set(key, g = { key, units: [], first: groups.size });
+    g.units.push(u);
+  }
+  const cont = g => d.C[g.key] || {};
+  const yearOf = g => mode === "year" ? g.key : cont(g).year || Math.min(...g.units.map(u => u.year || 9999));
+  const titleOf = g => mode === "year" ? String(g.key) : cont(g).title || "";
+  const byTitle = (a, b) => titleOf(a).localeCompare(titleOf(b)) || a.first - b.first;
+  const cmp = {
+    "year": (a, b) => (yearOf(a) || 9999) - (yearOf(b) || 9999) || byTitle(a, b),
+    "year-desc": (a, b) => (yearOf(b) || 0) - (yearOf(a) || 0) || byTitle(a, b),
+    "title": mode === "year" ? (a, b) => a.key - b.key : byTitle,
+  }[sort] || ((a, b) => a.first - b.first); // other sorts: the group of the best-placed unit first
+  const known = [...groups.values()].filter(g => g.key != null).sort(cmp);
+  return groups.has(null) ? [...known, groups.get(null)] : known; // no film / no year last
+}
 function renderBrowse(res) {
   const d = S.d, main = document.getElementById("main");
-  const shown = res.slice(0, S.limit);
   let rows = "";
   if (S.group === "container" || S.group === "year") {
-    let last;
-    for (const u of shown) {
-      const g = S.group === "year" ? (u.year || "Year unknown") : (u._c ? u._c.title : `No ${d.contWord}`);
-      const key = S.group === "year" ? g : u.container;
-      if (key !== last) {
-        const n = res.filter(x => S.group === "year" ? (x.year || "Year unknown") === g : x.container === u.container).length;
-        const extra = S.group === "container" && u._c ? [u._c.year, u._c.listed ? `${u._c.listed} listed` : null].filter(Boolean).join(" · ") : "";
-        rows += `<div class="ghead">${esc(g)} <span class="mono">${plural(n, d.unitWord)}${extra ? " · " + esc(extra) : ""}</span></div>`;
-        last = key;
-      }
-      rows += rowHtml(u, d);
+    let left = S.limit;
+    for (const g of groupUnits(res, S.group, S.f.sort, d)) {
+      if (left <= 0) break;
+      const c = S.group === "container" && g.key != null ? d.C[g.key] || { title: `${d.contWord} ${g.key}` } : null;
+      const label = S.group === "year" ? (g.key || "Year unknown") : (c ? c.title : `No ${d.contWord}`);
+      const extra = c ? [c.year, c.listed ? `${c.listed} listed` : null].filter(Boolean).join(" · ") : "";
+      rows += `<div class="ghead">${esc(label)} <span class="mono">${plural(g.units.length, d.unitWord)}${extra ? " · " + esc(extra) : ""}</span></div>`;
+      rows += g.units.slice(0, left).map(u => rowHtml(u, d)).join("");
+      left -= g.units.length;
     }
-  } else rows = shown.map(u => rowHtml(u, d)).join("");
+  } else rows = res.slice(0, S.limit).map(u => rowHtml(u, d)).join("");
   const sel = S.sel != null ? d.byId.get(S.sel) : null;
   const total = d.units.length;
   main.innerHTML = `<div class="browse${sel ? " has-detail" : ""}">
