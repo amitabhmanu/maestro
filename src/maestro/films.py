@@ -91,11 +91,45 @@ def names_agree(a: Iterable[str], b: Iterable[str], norm: Normaliser | None = No
         return True
     ia = set().union(*(name_initials(x, norm) for x in a))
     ib = set().union(*(name_initials(x, norm) for x in b))
-    return any(sa == sb and x and y and (x.startswith(y) or y.startswith(x))
-               for x, sa in ia for y, sb in ib)
+    if any(sa == sb and x and y and (x.startswith(y) or y.startswith(x)) for x, sa in ia for y, sb in ib):
+        return True
+    # Spellings and fuller forms: "Ajit Varman" / "Ajit Verman", "Master Krishnarao" / "Krishnarao
+    # Phulambrikar", "Pt Badri Prasad" / "Badri Prasad": every word of the shorter name (titles such as
+    # Master and Pandit left out) is a word of the longer, compared by consonants.
+    ta = [_name_words(x, norm) for x in a]
+    tb = [_name_words(x, norm) for x in b]
+    for x in ta:
+        for y in tb:
+            if x and "".join(x) == "".join(y):  # "Master Muhammad" / "Master Mohammed"
+                return True
+            short, long_ = (x, y) if len(x) <= len(y) else (y, x)
+            if short and (len(short) >= 2 or len(short[0]) >= 4) and all(w in long_ for w in short):
+                return True
+    return False
+
+
+_HONORIFICS = {"master", "mastr", "pandit", "pt", "pandi", "ustad", "ustaad", "shri", "sri", "shree", "late", "dr",
+               "mr", "md", "seth"}
+
+
+def _name_words(name: str, norm: Normaliser | None = None) -> list[str]:
+    """A person's name as consonant skeletons of its words, titles and footnote marks dropped."""
+    text = re.sub(r"\[[^\]]*\]|\([^)]*\)|\d+", " ", name or "")
+    words = (norm.person(text) if norm else fold(text)).replace("-", " ").split()
+    out = [skeleton(w) for w in words if w not in _HONORIFICS]
+    return [w for w in out if w]
 
 
 # ---- loading -----------------------------------------------------------------------
+
+_HOMOGLYPHS = str.maketrans("аеорсухкмтівАЕОРСУХКМТІВН", "aeopcyxkmtibAEOPCYXKMTIBH")
+
+
+def latin(name: str) -> str:
+    """A Latin-script name with a stray Cyrillic look-alike letter fixed (HFGK's "Chitragupт")."""
+    if name and re.search(r"[A-Za-z]", name) and re.search(r"[\u0400-\u04ff]", name):
+        return name.translate(_HOMOGLYPHS)
+    return name
 
 @dataclass
 class FilmRecord:
@@ -173,7 +207,7 @@ def load_films(store: Store, ids: set[int] | None = None) -> dict[int, FilmRecor
         elif fld == "song_count" and isinstance(v, int):
             f.song_count = v
         elif fld in ("credit", "credit_unlinked") and isinstance(v, dict):
-            role, name = v.get("role"), r["person"] or v.get("name")
+            role, name = v.get("role"), latin(r["person"] or v.get("name"))
             if role in FILM_ROLES and name and name not in f.crew[role]:
                 f.crew[role].append(name)
             elif role == "singer" and name:
@@ -190,7 +224,7 @@ def load_films(store: Store, ids: set[int] | None = None) -> dict[int, FilmRecor
            GROUP BY 1, 2, 3""", params).fetchall():
         f = films.get(r["film"])
         if f is not None and r["role"] and r["name"]:
-            f.song_people[r["role"]][r["name"]] += r["n"]
+            f.song_people[r["role"]][latin(r["name"])] += r["n"]
     for r in store.conn.execute(
         """SELECT ref_entity_id AS film, count(DISTINCT entity_id) AS n FROM claim
            WHERE field = 'part_of' AND status = 'active'
@@ -217,12 +251,35 @@ class MatchStats:
                 "queued_for_review": self.queued, "unmatched": dict(self.unmatched)}
 
 
+_DECADES = {"thirties": 1930, "forties": 1940, "fifties": 1950, "sixties": 1960, "seventies": 1970, "eighties": 1980}
+
+
+def _in_period(year: int, period: str | None) -> bool:
+    """HFGK dates a film never released by its decade ("Fifties / ...")."""
+    word = (period or "").split("/")[0].strip().lower()
+    start = _DECADES.get(word)
+    return start is not None and start <= year <= start + 9
+
+
+def skeleton(key: str) -> str:
+    """A title's consonants only, for transliterations that spell vowels their own way: HFGK's
+    "Teree Bahon Men", "Aakhri Ghalati", "Rusavaee" meet "Teri Baahon Mein", "Aakhri Galti", "Rusvai"."""
+    t = key.replace(" ", "")
+    for a, b in (("ow", "o"), ("aw", "a"), ("x", "ks"), ("w", "v"), ("q", "k"), ("z", "j"), ("ph", "f")):
+        t = t.replace(a, b)
+    t = re.sub(r"[aeiouyh]", "", t)
+    return re.sub(r"(.)\1+", r"\1", t)
+
+
 def _keys(f: FilmRecord, norm: Normaliser) -> set[str]:
     keys = set()
     for t in (f.title, re.sub(r"\s*\((?:\d{4} )?film\)$", "", f.article or "")):
         k = norm.container(t or "")
         if k:
             keys.add("r:" + _squash_container(k))
+            sk = skeleton(k)
+            if len(sk) >= 3:
+                keys.add("s:" + sk)
     if f.title_native and not f.title_native.isascii():
         keys.add("n:" + _native_key(f.title_native))
     return keys
@@ -282,17 +339,31 @@ def match(store: Store) -> MatchStats:
                     continue
                 if any(s in groups.sources(f.id) for s in anchor_sources):
                     continue
-                cands: dict[int, FilmRecord] = {}
-                for k in _keys(f, norm):
-                    for a in idx.get(k, []):
-                        if a.year is not None and f.year is not None and abs(a.year - f.year) > 1:
-                            continue
-                        if f.year is None and f.period is None and a.year is None:
-                            continue
-                        root = groups.find(a.id)
-                        if root != groups.find(f.id) and groups.can_join(root, f.id):
-                            cands.setdefault(root, a)
+                def gather(keys):
+                    cands: dict[int, FilmRecord] = {}
+                    for k in keys:
+                        for a in idx.get(k, []):
+                            if a.year is not None and f.year is not None and abs(a.year - f.year) > 1:
+                                continue
+                            if f.year is None and (a.year is None or not _in_period(a.year, f.period)):
+                                continue  # an undated film only meets one dated inside its decade
+                            root = groups.find(a.id)
+                            if root != groups.find(f.id) and groups.can_join(root, f.id):
+                                cands.setdefault(root, a)
+                    return cands
+
+                keys = _keys(f, norm)
+                cands = gather(k for k in keys if not k.startswith("s:"))
                 if not cands:
+                    # Consonants only: looser, so it must be the one candidate, its music director must
+                    # not disagree, and the year or the music director must agree outright.
+                    loose = [a for a in gather(k for k in keys if k.startswith("s:")).values()
+                             if names_agree(f.composers, a.composers, norm) is not False]
+                    if len(loose) == 1 and (loose[0].year == f.year
+                                            or names_agree(f.composers, loose[0].composers, norm)):
+                        if join(loose[0], f, f"film {f.title!r} ({f.year}) / {loose[0].title!r} "
+                                             f"({loose[0].year}): same consonants"):
+                            stats.by_title += 1
                     continue
                 scored = sorted(((_score(f, a, norm), a) for a in cands.values()), key=lambda x: -x[0])
                 best, top = scored[0]

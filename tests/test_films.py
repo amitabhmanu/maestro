@@ -186,3 +186,45 @@ def test_explorer_films_view(store_for, tmp_path):
     assert index["registers"][0]["file"] == "canon/films/hindi-films.json" and index["maestros"] == []
     assert (tmp_path / "canon" / "films" / "hindi-films.json").is_file()
     assert 'id="v-films"' in (tmp_path / "index.html").read_text()
+
+
+def test_skeleton_matches_hfgk_spellings(store_for):
+    assert films.skeleton("teree bahon men") == films.skeleton("teri baahon mein")
+    assert films.skeleton("aakhri ghalati") == films.skeleton("aakhri galti")
+    s = store_for("hindi-films")
+    _film(s, "wikidata", "Q10", "Teri Baahon Mein", 1984, ["Bappi Lahiri"], wikidata="Q10")
+    _film(s, "hfgk_online", "110", "Teree Bahon Men", 1984, ["Bappi Lahiri"], song_count=5)
+    _film(s, "wikidata", "Q11", "Rusvai", 1985, wikidata="Q11")
+    _film(s, "hfgk_online", "111", "Rusavaee", 1984, song_count=4)  # a year apart, no music director: left
+    assert films.match(s).by_title == 1
+
+
+def test_names_agree_spellings_and_titles():
+    assert films.names_agree(["Ajit Varman"], ["Ajit Verman"])
+    assert films.names_agree(["Master Krishnarao"], ["Krishnarao Phulambrikar"])
+    assert films.names_agree(["Pt Badri Prasad"], ["Badri Prasad"])
+    assert films.names_agree(["Kanu Roy [1]"], ["Kanu Roy"])
+    assert films.names_agree(["Manas Mukherjee"], ["Bhaskar Chandavarkar"]) is False
+    assert films.names_agree(["R. D. Burman"], ["S. D. Burman"]) is False
+
+
+def test_names_agree_more_spellings():
+    assert films.names_agree(["Master Muhammad"], ["Master Mohammed"])
+    assert films.names_agree(["Salil Chaudhri"], ["Salil Chowdhury"])
+    assert films.names_agree(["Ram-Lakshman"], ["Raam Laxman"])
+
+
+def test_hfgk_bot_check_page_writes_nothing(store_for):
+    import pytest
+
+    s = store_for("hindi-films")
+    raw = s.record_raw_page("u", 200, "x", "p")
+    body = "<html><head><title>One moment, please...</title><script>window.location.reload();</script></head></html>"
+    with pytest.raises(hfgk.BotCheck):
+        hfgk.extract(ExtractContext(s, {}, page(hfgk.BASE + "film.php?id=5", body), raw))
+    assert s.query_graph("SELECT count(*) AS n FROM entity WHERE type = 'container'")[0]["n"] == 0
+
+
+def test_latin_fixes_cyrillic_lookalikes():
+    assert films.latin("Chitragupт") == "Chitragupt"
+    assert films.latin("मोहम्मद रफ़ी") == "मोहम्मद रफ़ी"

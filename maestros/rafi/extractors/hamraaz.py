@@ -22,6 +22,7 @@ from maestro.extractors.hfgk import (  # noqa: F401  (parsers shared with the fi
     SOURCE,
     _text,
     _year_range,
+    is_bot_check,
     parse_film,
     parse_person,
 )
@@ -81,6 +82,8 @@ def extract(ctx) -> None:
 
     store, raw = ctx.store, ctx.raw_page_id
     film_xref = re.search(r"id=(\d+)", url).group(1)
+    if is_bot_check(ctx.page.text):
+        raise ValueError(f"HFGK served its bot check page instead of {url}: fetch it again later")
     data = parse_film(ctx.page.text)
 
     def claim(eid, field, value=None, ref=None, **kw):

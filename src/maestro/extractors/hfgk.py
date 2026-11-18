@@ -165,6 +165,15 @@ def parse_year_list(page_html: str) -> list[dict]:
 
 # ---- extractor (film register) -----------------------------------------------
 
+class BotCheck(RuntimeError):
+    pass
+
+
+def is_bot_check(page_html: str) -> bool:
+    """The site's bot check page ("One moment, please...") rather than a film."""
+    return "<title>One moment, please" in page_html[:3000] or (
+        'class="song-row"' not in page_html and "<h1" not in page_html and "window.location.reload" in page_html)
+
 def _person(store, pid: str | None, name: str) -> int | None:
     if pid is None or pid in PLACEHOLDER_PERSON_IDS:
         return None
@@ -200,6 +209,10 @@ def extract(ctx) -> None:
 
     store, raw = ctx.store, ctx.raw_page_id
     film_xref = re.search(r"id=(\d+)", url).group(1)
+    if is_bot_check(ctx.page.text):
+        # The site answers a fast crawl with a "One moment, please..." page now and then. Never get
+        # around it: fail the job so nothing is written, and fetch the film again later, more slowly.
+        raise BotCheck(f"HFGK served its bot check page instead of {url}")
     data = parse_film(ctx.page.text)
 
     def claim(eid, field, value=None, ref=None, **kw):
