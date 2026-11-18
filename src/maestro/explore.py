@@ -394,7 +394,7 @@ def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
         "includes_private": include_private,
         "maestro": {
             "slug": pack.slug, "name": ident["name"], "variants": ident.get("variants", []),
-            "ids": ident.get("ids", {}), "active": ident.get("active"), "person_id": maestro,
+            "ids": ident.get("ids", {}), "active": ident.get("active"), "died": ident.get("died"), "person_id": maestro,
             "roles": pack.data["roles"], "unit": unit_type, "container": pack.container,
         },
         "tiers": {k: {"label": v["label"], "target_missing": v["target_missing"]} for k, v in pack.tiers.items()},

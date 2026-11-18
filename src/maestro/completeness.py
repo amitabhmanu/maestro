@@ -74,13 +74,14 @@ def load_units(store: Store, groups: Groups | None = None) -> dict[int, Unit]:
         (ids,),
     ).fetchall()
     in_containers: dict[int, set[int]] = defaultdict(set)
+    own_years: dict[int, list[int]] = defaultdict(list)
     for r in rows:
         u = units[members[r["entity_id"]]]
         f = r["field"]
         if f == "tier" and u.tier is None:
             u.tier = r["value"]
-        elif f == "year" and isinstance(r["value"], int) and u.year is None:
-            u.year = r["value"]
+        elif f == "year" and isinstance(r["value"], int):
+            own_years[u.id].append(r["value"])
         elif f == "part_of":
             in_containers[u.id].add(groups.find(r["ref_entity_id"]))
         elif f == "credit" and r["ref_entity_id"] is not None:
@@ -99,9 +100,14 @@ def load_units(store: Store, groups: Groups | None = None) -> dict[int, Unit]:
         # A recording in several containers (its film, a later film reusing it) belongs to the
         # earliest-dated one; undated containers come last.
         units[uid].container = min(cs, key=lambda c: (years.get(c, 10**4), c))
+    # A unit's year: its own, else its container's. With `identity.reissues_after`, a year after it
+    # (a copy merged in from a later film or compilation) counts only when no earlier one is known.
+    cutoff = store.pack.data["identity"].get("reissues_after")
     for u in units.values():
-        if u.year is None and u.container is not None:
-            u.year = years.get(u.container)
+        found = own_years.get(u.id, []) + ([years[u.container]] if u.container in years else [])
+        if cutoff is not None:
+            found = [y for y in found if y <= cutoff] or found
+        u.year = found[0] if found else None
     # A unit no source has given a tier takes its container's, when the container's other units
     # agree on one (a soundtrack recording found only on MusicBrainz, in a film the register covers).
     tiers_in: dict[int, set[str]] = defaultdict(set)
