@@ -33,7 +33,7 @@ from maestro.lyrics import Policy as LyricsPolicy
 from maestro.lyrics import beyond_first_line, first_line
 from maestro.popularity import resolve_reasons, score_canon, unit_summary
 from maestro.pack import load_pack
-from maestro.resolve import Groups
+from maestro.resolve import Groups, Normaliser, fix_lookalikes
 from maestro.store import Store
 
 FORMAT = 1
@@ -169,6 +169,24 @@ def _add(d: dict[str, list], key: str, value: Any) -> None:
     lst = d.setdefault(key, [])
     if value not in lst:
         lst.append(value)
+
+
+_MARK = re.compile(r"\[[^\]]*\]")  # a site's own tag on a name: "Suman [?]", "Iqbal [2]"
+
+
+def person_name(spellings: list[str], norm: Normaliser) -> str:
+    """The name to show for a merged group of person records, given the merge root's label first.
+
+    The pack's people lexicon wins ("Manna De" -> "Manna Dey"). Otherwise the root's label, unless
+    it carries a site tag and another record of the group does not: a reviewer who merged
+    "Suman [?]" with "Suman Kalyanpur" has said who it is.
+    """
+    for x in spellings:
+        if norm.person_name(x):
+            return norm.person_name(x)
+    tagged = bool(_MARK.search(spellings[0]))
+    plain = [x for x in spellings if not _MARK.search(x)]
+    return fix_lookalikes(plain[0] if tagged and plain else spellings[0])
 
 
 def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
@@ -351,18 +369,23 @@ def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
             else:
                 del d["year"]
         titles = d.pop("titles", [])
-        title = labels.get(cid) or (titles[0] if titles else str(cid))
+        title = fix_lookalikes(labels.get(cid) or (titles[0] if titles else str(cid)))
         alt = [t for t in titles if t != title]
         out_containers[str(cid)] = {"title": title, **({"alt_titles": alt} if alt else {}), **d}
 
-    # People: the label of the merge root, plus other spellings from merged records.
+    # People: one name per merged group (see person_name), plus the other spellings of its records.
+    norm = Normaliser.for_store(store)
     pmembers: dict[int, list[str]] = defaultdict(list)
-    for r in store.conn.execute("SELECT id, label FROM entity WHERE type = 'person'").fetchall():
+    for r in store.conn.execute("SELECT id, label FROM entity WHERE type = 'person' ORDER BY id").fetchall():
         root = groups.find(r["id"])
         if root in people and r["label"] != labels.get(root) and r["label"] not in pmembers[root]:
             pmembers[root].append(r["label"])
-    out_people = {str(p): {"name": labels.get(p, str(p)), **({"aliases": pmembers[p]} if pmembers.get(p) else {})}
-                  for p in sorted(people)}
+    out_people = {}
+    for p in sorted(people):
+        spellings = [labels.get(p, str(p)), *pmembers.get(p, [])]
+        name = person_name(spellings, norm)
+        aliases = list(dict.fromkeys(x for x in map(fix_lookalikes, spellings) if x != name))
+        out_people[str(p)] = {"name": name, **({"aliases": aliases} if aliases else {})}
 
     ident = pack.data["identity"]
     snap = {

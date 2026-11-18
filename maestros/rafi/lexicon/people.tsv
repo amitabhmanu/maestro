@@ -1,0 +1,34 @@
+# People aliases for the Rafi canon: variant<TAB>canonical. Names are folded before matching
+# (case, accents and punctuation ignored, so "Suman [?]" is read as "suman"). The canonical
+# spelling is also the name the explorer shows. Add a row whenever the user corrects a name.
+#
+# HFGK spells Dey as "De".
+Manna De	Manna Dey
+Mannade	Manna Dey
+K C De	K C Dey
+# HFGK's "Suman [?]" (not sure which Suman) is Suman Kalyanpur in Rafi's songs (user, 2026-11-15).
+Suman [?]	Suman Kalyanpur
+# User, 2026-11-15.
+Anuradha	Anuradha Paudwal
+Anuradha Vaudwal	Anuradha Paudwal
+Anuradha Paudwal	Anuradha Paudwal
+Bhupendra	Bhupinder Singh
+Bhupinder	Bhupinder Singh
+Bhupinder Singh	Bhupinder Singh
+# Music directors (user, 2026-11-15).
+Khaiyyaam	Khayyam
+Khayyam	Khayyam
+Ghulam Muhammad [1]	Ghulam Muhammad
+Ghulam Mohammad	Ghulam Muhammad
+Lala Aser Sattar	Lala-Sattar
+Lala-Sattar	Lala-Sattar
+Ratnadip-Hemraj	Ratandip Hemraj
+Ratandip Hemraj	Ratandip Hemraj
+Bipin Datta	Bipin Dutt
+Bipin Dutt	Bipin Dutt
+Hafeez	Hafeez Khan
+Hafeez Khan	Hafeez Khan
+Salil Chaudhri	Salil Chaudhari
+Salil Chaudhari	Salil Chaudhari
+Bapi Lahiri	Bhappi Lahiri
+Bhappi Lahiri	Bhappi Lahiri
