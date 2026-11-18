@@ -714,12 +714,13 @@ def resolve_reasons(reasons: list[str], people: dict[int, str], titles: dict[int
 
 
 def explorer_tags(path: str, slug: str) -> list[int]:
-    """Unit ids of one maestro's gem tags in a file the canon explorer exported."""
+    """Unit ids of one maestro's gem tags in a file the canon explorer exported (or a gem-tag ledger)."""
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
     if data.get("format") != "maestro-gem-tags/1":
         raise SystemExit(f"{path}: not a gem tag export from the canon explorer")
-    return [int(t["unit"]) for t in data.get("tags", []) if t.get("maestro") == slug]
+    return [int(t["unit"]) for t in data.get("tags", [])
+            if t.get("maestro") == slug and not t.get("untagged_seen_at")]  # a ledger keeps untagged rows
 
 
 # ---- CLI --------------------------------------------------------------------------------
