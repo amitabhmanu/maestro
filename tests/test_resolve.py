@@ -12,6 +12,7 @@ from maestro.resolve import (
     open_reviews,
     resolve,
     review_questions,
+    unlink_non_people,
 )
 
 
@@ -44,6 +45,21 @@ def test_fold_and_normaliser():
     assert fold("Café") == "cafe"
     n = Normaliser(translit={"tadpat": "tarpat"})
     assert n.title("Man Tadpat Hari Darshan Ko Aaj (Hindi)") == "man tarpat hari darshan ko aaj"
+
+
+def test_lookalike_letters_fold_to_latin():
+    # Cyrillic letters inside a Latin name ("Chitragupт") fold as their Latin twins.
+    assert fold("Chitragupт") == fold("Chitragupt") == "chitragupt"
+    assert fold("Nirupа Roy") == "nirupa roy"
+    assert fold("Москва") == "москва"  # a Cyrillic word stays
+
+
+def test_pack_people_aliases_set_the_key_and_the_name(store_for):
+    n = Normaliser.for_store(store_for("rafi"))
+    assert n.person("Manna De") == n.person("Mannade") == n.person("Manna Dey") == "manna dey"
+    assert n.person_name("MANNA DE") == "Manna Dey" and n.person_name("Manna Dey") == "Manna Dey"
+    assert n.person("Suman [?]") == "suman kalyanpur" and n.person_name("Suman [?]") == "Suman Kalyanpur"
+    assert n.person_name("Suman [2]") is None and n.person("Suman [2]") == "suman 2"
 
 
 def test_cross_source_duplicates_merge_and_same_source_ones_queue(store_for):
@@ -515,3 +531,23 @@ def test_reuse_matching_respects_credits_named_films_and_original_years(store_fo
     units = load_units(s, g)
     assert units[g.find(aaj)].year == 1973
     assert units[g.find(orig)].year == 1969
+
+
+def test_credits_to_a_chorus_become_unlinked_credits(store_for):
+    s = store_for("rafi")
+    korus = person(s, "hfgk_online", "28083", "Korus")
+    suman = person(s, "hfgk_online", "4777", "Suman Kalyanpur")
+    a = song(s, "hfgk_online", "100", "Song A")
+    for p in (korus, suman):
+        s.upsert_claim(a, "credit", ref_entity_id=p, value={"role": "singer"}, source_id="hfgk_online")
+    assert resolve(s).as_dict()["unlinked_credits"] == 1
+    active = s.conn.execute("SELECT field, value, ref_entity_id FROM claim WHERE entity_id = %s AND status = 'active'"
+                            " AND field LIKE 'credit%%'", (a,)).fetchall()
+    assert {"field": "credit_unlinked", "value": {"role": "singer", "name": "Chorus"}, "ref_entity_id": None} in active
+    assert not any(r["ref_entity_id"] == korus for r in active)
+    assert any(r["ref_entity_id"] == suman for r in active)
+    # A re-crawl that credits Korus again is turned once more; the unlinked claim is not doubled.
+    s.upsert_claim(a, "credit", ref_entity_id=korus, value={"role": "singer"}, source_id="hfgk_online")
+    assert unlink_non_people(s) == 1
+    assert s.conn.execute("SELECT count(*) AS n FROM claim WHERE entity_id = %s AND field = 'credit_unlinked'"
+                          " AND status = 'active'", (a,)).fetchone()["n"] == 1

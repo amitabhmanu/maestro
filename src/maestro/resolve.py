@@ -4,7 +4,8 @@ Stages (design doc, component 5), cheapest first:
 
 1. Normalise names and titles: Unicode folding, punctuation, and the pack's lexicons
    (`lexicon.transliteration`, `lexicon.people_aliases`, `lexicon.container_aliases`: TSV files of
-   `variant<TAB>canonical`, relative to the pack folder).
+   `variant<TAB>canonical`, relative to the pack folder). `lexicon.not_people` lists credit names
+   that are no person (a chorus); credits to them become `credit_unlinked` claims first.
 2. Block: only records that share a normalised key (and, for units, a resolved container) are compared.
 3. Decide: records from *different* sources with the same key are merged automatically (a reversible
    `same_as` claim). Records that one source keeps apart (two ids in the same source) are never merged
@@ -41,9 +42,30 @@ TIE_MARGIN = 0.03  # two candidates this close (a song and its reprise) always g
 
 # ---- normalisation -------------------------------------------------------------
 
+# Cyrillic and Greek letters drawn like Latin ones. Some pages slip them into Latin names
+# ("Chitragupт", "Nirupа Roy"), and the name then fails to match itself.
+_LOOKALIKES = str.maketrans(
+    "аеорсухткмніјѕ"
+    "АВЕКМНОРСТХІЈЅ"
+    "οαιν"
+    "ΑΒΕΖΗΙΚΜΝΟΡΤΥΧ",
+    "aeopcyxtkmnijs"
+    "ABEKMHOPCTXIJS"
+    "oaiv"
+    "ABEZHIKMNOPTYX",
+)
+_HAS_LATIN = re.compile(r"[A-Za-z]")
+
+
+def fix_lookalikes(text: str) -> str:
+    """Turn Cyrillic or Greek look-alike letters into Latin ones, only in words that also hold Latin letters."""
+    return re.sub(r"\w+", lambda m: m.group(0).translate(_LOOKALIKES) if _HAS_LATIN.search(m.group(0))
+                  else m.group(0), text or "")
+
+
 def fold(text: str) -> str:
     """Lower-case, strip accents and punctuation, collapse spaces. Keeps letters of any script."""
-    text = unicodedata.normalize("NFKD", text or "")
+    text = unicodedata.normalize("NFKD", fix_lookalikes(text or ""))
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
     text = text.replace("‘", "'").replace("’", "'").replace("`", "'")
     text = re.sub(r"['\"]", "", text.lower())
@@ -66,6 +88,19 @@ def load_lexicon(pack_dir: Path, rel: str | None) -> dict[str, str]:
     return table
 
 
+def load_display_names(pack_dir: Path, rel: str | None) -> dict[str, str]:
+    """The canonical spellings of a `variant<TAB>canonical` table as written, keyed by the folded
+    variant and by the folded canonical name."""
+    if not rel or not (Path(pack_dir) / rel).is_file():
+        return {}
+    names = {}
+    with (Path(pack_dir) / rel).open(encoding="utf-8") as fh:
+        for row in csv.reader(fh, delimiter="\t"):
+            if len(row) >= 2 and row[0].strip() and not row[0].startswith("#"):
+                names[fold(row[0])] = names[fold(row[1])] = row[1].strip()
+    return names
+
+
 _PART_WORDS = {"pt", "part"}
 
 
@@ -74,6 +109,7 @@ class Normaliser:
     translit: dict[str, str] = field(default_factory=dict)
     people: dict[str, str] = field(default_factory=dict)
     containers: dict[str, str] = field(default_factory=dict)
+    people_names: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def for_store(cls, store: Store) -> "Normaliser":
@@ -83,6 +119,7 @@ class Normaliser:
             translit=load_lexicon(pack_dir, lex.get("transliteration")),
             people=load_lexicon(pack_dir, lex.get("people_aliases")),
             containers=load_lexicon(pack_dir, lex.get("container_aliases")),
+            people_names=load_display_names(pack_dir, lex.get("people_aliases")),
         )
 
     def _words(self, text: str) -> str:
@@ -91,6 +128,10 @@ class Normaliser:
     def person(self, name: str) -> str:
         key = fold(name)
         return self.people.get(key, self._words(key))
+
+    def person_name(self, name: str) -> str | None:
+        """The pack's preferred spelling of a person's name ("Manna De" -> "Manna Dey"), if it has one."""
+        return self.people_names.get(fold(name))
 
     def title(self, title: str) -> str:
         # Drop a trailing language or version tag such as "(Telugu)" or "[2]".
@@ -223,9 +264,11 @@ def decide_review(store: Store, item_id: int, decision: str, note: str | None = 
 class ResolveStats:
     merged: dict[str, int] = field(default_factory=lambda: defaultdict(int))
     queued: dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    unlinked: int = 0  # credits to records that name no person (`unlink_non_people`)
 
-    def as_dict(self) -> dict[str, dict[str, int]]:
-        return {"merged": dict(self.merged), "queued": dict(self.queued)}
+    def as_dict(self) -> dict[str, Any]:
+        return {"merged": dict(self.merged), "queued": dict(self.queued),
+                **({"unlinked_credits": self.unlinked} if self.unlinked else {})}
 
 
 def _records(store: Store, type_: str) -> list[dict[str, Any]]:
@@ -1012,10 +1055,39 @@ def _match_titles(store, groups, distinct, stats, entries, context) -> None:
             stats.queued["unit"] += 1
 
 
+def unlink_non_people(store: Store) -> int:
+    """Turn credits to records that name no person into `credit_unlinked` claims.
+
+    Some sources file a chorus or a group under a person id ("Chorus Vocal", HFGK's "Korus"). The
+    pack's `lexicon.not_people` table (`name<TAB>shown as`) lists those names; each active credit to
+    such a record is superseded by a `credit_unlinked` claim carrying the shown name, the way a
+    source's unnamed credits are kept. It runs on every resolve, so a re-crawl or replay is corrected
+    again. Returns the number of credits turned.
+    """
+    names = load_display_names(store.pack.path.parent, store.pack.data.get("lexicon", {}).get("not_people"))
+    if not names:
+        return 0
+    ids = [r["id"] for r in store.conn.execute("SELECT id, label FROM entity WHERE type = 'person'").fetchall()
+           if fold(r["label"]) in names]
+    rows = store.conn.execute(
+        """SELECT c.*, e.label FROM claim c JOIN entity e ON e.id = c.ref_entity_id
+           WHERE c.ref_entity_id = ANY(%s) AND c.field = 'credit' AND c.status = 'active' ORDER BY c.id""",
+        (ids,)).fetchall()
+    for r in rows:
+        role = (r["value"] or {}).get("role") if isinstance(r["value"], dict) else None
+        store.upsert_claim(r["entity_id"], "credit_unlinked", value={"role": role, "name": names[fold(r["label"])]},
+                           source_id=r["source_id"], kind=r["kind"], confidence=r["confidence"],
+                           extractor=r["extractor"], extractor_version=r["extractor_version"],
+                           raw_page_id=r["raw_page_id"], private=r["visibility"] == "private")
+        store.conn.execute("UPDATE claim SET status = 'superseded' WHERE id = %s", (r["id"],))
+    return len(rows)
+
+
 def resolve(store: Store) -> ResolveStats:
     """Run every resolution pass once. Safe to re-run: existing merges and reviews are kept."""
     norm = Normaliser.for_store(store)
     stats = ResolveStats()
+    stats.unlinked = unlink_non_people(store)
     resolve_people(store, norm, stats)
     resolve_containers(store, norm, stats)
     resolve_units(store, norm, stats)
