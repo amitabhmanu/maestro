@@ -585,3 +585,27 @@ def test_a_person_can_merge_or_part_two_entities_no_review_pairs(store_for):
         decide_pair(s, solo, stray, "merge")
     with pytest.raises(ValueError, match="distinct"):
         decide_pair(s, duet, stray, "merge")  # the solo's group was marked distinct from the duet
+
+
+def test_containers_with_the_same_consonants_and_year_merge_across_sources(store_for):
+    s = store_for("rafi")
+    a = film(s, "hfgk_online", "1", "Chunariya", 1948)
+    b = film(s, "musicbrainz", "m1", "Chunaria", 1948)
+    c = film(s, "hfgk_online", "2", "Jashn", 1955)
+    d = film(s, "atulsongaday", "a2", "Jashan", 1956)          # a year apart: the skeleton alone is not enough
+    resolve(s)
+    g = Groups(s)
+    assert g.find(a) == g.find(b)
+    assert g.find(c) != g.find(d)
+
+
+def test_a_film_three_sources_spell_differently_joins_the_most_reliable_sources_record(store_for):
+    s = store_for("rafi")
+    h = film(s, "hfgk_online", "4188", "Dil Apna Aur Preet Parayi", 1960)
+    m = film(s, "musicbrainz", "m1", "Dil Apna Aur Preet Parai", 1960)
+    a1 = film(s, "atulsongaday", "a1", "Dil Apna Aur Preet Paraayi", 1960)
+    a2 = film(s, "atulsongaday", "a2", "Dil Apna Aur Preet Paraai", 1960)
+    resolve(s)
+    g = Groups(s)
+    assert g.find(h) == g.find(m) == g.find(a1)
+    assert g.find(a2) != g.find(h)              # Atul's second copy: same source, left for review

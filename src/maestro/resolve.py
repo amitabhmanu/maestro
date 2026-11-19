@@ -519,6 +519,62 @@ def resolve_containers(store: Store, norm: Normaliser, stats: ResolveStats) -> N
                 groups.union(a, b)
                 stats.merged["container"] += 1
 
+    # Across sources, the same consonants and the same year: one letter spelt differently that the
+    # squash key keeps ("Chunaria"/"Chunariya", "Jashan"/"Jashn", "Parai"/"Parayi", "Gul Sanovar"/
+    # "Gul Sanobar" is not one of them). Looser, so the year must agree outright and each side must be
+    # the other's only candidate.
+    by_skel: dict[tuple[str, int], list[dict]] = defaultdict(list)
+    for r in recs:
+        if r["year"] is not None and r["key"]:
+            r["skeleton"] = skeleton(r["key"])
+            if len(r["skeleton"]) >= SKELETON_MIN:
+                by_skel[(r["skeleton"], r["year"])].append(r)
+
+    def same_skeleton(r):
+        out: dict[int, dict] = {}
+        for o in by_skel.get((r.get("skeleton"), r["year"]), []):
+            if o is not r and groups.can_join(o["id"], r["id"]):
+                out.setdefault(groups.find(o["id"]), o)
+        return list(out.values())
+
+    for r in recs:
+        if r["year"] is None or len(r.get("skeleton") or "") < SKELETON_MIN:
+            continue
+        near = same_skeleton(r)
+        if len(near) == 1 and len(same_skeleton(near[0])) == 1:
+            a, b = sorted((groups.find(r["id"]), groups.find(near[0]["id"])))
+            if (a, b) not in distinct and a != b:
+                store.merge_entities(a, b, f"container titles {r['label']!r} / {near[0]['label']!r}, "
+                                           "same consonants, same year, different sources")
+                groups.union(a, b)
+                stats.merged["container"] += 1
+
+    # A film three sources hold (HFGK's "Parayi", MusicBrainz's "Parai", Atul's "Paraayi") has more
+    # than one candidate each, so the rule above leaves it split. Anchor such a cluster on the record of
+    # the pack's most reliable source in it, when that source holds exactly one group there, and join
+    # the others to it one by one (a source already in the group is never joined twice: its second
+    # copy stays for review).
+    reliability = {x["id"]: x.get("reliability", 0.5) for x in store.pack.data.get("sources", [])}
+    for cluster in by_skel.values():
+        roots: dict[int, set[str]] = defaultdict(set)
+        for r in cluster:
+            roots[groups.find(r["id"])].update(groups.sources(r["id"]))
+        if len(roots) < 2:
+            continue
+        rel = {g: max((reliability.get(src, 0.5) for src in srcs), default=0.0) for g, srcs in roots.items()}
+        top = max(rel.values())
+        anchors = [g for g, v in rel.items() if v == top]
+        if len(anchors) != 1:
+            continue
+        anchor = anchors[0]
+        for g in sorted(roots, key=lambda g: -rel[g]):
+            a, b = sorted((groups.find(anchor), groups.find(g)))
+            if a != b and (a, b) not in distinct and groups.can_join(a, b):
+                store.merge_entities(a, b, "container titles with the same consonants and year, joined to "
+                                           "the most reliable source's film")
+                groups.union(a, b)
+                stats.merged["container"] += 1
+
     _match_reissues(store, groups, distinct, stats, recs)
 
     by_year: dict[int, list[dict]] = defaultdict(list)
@@ -578,6 +634,19 @@ def _squash_container(key: str) -> str:
     """A container title's squash key, a little looser than a unit title's: a word-final "h" after a
     vowel goes ("Kya Yeh Bombay Hai"/"Kya Ye Bombay Hai") and "th" is "t" ("Grihasthi"/"Grihasti")."""
     return _squash(re.sub(r"(?<=[aeiou])h\b", "", key).replace(" ", "").replace("th", "t"))
+
+
+def skeleton(key: str) -> str:
+    """A title's consonants only, for transliterations that spell vowels their own way: HFGK's
+    "Teree Bahon Men", "Aakhri Ghalati", "Rusavaee" meet "Teri Baahon Mein", "Aakhri Galti", "Rusvai"."""
+    t = key.replace(" ", "")
+    for a, b in (("ow", "o"), ("aw", "a"), ("x", "ks"), ("w", "v"), ("q", "k"), ("z", "j"), ("ph", "f")):
+        t = t.replace(a, b)
+    t = re.sub(r"[aeiouyh]", "", t)
+    return re.sub(r"(.)\1+", r"\1", t)
+
+
+SKELETON_MIN = 3  # consonants a container title needs before its skeleton alone may join two records
 
 
 def _squash(text: str) -> str:

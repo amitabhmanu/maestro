@@ -35,7 +35,7 @@ from typing import Any, Iterable
 
 from maestro import config
 from maestro.pack import load_pack
-from maestro.resolve import Groups, Normaliser, _distinct_pairs, _squash_container, fold, queue_review
+from maestro.resolve import Groups, Normaliser, _distinct_pairs, _squash_container, fold, queue_review, skeleton  # noqa: F401  (skeleton is re-exported)
 from maestro.store import Store
 
 ANCHOR_SOURCES = ("wikidata", "wikipedia")  # sources other records are matched to, best first
@@ -332,16 +332,6 @@ def _in_period(year: int, period: str | None) -> bool:
     word = (period or "").split("/")[0].strip().lower()
     start = _DECADES.get(word)
     return start is not None and start <= year <= start + 9
-
-
-def skeleton(key: str) -> str:
-    """A title's consonants only, for transliterations that spell vowels their own way: HFGK's
-    "Teree Bahon Men", "Aakhri Ghalati", "Rusavaee" meet "Teri Baahon Mein", "Aakhri Galti", "Rusvai"."""
-    t = key.replace(" ", "")
-    for a, b in (("ow", "o"), ("aw", "a"), ("x", "ks"), ("w", "v"), ("q", "k"), ("z", "j"), ("ph", "f")):
-        t = t.replace(a, b)
-    t = re.sub(r"[aeiouyh]", "", t)
-    return re.sub(r"(.)\1+", r"\1", t)
 
 
 def _keys(f: FilmRecord, norm: Normaliser) -> set[str]:
