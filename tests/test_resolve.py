@@ -609,3 +609,14 @@ def test_a_film_three_sources_spell_differently_joins_the_most_reliable_sources_
     g = Groups(s)
     assert g.find(h) == g.find(m) == g.find(a1)
     assert g.find(a2) != g.find(h)              # Atul's second copy: same source, left for review
+
+
+def test_same_consonants_but_different_spellings_do_not_merge(store_for):
+    # "Mandi" (Hindi) and "Mahananda" (Marathi), both 1983, share the consonants "mnd" only.
+    s = store_for("rafi")
+    a = film(s, "atulsongaday", "a1", "Mandi", 1983)
+    b = film(s, "musicbrainz", "m1", "Mahananda", 1983)
+    h = film(s, "hfgk_online", "h1", "Mandee", 1983)
+    resolve(s)
+    g = Groups(s)
+    assert g.find(a) == g.find(h) and g.find(b) != g.find(h)

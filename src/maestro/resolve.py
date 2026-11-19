@@ -533,7 +533,7 @@ def resolve_containers(store: Store, norm: Normaliser, stats: ResolveStats) -> N
     def same_skeleton(r):
         out: dict[int, dict] = {}
         for o in by_skel.get((r.get("skeleton"), r["year"]), []):
-            if o is not r and groups.can_join(o["id"], r["id"]):
+            if o is not r and groups.can_join(o["id"], r["id"]) and close_spelling(r["squashed"], o["squashed"]):
                 out.setdefault(groups.find(o["id"]), o)
         return list(out.values())
 
@@ -567,7 +567,11 @@ def resolve_containers(store: Store, norm: Normaliser, stats: ResolveStats) -> N
         if len(anchors) != 1:
             continue
         anchor = anchors[0]
+        anchor_keys = {r["squashed"] for r in cluster if groups.find(r["id"]) == anchor}
         for g in sorted(roots, key=lambda g: -rel[g]):
+            keys = {r["squashed"] for r in cluster if groups.find(r["id"]) == groups.find(g)}
+            if not any(close_spelling(x, y) for x in anchor_keys for y in keys):
+                continue
             a, b = sorted((groups.find(anchor), groups.find(g)))
             if a != b and (a, b) not in distinct and groups.can_join(a, b):
                 store.merge_entities(a, b, "container titles with the same consonants and year, joined to "
@@ -647,6 +651,15 @@ def skeleton(key: str) -> str:
 
 
 SKELETON_MIN = 3  # consonants a container title needs before its skeleton alone may join two records
+# ... and how alike the two spellings must still be (squash keys): dropping every vowel and "h" can fold
+# different titles together ("Mandi" and the Marathi "Mahananda" are both "mnd"; ratio 0.57), while
+# real spelling variants stay close ("Ham Donon"/"Hum Dono" 0.80, "Chunaria"/"Chunariya" 0.94).
+SKELETON_SPELLING_RATIO = 0.78
+
+
+def close_spelling(a: str, b: str) -> bool:
+    """Whether two container squash keys are spelling variants, not merely the same consonants."""
+    return SequenceMatcher(None, a, b).ratio() >= SKELETON_SPELLING_RATIO
 
 
 def _squash(text: str) -> str:
