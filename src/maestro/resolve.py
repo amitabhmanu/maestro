@@ -549,6 +549,32 @@ def resolve_containers(store: Store, norm: Normaliser, stats: ResolveStats) -> N
                 groups.union(a, b)
                 stats.merged["container"] += 1
 
+    # A film three sources hold (HFGK's "Parayi", MusicBrainz's "Parai", Atul's "Paraayi") has more
+    # than one candidate each, so the rule above leaves it split. Anchor such a cluster on the record of
+    # the pack's most reliable source in it, when that source holds exactly one group there, and join
+    # the others to it one by one (a source already in the group is never joined twice: its second
+    # copy stays for review).
+    reliability = {x["id"]: x.get("reliability", 0.5) for x in store.pack.data.get("sources", [])}
+    for cluster in by_skel.values():
+        roots: dict[int, set[str]] = defaultdict(set)
+        for r in cluster:
+            roots[groups.find(r["id"])].update(groups.sources(r["id"]))
+        if len(roots) < 2:
+            continue
+        rel = {g: max((reliability.get(src, 0.5) for src in srcs), default=0.0) for g, srcs in roots.items()}
+        top = max(rel.values())
+        anchors = [g for g, v in rel.items() if v == top]
+        if len(anchors) != 1:
+            continue
+        anchor = anchors[0]
+        for g in sorted(roots, key=lambda g: -rel[g]):
+            a, b = sorted((groups.find(anchor), groups.find(g)))
+            if a != b and (a, b) not in distinct and groups.can_join(a, b):
+                store.merge_entities(a, b, "container titles with the same consonants and year, joined to "
+                                           "the most reliable source's film")
+                groups.union(a, b)
+                stats.merged["container"] += 1
+
     _match_reissues(store, groups, distinct, stats, recs)
 
     by_year: dict[int, list[dict]] = defaultdict(list)
