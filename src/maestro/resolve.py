@@ -267,6 +267,57 @@ def decide_review(store: Store, item_id: int, decision: str, note: str | None = 
     return claim_id
 
 
+def decide_pair(store: Store, keep_id: int, other_id: int, decision: str, note: str | None = None) -> int:
+    """Record a person's decision about two entities that no review item asks about (e.g. a stray
+    recording the matcher never paired). `merge` makes `other_id` the same as `keep_id`; `distinct`
+    keeps them apart. Refuses entities of different types, a merge the user already marked distinct,
+    and a pair already in one group. Open review items about exactly this pair are closed with it.
+    Returns the claim id."""
+    rows = {r["id"]: r for r in store.conn.execute(
+        "SELECT id, type FROM entity WHERE id = ANY(%s)", ([keep_id, other_id],)).fetchall()}
+    for i in (keep_id, other_id):
+        if i not in rows:
+            raise ValueError(f"no entity {i}")
+    if keep_id == other_id:
+        raise ValueError("give two different entities")
+    if rows[keep_id]["type"] != rows[other_id]["type"]:
+        raise ValueError(f"{keep_id} is a {rows[keep_id]['type']} and {other_id} a {rows[other_id]['type']}")
+    groups = Groups(store)
+    a, b = groups.find(keep_id), groups.find(other_id)
+    reason = f"user: {note or decision}"
+    if decision == "merge":
+        if a == b:
+            raise ValueError(f"{keep_id} and {other_id} are already one entity")
+        group_a, group_b = _all_members(store, groups, a), _all_members(store, groups, b)
+        clash = _distinct_pairs(store) & {tuple(sorted((x, y))) for x in group_a for y in group_b}
+        if clash:
+            raise ValueError(f"marked distinct before: {sorted(clash)}; supersede that claim first")
+        claim_id = store.merge_entities(keep_id, other_id, reason, source_id="user")
+    elif decision == "distinct":
+        if a == b:
+            raise ValueError(f"{keep_id} and {other_id} are merged; undo the merge instead")
+        claim_id = store.upsert_claim(keep_id, "distinct_from", ref_entity_id=other_id, value={"reason": reason},
+                                      source_id="user", kind="decided")
+    else:
+        raise ValueError("decision must be merge or distinct")
+    store.conn.execute(
+        """UPDATE review_item SET status = 'decided', decision = %s, note = %s, decided_claim_id = %s,
+                  decided_at = now()
+           WHERE status = 'open' AND subject_ids = %s::bigint[]""",
+        (decision, note, claim_id, sorted([keep_id, other_id])),
+    )
+    return claim_id
+
+
+def _all_members(store: Store, groups: "Groups", root: int) -> list[int]:
+    """Every entity id in the group whose root is `root` (ids linked by same_as claims, plus the root)."""
+    ids = {r["entity_id"] for r in store.conn.execute(
+        "SELECT entity_id FROM claim WHERE field = 'same_as' AND status = 'active'").fetchall()}
+    ids |= {r["ref_entity_id"] for r in store.conn.execute(
+        "SELECT ref_entity_id FROM claim WHERE field = 'same_as' AND status = 'active'").fetchall()}
+    return [i for i in ids | {root} if groups.find(i) == root]
+
+
 # ---- resolution passes --------------------------------------------------------
 
 @dataclass

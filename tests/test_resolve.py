@@ -6,6 +6,7 @@ from maestro.resolve import (
     Groups,
     Normaliser,
     apply_groups,
+    decide_pair,
     decide_review,
     export_reviews,
     fold,
@@ -565,3 +566,22 @@ def test_shared_hindi_film_lexicon_applies_after_the_packs_own(store_for):
     resolve(s)
     assert open_reviews(s) == []
     assert Normaliser.for_store(s).person("Manna De") == Normaliser.for_store(s).person("Manna Dey")
+
+
+def test_a_person_can_merge_or_part_two_entities_no_review_pairs(store_for):
+    s = store_for("rafi")
+    f = film(s, "hfgk_online", "900", "Geet", 1970)
+    solo = song(s, "hfgk_online", "901", "Mere Mitwa", f)
+    duet = song(s, "hfgk_online", "902", "Mere Mitwa", f)
+    stray = song(s, "musicbrainz", "903", "Mere Mitwa (My Beloved)", tier=None)
+    s.upsert_claim(solo, "distinct_from", ref_entity_id=duet, value={"reason": "two versions"},
+                   source_id="user", kind="decided")
+    with pytest.raises(ValueError):
+        decide_pair(s, solo, f, "merge")  # a song and a film
+    decide_pair(s, duet, stray, "distinct", "duet is Lata and Rafi")
+    assert decide_pair(s, solo, stray, "merge", "Rafi solo on CD")
+    assert Groups(s).find(stray) == Groups(s).find(solo)
+    with pytest.raises(ValueError, match="already one"):
+        decide_pair(s, solo, stray, "merge")
+    with pytest.raises(ValueError, match="distinct"):
+        decide_pair(s, duet, stray, "merge")  # the solo's group was marked distinct from the duet
