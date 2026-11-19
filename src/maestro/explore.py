@@ -414,16 +414,21 @@ def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
 
 # ---- CLI ---------------------------------------------------------------------------
 
-def _page_source() -> str:
-    return resources.files("maestro").joinpath("explorer/index.html").read_text("utf-8")
+def write_page(out: Path) -> list[Path]:
+    """The page itself and the catalogue of maestros its picker offers (explorer/catalogue.json)."""
+    out.mkdir(parents=True, exist_ok=True)
+    written = []
+    for name in ("index.html", "catalogue.json"):
+        (out / name).write_text(resources.files("maestro").joinpath(f"explorer/{name}").read_text("utf-8"), "utf-8")
+        written.append(out / name)
+    return written
 
 
 def write_site(out: Path, snaps: list[dict[str, Any]], registers: list[dict[str, Any]] | None = None) -> list[Path]:
     """Write index.html, canon/<slug>.json per snapshot, canon/films/<slug>.json per film register
     (the Films view) and canon/index.json (merged with earlier runs)."""
     (out / "canon").mkdir(parents=True, exist_ok=True)
-    (out / "index.html").write_text(_page_source(), "utf-8")
-    written = [out / "index.html"]
+    written = write_page(out)
     idx_path = out / "canon" / "index.json"
     try:
         index = json.loads(idx_path.read_text("utf-8"))
@@ -438,6 +443,9 @@ def write_site(out: Path, snaps: list[dict[str, Any]], registers: list[dict[str,
         index["maestros"] = [x for x in index["maestros"] if x["slug"] != m["slug"]] + [{
             "slug": m["slug"], "name": m["name"], "unit": m["unit"], "units": len(snap["units"]),
             "file": f"canon/{m['slug']}.json", "generated_at": snap["generated_at"],
+            # what the picker shows before the snapshot loads, and how it finds the catalogue entry
+            "wikidata": (m.get("ids") or {}).get("wikidata"), "active": m.get("active"),
+            "roles": [r for r in [(m.get("roles") or {}).get("primary")] if r],
         }]
     index["maestros"].sort(key=lambda x: x["name"])
     for reg in registers or []:
@@ -522,7 +530,7 @@ def main(argv: list[str] | None = None) -> int:
     if snaps or registers or not (args.out / "index.html").exists():
         write_site(args.out, snaps, registers)
     else:
-        (args.out / "index.html").write_text(_page_source(), "utf-8")  # refresh the page only
+        write_page(args.out)  # refresh the page only
     print(f"wrote {args.out}/")
     if args.serve:
         serve(args.out, args.serve)

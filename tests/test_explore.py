@@ -98,6 +98,12 @@ def test_site(store_for, tmp_path):
     index = json.loads((tmp_path / "canon" / "index.json").read_text("utf-8"))
     assert index["maestros"][0]["slug"] == "rafi" and index["maestros"][0]["units"] == 2
     assert json.loads((tmp_path / "canon" / "rafi.json").read_text("utf-8"))["format"] == 1
+    # The picker's catalogue ships beside the page, and the index names each canon's Wikidata item.
+    catalogue = json.loads((tmp_path / "catalogue.json").read_text("utf-8"))
+    assert catalogue["format"] == "maestro-catalogue/1"
+    assert all(m["name"] and m["wikidata"].startswith("Q") and m["region"] in catalogue["regions"].values()
+               for m in catalogue["maestros"])
+    assert "wikidata" in index["maestros"][0] and "roles" in index["maestros"][0]
     # A later run for another maestro keeps the first one listed.
     main(["--out", str(tmp_path)])
     assert len(json.loads((tmp_path / "canon" / "index.json").read_text("utf-8"))["maestros"]) == 1
