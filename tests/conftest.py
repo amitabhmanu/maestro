@@ -13,6 +13,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 PILOTS = ["rafi", "eddy-arnold", "jean-wiener"]
+PACKS = [*PILOTS, "hindi-films"]
 
 
 def _pg_bin() -> Path | None:

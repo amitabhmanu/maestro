@@ -1,0 +1,79 @@
+# A film register, not a maestro: every Hindi film, with its songs and credits where a source lists them.
+# The canon is every song of every film; films are the containers. See maestros/hindi-films/README.md.
+version: 1
+status: draft
+identity:
+  name: Hindi cinema
+  slug: hindi-films
+  kind: register
+  ids: {wikidata: Q93196}  # Hindi cinema (Bollywood)
+  variants: [Bollywood, Hindi films, Hindi film industry]
+  active: [1931, 2026]
+roles:
+  primary: singer
+  in_scope: [singer, composer, lyricist]
+  out_of_scope: [actor]
+  _why:
+    reason: A register records every song credit (singers, music directors, lyricists) of every film, not one person's.
+    confidence: 0.9
+canon_model:
+  unit: song
+  version_levels: [work, recording]
+  container: film
+  container_has_full_listing: true
+  kind_tiers: {film_song: A, unreleased_film_song: C}
+  _why:
+    reason: HFGK lists every song of every Hindi film 1931-1985, so the film is the checkable container; later films come from Wikidata and Wikipedia with song details added in phase 2.
+    confidence: 0.85
+tiers:
+  A: {label: "Songs of released Hindi films, 1931-1985 (HFGK era)", target_missing: 0.01}
+  B: {label: "Songs of released Hindi films from 1986", target_missing: report_only}
+  C: {label: "Songs of unreleased or undated films", target_missing: report_only}
+registers:
+  - name: HFGK Online (Hindi Film Geet Kosh database, films and songs 1931-1985)
+    tiers: [A, C]
+    access: crawlable
+    role: ground_truth
+    url: https://hamraaz.org/filmssite/public/index.php
+    _why:
+      reason: >-
+        V2.0 of the Hamraaz register online: 6,460 films and 47,079 songs, 1931-1985, each film with its
+        full song list, singers, music directors and lyricists. Crawling for development is fine; the
+        site master's permission is needed before anything built on it goes live.
+      confidence: 0.85
+      evidence: [https://hamraaz.org/filmssite/public/index.php]
+  - name: Wikidata films in Hindi (P364 = Q1568)
+    tiers: [A, B, C]
+    access: crawlable
+    role: independent_check
+    url: https://query.wikidata.org/
+  - name: Wikipedia lists of Hindi films by year
+    tiers: [A, B]
+    access: crawlable
+    role: independent_check
+    url: https://en.wikipedia.org/wiki/Lists_of_Indian_films
+sources:
+  - {id: hfgk_online, kind: structured, lineage: hfgk, reliability: 0.95, access: crawlable, url: "https://hamraaz.org/filmssite/public/", sweep: {url: "https://hamraaz.org/filmssite/public/index.php", extractor: hfgk, purpose: spine}, container_url: "https://hamraaz.org/filmssite/public/film.php?id={xref}"}
+  # sweep url = maestro.extractors.wikidata_language_films.films_url("Q1568").
+  # IMDb IDs come from Wikidata as references only: IMDb itself is never fetched (public FOSS release planned).
+  - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api, api_rps: 0.2, url: "https://query.wikidata.org/sparql", sweep: {url: "https://query.wikidata.org/sparql?format=json&query=SELECT+%3Ffilm+%3Fen+%3Fnative+%28SAMPLE%28%3Ft%29+AS+%3Ftitle%29+%28MIN%28YEAR%28%3Fdate%29%29+AS+%3Fyear%29%0A++%28SAMPLE%28%3Fimdb%29+AS+%3Fimdbid%29+%28SAMPLE%28%3Fart%29+AS+%3Fenwiki%29%0A++%28GROUP_CONCAT%28DISTINCT+CONCAT%28STRAFTER%28STR%28%3Fmus%29%2C+%22entity%2F%22%29%2C+%22%7C%22%2C+COALESCE%28%3Fmusl%2C+%22%22%29%29%3B+separator%3D%22%5Ct%22%29+AS+%3Fcomposers%29%0A++%28GROUP_CONCAT%28DISTINCT+CONCAT%28STRAFTER%28STR%28%3Fdir%29%2C+%22entity%2F%22%29%2C+%22%7C%22%2C+COALESCE%28%3Fdirl%2C+%22%22%29%29%3B+separator%3D%22%5Ct%22%29+AS+%3Fdirectors%29%0AWHERE+%7B%0A++%3Ffilm+wdt%3AP364+wd%3AQ1568+%3B+wdt%3AP31%2Fwdt%3AP279%2A+wd%3AQ11424+.%0A++OPTIONAL+%7B+%3Ffilm+wdt%3AP577+%3Fdate+%7D%0A++OPTIONAL+%7B+%3Ffilm+rdfs%3Alabel+%3Fen+FILTER%28LANG%28%3Fen%29+%3D+%22en%22%29+%7D%0A++OPTIONAL+%7B+%3Ffilm+rdfs%3Alabel+%3Fnative+FILTER%28LANG%28%3Fnative%29+%3D+%22hi%22%29+%7D%0A++OPTIONAL+%7B+%3Ffilm+wdt%3AP1476+%3Ft+%7D%0A++OPTIONAL+%7B+%3Ffilm+wdt%3AP345+%3Fimdb+%7D%0A++OPTIONAL+%7B+%3Fart+schema%3Aabout+%3Ffilm+%3B+schema%3AisPartOf+%3Chttps%3A%2F%2Fen.wikipedia.org%2F%3E+%7D%0A++OPTIONAL+%7B+%3Ffilm+wdt%3AP86+%3Fmus+.+OPTIONAL+%7B+%3Fmus+rdfs%3Alabel+%3Fmusl+FILTER%28LANG%28%3Fmusl%29+%3D+%22en%22%29+%7D+%7D%0A++OPTIONAL+%7B+%3Ffilm+wdt%3AP57+%3Fdir+.+OPTIONAL+%7B+%3Fdir+rdfs%3Alabel+%3Fdirl+FILTER%28LANG%28%3Fdirl%29+%3D+%22en%22%29+%7D+%7D%0A%7D+GROUP+BY+%3Ffilm+%3Fen+%3Fnative", extractor: wikidata_language_films, purpose: spine}}
+  - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable, url: "https://en.wikipedia.org/wiki/Lists_of_Indian_films", sweep: {url: "https://en.wikipedia.org/wiki/Lists_of_Indian_films", extractor: wikipedia_year, purpose: spine}}
+lexicon:
+  container_aliases: lexicon/film_aliases.tsv
+  people_aliases: lexicon/people.tsv
+verification:
+  method: credit
+legal:
+  purpose: personal_then_foss
+  lyrics: first_line_only
+  # HFGK song titles are the opening words, often more than the first line.
+  lyric_fields: [title, title_hi]
+  audio: none
+budget:
+  crawl_requests_per_round: 8000
+  per_domain_rps: 0.5
+  model_spend_usd: null
+  review_hours_per_week: null
+open_questions:
+  - Permission from the HFGK Online site master before anything built on its data goes live.
+  - Song details after 1985 (Wikipedia film pages, MusicBrainz soundtracks), phase 2.

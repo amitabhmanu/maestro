@@ -33,6 +33,7 @@ maestro-doctor = "maestro.ops:doctor_main"
 maestro-backup = "maestro.ops:backup_main"
 maestro-raw = "maestro.rawstore:main"
 maestro-lyrics = "maestro.lyrics:main"
+maestro-films = "maestro.films:main"
 maestro-gem-tags = "maestro.gemtags:main"
 
 [build-system]
