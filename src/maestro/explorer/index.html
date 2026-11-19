@@ -380,6 +380,17 @@ h2, h3 { font-family: var(--f-body); font-weight: 700; letter-spacing: -0.01em; 
 main { padding-bottom: calc(40px + var(--dock-h)); }
 @media (min-width: 761px) { .facets { max-height: calc(100vh - 150px - var(--dock-h)); } }
 @media (min-width: 1181px) { .detail { max-height: calc(100vh - 150px - var(--dock-h)); } }
+/* Films: a draggable splitter between the film list and the film's details */
+.fsplit { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 130px); height: calc(100vh - 150px - var(--dock-h)); cursor: col-resize; touch-action: none; display: grid; place-items: center; border-radius: 4px; }
+.fsplit::before { content: ""; width: 4px; height: 44px; border-radius: 2px; background: var(--line); }
+.fsplit:hover::before, .fsplit:focus-visible::before, .fsplit.drag::before { background: var(--accent); height: 100%; width: 2px; }
+.fsplit:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+body.fdrag, body.fdrag * { cursor: col-resize !important; user-select: none !important; }
+@media (max-width: 1180px) { .fsplit { display: none; } .detail.film { width: min(var(--fw, 840px), 100%); } }
+.songlist li { position: relative; }
+.songlist .ftag { float: right; margin: 0 0 4px 8px; font-size: 12px; padding: 1px 8px; border-radius: 999px; }
+.songlist .ftag.on { color: var(--brass, var(--warn)); border-color: currentColor; font-weight: 600; }
+.songlist li.gemmed .st { color: var(--brass, var(--warn)); }
 .ovgrid .lbars div { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 40px; }
 .dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 28; background: var(--stage); color: var(--stage-ink);
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-top: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
@@ -1232,13 +1243,18 @@ function bindTags(d) {
   }
   d.tagCount = n;
 }
-function onTagsChanged() { for (const d of Object.values(S.snaps)) bindTags(d); if (S.d) render(); }
+function onTagsChanged() { for (const d of Object.values(S.snaps)) bindTags(d); if (S.d || S.view === "films") render(); }
 const tagRank = u => u._tag ? (u._tag.rare ? 2 : 1) : 0;
 function tagBadge(u) { return u._tag ? `<span class="gem${u._tag.rare ? " rare" : ""}" title="Tagged by you${u._tag.rare ? ", with low popularity" : ""}">${u._tag.rare ? "rare gem" : "gem"}</span>` : ""; }
 function tagRecord(u, d) { return { maestro: d.maestro.slug, unit: u.id, title: u.title, year: u.year || null, container: u._c ? u._c.title : null, tagged_at: new Date().toISOString() }; }
 async function setTag(u, on) {
-  const d = S.d, id = u._tag ? u._tag.id : tagDocId(d.maestro.slug, u.id), before = TAGS.map.get(id);
-  if (on) TAGS.map.set(id, tagRecord(u, d)); else TAGS.map.delete(id);
+  const d = S.d, id = u._tag ? u._tag.id : tagDocId(d.maestro.slug, u.id);
+  return writeTag(id, on ? tagRecord(u, d) : null);
+}
+// One tag document in or out (rec null removes it); a failed save puts the old state back.
+async function writeTag(id, rec) {
+  const before = TAGS.map.get(id), on = !!rec;
+  if (on) TAGS.map.set(id, rec); else TAGS.map.delete(id);
   onTagsChanged();
   if (TAGS.mode !== "db") return saveLocalTags();
   try { if (on) await TAGS.db.doc("gem_tags/" + id).set(TAGS.map.get(id)); else await TAGS.db.doc("gem_tags/" + id).delete(); }
@@ -1294,6 +1310,7 @@ async function importTags(text) {
     if (!t || typeof t.maestro !== "string" || t.unit == null || typeof t.title !== "string") continue;
     const id = tagDocId(t.maestro, t.unit); if (TAGS.map.has(id)) continue;
     const rec = { maestro: t.maestro, unit: +t.unit, title: t.title, year: t.year || null, container: t.container || null, tagged_at: t.tagged_at || new Date().toISOString() };
+    if (t.film != null) { rec.film = +t.film; rec.singers = Array.isArray(t.singers) ? t.singers.slice(0, 12).map(String) : []; }
     if (TAGS.mode === "db") { try { await TAGS.db.doc("gem_tags/" + id).set(rec); } catch (e) { TAGS.msg = `Import stopped after ${added} tags (${(e && e.code) || "error"}).`; break; } }
     TAGS.map.set(id, rec); added++;
   }
@@ -1956,6 +1973,18 @@ addEventListener("resize", () => { const el = document.getElementById("dock"); d
 
 // ---------------------------------------------------------------- films (a film register: every film, apart from any maestro)
 const FS = { d: null, loading: null, q: "", flag: "", src: "", yFrom: "", yTo: "", sort: "year", limit: 200, sel: null };
+// The film panel's width (px) on wide screens: twice the old 420px by default, set by dragging the splitter.
+const FILM_W = 840, FILM_W_MIN = 320, FILM_LIST_MIN = 360;
+FS.w = +lsGet("filmPanelW") || FILM_W;
+const filmPanelW = () => Math.round(Math.max(FILM_W_MIN, Math.min(FS.w, innerWidth - 64 - FILM_LIST_MIN)));
+// Gem tags on register songs. A film register's songs belong to no maestro's canon, so their tags are the
+// register's own: maestro = the register's slug, unit = the song's id in the register store (the snapshot's
+// song "id"), with the film's title as container. They sit in the same gem_tags store, ledger and exports as
+// canon tags; a canon's own tags (on its units) are separate and unchanged.
+const regSlug = () => (FS.d && FS.d.register && FS.d.register.slug) || (S.registers[0] || {}).slug;
+const songTagId = x => tagDocId(regSlug(), x.id);
+function songTagRecord(x, f) { return { maestro: regSlug(), unit: x.id, title: x.t, year: f.year || null, container: f.title, film: f.id, singers: (x.s || []).slice(0, 12), tagged_at: new Date().toISOString() }; }
+function regTagged() { const slug = regSlug(), out = new Map(); for (const t of TAGS.map.values()) if (t.maestro === slug && t.film != null) out.set(+t.film, (out.get(+t.film) || 0) + 1); return out; }
 const FLAG_WORDS = {
   no_wikidata: ["No Wikidata item", "No source outside its own list knows this film yet: a gap in Wikidata, or a title too different to match."],
   not_in_hfgk: ["Not in HFGK", "Dated inside HFGK's years, but HFGK has no film by this title and year: a non-Hindi or dubbed film, a different title, or a gap."],
@@ -2009,7 +2038,7 @@ async function loadFilms() {
   render();
 }
 function filmMatches(f) {
-  if (FS.flag === "any" ? !f._open.length : FS.flag === "none" ? f._open.length : FS.flag === "settled" ? !f.flags.some(x => x.status === "resolved") : FS.flag === "reused" ? !f.reused_songs : FS.flag === "remake" ? !(f.based_on || []).length : FS.flag && !f._kinds.has(FS.flag)) return false;
+  if (FS.flag === "any" ? !f._open.length : FS.flag === "none" ? f._open.length : FS.flag === "settled" ? !f.flags.some(x => x.status === "resolved") : FS.flag === "reused" ? !f.reused_songs : FS.flag === "remake" ? !(f.based_on || []).length : FS.flag === "gems" ? !(FS.tagged && FS.tagged.has(f.id)) : FS.flag && !f._kinds.has(FS.flag)) return false;
   if (FS.src === "only_hfgk") { if (f.src.some(x => x !== "hfgk_online")) return false; }
   else if (FS.src && !f.src.includes(FS.src)) return false;
   if (FS.yFrom && !(f.year >= +FS.yFrom)) return false;
@@ -2044,12 +2073,18 @@ function filmSongs(f) {
   const names = ns => ns.map(n => `<button class="linklike" data-fq="${esc(n)}">${esc(n)}</button>`).join(", ");
   const same = (a, b) => a && b && a.length === b.length && a.every((x, i) => x === b[i]);
   const src = xs[0].src === "hfgk_online" ? "HFGK" : "Wikipedia";
+  const canTag = xs.some(x => x.id != null), off = TAGS.mode === "pending" || TAGS.readOnly;
+  const nTagged = xs.filter(x => x.id != null && TAGS.map.has(songTagId(x))).length;
+  const tagNote = canTag ? `<div class="medianote" style="margin:0 0 8px">${nTagged ? `${plural(nTagged, "song")} tagged as gems by you. ` : ""}Tag any song as a gem with ☆. ${esc(tagStoreNote())}${TAGS.msg ? ` ${esc(TAGS.msg)}` : ""}${TAGS.map.size ? ` <button class="linklike" type="button" data-tagx="export">Export tags</button>` : ""}</div>`
+    : `<div class="medianote" style="margin:0 0 8px">Gem tags need a newer film snapshot (run maestro-explore with the register again).</div>`;
   return `<h4>Songs <span class="muted" style="font-weight:400">(${xs.length}, from ${src}${f.new_songs != null && f.new_songs !== xs.length ? `; ${plural(f.new_songs, "new composition")}` : ""})</span></h4>
-    <ol class="songlist">${xs.map(x => {
+    ${tagNote}<ol class="songlist">${xs.map(x => {
       const q = `${x.t} ${f.title} ${f.year || ""}`;
       const tags = [x.k ? SONG_KIND[x.k] + (x.ch && x.k !== "chorus" ? " + chorus" : "") : "", x.v || "", ...(x.r || []).map(r => `raga ${r}`)].filter(Boolean);
       const reuse = x.u ? `<div class="reuse"><b>${x.u.kind === "reused" ? "Reused" : "Recreated"}</b>${x.u.title ? ` from <button class="linklike" data-film="${x.u.film}">${esc(x.u.title)}</button>${x.u.year ? ` (${x.u.year})` : ""}` : ""}: not a new musical offering <span class="muted">(${esc(x.u.rule)})</span></div>` : "";
-      return `<li${x.u ? ' class="reused"' : ""}><div class="st">${esc(x.t)}${x.d ? ` <span class="muted mono">${esc(x.d)}</span>` : ""}</div>
+      const on = x.id != null && TAGS.map.has(songTagId(x));
+      const tagBtn = x.id != null ? `<button class="btn ftag${on ? " on" : ""}" type="button" data-ftag="${x.id}" aria-pressed="${on}" title="${on ? "Tagged as a gem by you: click to remove the tag" : "Tag this song as a gem"}"${off ? " disabled" : ""}>${on ? "★ gem" : "☆ gem"}</button>` : "";
+      return `<li class="${[x.u ? "reused" : "", on ? "gemmed" : ""].filter(Boolean).join(" ")}">${tagBtn}<div class="st">${esc(x.t)}${x.d ? ` <span class="muted mono">${esc(x.d)}</span>` : ""}</div>
         <div class="sm">${x.s && x.s.length ? names(x.s) : `<span class="muted">singer not listed</span>`}${x.l && x.l.length && !same(x.l, f.lyr) ? ` · <span class="muted">lyrics</span> ${names(x.l)}` : ""}${x.m && x.m.length && !same(x.m, f.md) ? ` · <span class="muted">music</span> ${names(x.m)}` : ""}</div>
         ${x.sc && x.sc.length ? `<div class="sm"><span class="muted">on screen</span> ${names(x.sc)}</div>` : ""}
         ${tags.length ? `<div class="sm muted">${esc(tags.join(" · "))}</div>` : ""}${reuse}
@@ -2118,6 +2153,7 @@ function renderFilms() {
     return;
   }
   const d = FS.d, all = d.films;
+  FS.tagged = regTagged();
   let res = all.filter(filmMatches);
   if (FS.sort === "title") res = res.slice().sort((a, b) => a.title.localeCompare(b.title));
   else if (FS.sort === "songs") res = res.slice().sort((a, b) => (b.songs || 0) - (a.songs || 0));
@@ -2132,10 +2168,13 @@ function renderFilms() {
       <div class="yr mono">${f.year || "—"}</div>
       <div class="mainc"><div class="t">${esc(f.title)}${f.title_hi ? ` <span class="muted">${esc(f.title_hi)}</span>` : ""}</div>
         <div class="meta">${esc([f.md.join(", "), f.songs != null ? plural(f.songs, "song") : null, f.sing.slice(0, 3).join(", ") + (f.sing.length > 3 ? ` +${f.sing.length - 3}` : "")].filter(Boolean).join(" · "))}</div></div>
-      <div class="side">${f.year && f.year < 1931 ? `<span class="muted" title="Hindi talkies began in 1931">silent</span> ` : ""}${f._open.length ? f._open.slice(0, 2).map(x => `<span class="tier" title="${esc(x.detail)}">${esc(flagWord(x.kind))}</span>`).join(" ") : ""}</div>
+      <div class="side">${FS.tagged.has(f.id) ? `<span class="gem" title="Songs you tagged as gems">${FS.tagged.get(f.id) > 1 ? FS.tagged.get(f.id) + " gems" : "gem"}</span> ` : ""}${f.year && f.year < 1931 ? `<span class="muted" title="Hindi talkies began in 1931">silent</span> ` : ""}${f._open.length ? f._open.slice(0, 2).map(x => `<span class="tier" title="${esc(x.detail)}">${esc(flagWord(x.kind))}</span>`).join(" ") : ""}</div>
     </div>`).join("");
   const opt = (v, l, cur) => `<option value="${esc(v)}"${v === cur ? " selected" : ""}>${esc(l)}</option>`;
-  main.innerHTML = `<div class="browse${sel ? " has-detail" : ""}" style="grid-template-columns:minmax(0,1fr)${sel && innerWidth > 1180 ? " 420px" : ""}">
+  const wide = sel && innerWidth > 1180, fw = filmPanelW();
+  const keepScroll = sel && FS.shown === sel.id && document.getElementById("detail") ? document.getElementById("detail").scrollTop : 0;
+  FS.shown = sel ? sel.id : null;
+  main.innerHTML = `<div class="browse${sel ? " has-detail" : ""}" id="fbrowse" style="grid-template-columns:minmax(0,1fr)${wide ? ` 10px ${fw}px;column-gap:5px` : ""};--fw:${fw}px">
     <section style="min-width:0">
       <div class="panel"><h2>${esc(S.registers[0].name)}: every film</h2>
         <div class="sub">Films from Wikidata, Wikipedia's yearly lists and HFGK${y0 ? ` (songs and credits for ${y0}–${y1})` : ""}, with songs after ${y1 || 1985} from Wikipedia's soundtrack listings, matched film by film. Separate from any maestro's canon.</div>
@@ -2145,12 +2184,13 @@ function renderFilms() {
           <div><b class="mono">${songs.toLocaleString()}</b> <span class="muted">songs</span></div>
           ${reusedN ? `<div><b class="mono">${reusedN.toLocaleString()}</b> <span class="muted">songs reused from earlier films</span></div>` : ""}
           <div><b class="mono">${res.filter(f => f._open.length).length.toLocaleString()}</b> <span class="muted">to check</span></div>
+          ${FS.tagged.size ? (n => `<div><b class="mono">${n.toLocaleString()}</b> <span class="muted">${n === 1 ? "song" : "songs"} you tagged as gems</span></div>`)([...FS.tagged.values()].reduce((a, b) => a + b, 0)) : ""}
         </div></div>
       <div class="list-head" style="flex-wrap:wrap;gap:8px">
         <div class="fq" style="flex:1 1 260px;min-width:0"><input id="fq" type="search" aria-label="Search films" placeholder="Title, music director, singer, lyricist, year or 1960s" value="${esc(FS.q)}"></div>
         <div class="tools ftools" style="flex-wrap:wrap">
           <label class="muted" for="fy0">Years</label><input id="fy0" class="mono" inputmode="numeric" size="4" placeholder="from" value="${esc(FS.yFrom)}"><input id="fy1" class="mono" inputmode="numeric" size="4" placeholder="to" value="${esc(FS.yTo)}">
-          <label class="muted" for="fflag">Check</label><select id="fflag">${opt("", "all films", FS.flag)}${opt("any", "any flag", FS.flag)}${opt("none", "nothing to check", FS.flag)}${opt("settled", "settled by a rule", FS.flag)}${opt("reused", "has reused songs", FS.flag)}${opt("remake", "a remake", FS.flag)}${Object.keys(FLAG_WORDS).map(k => opt(k, `${flagWord(k)}${flagCounts.has(k) ? ` (${flagCounts.get(k).toLocaleString()})` : ""}`, FS.flag)).join("")}</select>
+          <label class="muted" for="fflag">Check</label><select id="fflag">${opt("", "all films", FS.flag)}${opt("any", "any flag", FS.flag)}${opt("none", "nothing to check", FS.flag)}${opt("settled", "settled by a rule", FS.flag)}${opt("reused", "has reused songs", FS.flag)}${opt("remake", "a remake", FS.flag)}${opt("gems", `has your gem songs${FS.tagged.size ? ` (${FS.tagged.size.toLocaleString()})` : ""}`, FS.flag)}${Object.keys(FLAG_WORDS).map(k => opt(k, `${flagWord(k)}${flagCounts.has(k) ? ` (${flagCounts.get(k).toLocaleString()})` : ""}`, FS.flag)).join("")}</select>
           <label class="muted" for="fsrc">Source</label><select id="fsrc">${opt("", "any", FS.src)}${Object.entries(SRC_WORDS).map(([k, v]) => opt(k, `in ${v}`, FS.src)).join("")}${opt("only_hfgk", "only in HFGK", FS.src)}</select>
           <label class="muted" for="fsort">Sort</label><select id="fsort">${Object.entries(FILM_SORTS).map(([k, v]) => opt(k, v, FS.sort)).join("")}</select>
         </div></div>
@@ -2158,7 +2198,8 @@ function renderFilms() {
       <div class="ledger">${rows || `<div class="empty">No film matches. Clear a filter above.</div>`}</div>
       ${res.length > FS.limit ? `<button class="btn more" id="fmore" type="button">Show ${Math.min(400, res.length - FS.limit)} more</button>` : ""}
     </section>
-    ${sel ? `<aside class="detail" id="detail" aria-label="Film details">${filmDetail(sel)}</aside>` : ""}
+    ${wide ? `<div class="fsplit" id="fsplit" role="separator" aria-orientation="vertical" aria-label="Resize the film details" aria-valuemin="${FILM_W_MIN}" aria-valuenow="${fw}" tabindex="0" title="Drag to resize (double-click to reset)"></div>` : ""}
+    ${sel ? `<aside class="detail film" id="detail" aria-label="Film details">${filmDetail(sel)}</aside>` : ""}
   </div>`;
   const q = document.getElementById("fq");
   let t; q.oninput = () => { clearTimeout(t); t = setTimeout(() => { FS.q = q.value; FS.limit = 200; renderFilms(); const n = document.getElementById("fq"); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 180); };
@@ -2169,6 +2210,34 @@ function renderFilms() {
   main.querySelectorAll("[data-fq]").forEach(b => b.onclick = () => { FS.q = b.dataset.fq; FS.sel = null; FS.limit = 200; render(); });
   main.querySelectorAll("[data-canon]").forEach(b => b.onclick = async () => { await selectMaestro(b.dataset.canon); S.f = blank(); S.f.containers = [+b.dataset.cid]; location.hash = "#browse"; render(); });
   const x = document.getElementById("closefilm"); if (x) x.onclick = () => { FS.sel = null; render(); };
+  if (keepScroll) document.getElementById("detail").scrollTop = keepScroll;
+  main.querySelectorAll("[data-ftag]").forEach(b => b.onclick = e => {
+    e.stopPropagation();
+    const x = (FS.songs[sel.song_file] && FS.songs[sel.song_file].get(sel.id) || []).find(y => String(y.id) === b.dataset.ftag); if (!x) return;
+    const id = songTagId(x); TAGS.msg = null;
+    writeTag(id, TAGS.map.has(id) ? null : songTagRecord(x, sel));
+  });
+  main.querySelectorAll('[data-tagx="export"]').forEach(b => b.onclick = downloadTags);
+  bindFilmSplit();
+}
+function bindFilmSplit() {
+  const h = document.getElementById("fsplit"), grid = document.getElementById("fbrowse"); if (!h || !grid) return;
+  const apply = w => { FS.w = w; const v = filmPanelW(); grid.style.gridTemplateColumns = `minmax(0,1fr) 10px ${v}px`; grid.style.setProperty("--fw", v + "px"); h.setAttribute("aria-valuenow", v); return v; };
+  const save = () => lsSet("filmPanelW", String(filmPanelW()));
+  h.onpointerdown = e => {
+    if (e.button !== 0) return;
+    e.preventDefault(); h.setPointerCapture(e.pointerId); h.classList.add("drag"); document.body.classList.add("fdrag");
+    const right = grid.getBoundingClientRect().right;
+    h.onpointermove = ev => apply(right - ev.clientX - 5);
+    h.onpointerup = h.onpointercancel = () => { h.onpointermove = h.onpointerup = h.onpointercancel = null; h.classList.remove("drag"); document.body.classList.remove("fdrag"); FS.w = filmPanelW(); save(); };
+  };
+  h.ondblclick = () => { apply(FILM_W); save(); };
+  h.onkeydown = e => {
+    const step = e.shiftKey ? 80 : 20;
+    if (e.key === "ArrowLeft") apply(filmPanelW() + step); else if (e.key === "ArrowRight") apply(filmPanelW() - step);
+    else if (e.key === "Home") apply(innerWidth); else if (e.key === "End") apply(FILM_W_MIN); else return;
+    e.preventDefault(); FS.w = filmPanelW(); save();
+  };
 }
 S.group = lsGet("group") || "none";
 
