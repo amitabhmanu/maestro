@@ -75,6 +75,8 @@ def review_main(argv: list[str] | None = None) -> int:
                                          the open items grouped into questions that cannot chain
     maestro-review --apply answers.json  record a reviewer's answers to grouped questions:
                                          {"answers": [{"items": [...], "groups": [[ids], ...] or null}]}
+    maestro-review --merge KEEP OTHER    the user says two entities no review item pairs are one
+    maestro-review --distinct A B        the user says two entities are different
     """
     from maestro.resolve import decide_review, open_reviews
 
@@ -89,8 +91,22 @@ def review_main(argv: list[str] | None = None) -> int:
     p.add_argument("--grouped", action="store_true",
                    help="with --export: group items into questions, so answers to pairs cannot chain")
     p.add_argument("--apply", metavar="FILE", help="record answers to grouped questions from a JSON file")
+    p.add_argument("--merge", nargs=2, type=int, metavar=("KEEP", "OTHER"),
+                   help="record that OTHER is the same entity as KEEP (no review item needed)")
+    p.add_argument("--distinct", nargs=2, type=int, metavar=("A", "B"), help="record that A and B are different")
     args, store = _store(p, argv)
-    if args.export and args.grouped:
+    if args.merge or args.distinct:
+        from maestro.resolve import decide_pair
+
+        decision, (a, b) = ("merge", args.merge) if args.merge else ("distinct", args.distinct)
+        try:
+            with store.exclusive():
+                claim = decide_pair(store, a, b, decision, args.note)
+        except ValueError as e:
+            store.close()
+            p.error(str(e))
+        print(f"{a} {b}: {decision} (claim {claim})")
+    elif args.export and args.grouped:
         from maestro.resolve import review_questions
 
         qs = review_questions(store)
