@@ -2,7 +2,9 @@
 
 The explorer keeps tags in its Artifact's `gem_tags` db collection (one document per tag, id
 `<slug>~<unit id>`), or in the browser when served locally, and exports them as
-`maestro-gem-tags/1` JSON. Neither outlives a lost Artifact or browser, so this module keeps a
+`maestro-gem-tags/1` JSON. Songs in a film register (the explorer's Films view) are tagged too: their
+tags carry the register's slug as `maestro`, the song's id in the register store as `unit`, the film's
+title as `container` and its id as `film`, so they sit beside canon tags and never touch them. Neither outlives a lost Artifact or browser, so this module keeps a
 **ledger**: one `maestro-gem-tags/1` file per maestro that only ever grows.
 
 - `maestro-gem-tags merge --ledger FILE SOURCE...` folds new tags into the ledger. A SOURCE is an
