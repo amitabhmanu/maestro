@@ -8,7 +8,7 @@ from maestro.crawl.fetcher import Page
 from maestro.crawl.runner import ExtractContext
 
 FIX = Path(__file__).parent / "fixtures" / "hamraaz"
-spec = importlib.util.spec_from_file_location("hamraaz", ROOT / "maestros" / "rafi" / "extractors" / "hamraaz.py")
+spec = importlib.util.spec_from_file_location("hamraaz", ROOT / "src" / "maestro" / "extractors" / "hamraaz.py")
 hamraaz = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(hamraaz)
 

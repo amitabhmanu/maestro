@@ -1,8 +1,8 @@
-"""Songs of Yore posts (and posts on other expert blogs) about Rafi's songs: expert opinion for gems.
+"""Songs of Yore posts (and posts on other expert blogs) about the maestro's songs: expert opinion for gems.
 
 songsofyore.com's robots.txt shuts out AI crawlers, so its pages are never crawled: the user saves
 a post ("Webpage, HTML only") and it is imported with `maestro-import --extractor songsofyore --url
-<post url> <file>`. Saved copies live in manual-imports/rafi/expert/.
+<post url> <file>`. Saved copies live in manual-imports/<slug>/expert/.
 
 A post lists its songs as numbered lines, in one of these shapes:
   "1. Title – Film (1968) – Lyrics: ... – Music: ..."

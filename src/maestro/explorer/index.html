@@ -2,42 +2,47 @@
 <title>Canon Explorer</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: a catalogue register. Query line on top, facets down the left, ledger rows in the middle,
-   the record card on the right. Mono for everything a cataloguer would type: years, matrices, counts. */
+/* Layout: a record shop for one maestro at a time. The front room is the crate of maestros (vinyl labels);
+   inside, each maestro gets a stage: the career drawn as a waveform, then the catalogue register
+   (facets left, ledger middle, liner notes right) and a player dock along the bottom.
+   Indigo for the stage lights, brass for gems. Condensed poster type for names, mono for matrices and years. */
 :root {
-  --bg: #f3f5f7; --panel: #ffffff; --ink: #17202b; --ink-2: #485466; --muted: #737e8f; --line: #dde2e8;
-  --accent: #0b6870; --accent-ink: #ffffff; --accent-soft: #dcefef; --hover: #eef2f5;
-  --good: #2e7d32; --warn: #a76400; --bad: #c0392b;
-  --t-A: #2a78d6; --t-B: #eb6834; --t-C: #1baf7a; --t-D: #eda100; --t-none: #9aa3af;
-  --seq-0: #eef4fc; --seq-1: #cde2fb; --seq-2: #9ec5f4; --seq-3: #5598e7; --seq-4: #256abf; --seq-5: #104281;
-  --f-display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
-  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  --g-expert: #b87800; --g-lead: #2a78d6;
-  --r: 6px;
+  --bg: #f5f4f8; --panel: #ffffff; --ink: #1b1730; --ink-2: #4a4560; --muted: #767190; --line: #e3e0ec;
+  --accent: #4f3fd0; --accent-ink: #ffffff; --accent-soft: #ebe8fb; --hover: #f0eef6;
+  --brass: #9a6a12; --brass-soft: #f6ecd8; --stage: #1b1730; --stage-ink: #f3f0ff; --stage-2: #b9b1e6;
+  --good: #2e7d32; --warn: #9a6a12; --bad: #c0392b;
+  --t-A: #2a78d6; --t-B: #eb6834; --t-C: #1baf7a; --t-D: #eda100; --t-none: #9a98aa;
+  --seq-0: #f0eef8; --seq-1: #d8d2f7; --seq-2: #b2a8ef; --seq-3: #8475e2; --seq-4: #5a49cf; --seq-5: #362a95;
+  --f-display: "Big Shoulders Display", "Arial Narrow", "Roboto Condensed", Impact, sans-serif;
+  --f-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --g-expert: #9a6a12; --g-lead: #4f3fd0;
+  --r: 8px; --dock-h: 0px;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #0e1217; --panel: #151a21; --ink: #e5e9ef; --ink-2: #b2bbc7; --muted: #8590a0; --line: #27303b;
-  --accent: #4db3ba; --accent-ink: #0b1d1f; --accent-soft: #163538; --hover: #1c232c;
-  --good: #6bbf6f; --warn: #e0a030; --bad: #ef6c6c;
-  --t-A: #3987e5; --t-B: #d95926; --t-C: #199e70; --t-D: #c98500; --t-none: #6b7480;
-  --seq-0: #18202a; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #5598e7; --seq-5: #9ec5f4;
-  --g-expert: #c98500; --g-lead: #3987e5;
+  --bg: #0e0c16; --panel: #17141f; --ink: #ece9f5; --ink-2: #bdb7d0; --muted: #8d87a3; --line: #2a2638;
+  --accent: #a99cff; --accent-ink: #140f2b; --accent-soft: #262046; --hover: #1f1b2b;
+  --brass: #e2b45a; --brass-soft: #33281a; --stage: #07060c; --stage-ink: #f3f0ff; --stage-2: #a99cff;
+  --good: #6bbf6f; --warn: #e2b45a; --bad: #ef6c6c;
+  --t-A: #3987e5; --t-B: #d95926; --t-C: #199e70; --t-D: #c98500; --t-none: #6b6880;
+  --seq-0: #1b1828; --seq-1: #2f2766; --seq-2: #43389a; --seq-3: #6656d0; --seq-4: #8f80f0; --seq-5: #c4baff;
+  --g-expert: #e2b45a; --g-lead: #a99cff;
   color-scheme: dark; } }
 :root[data-theme="dark"] {
-  --bg: #0e1217; --panel: #151a21; --ink: #e5e9ef; --ink-2: #b2bbc7; --muted: #8590a0; --line: #27303b;
-  --accent: #4db3ba; --accent-ink: #0b1d1f; --accent-soft: #163538; --hover: #1c232c;
-  --good: #6bbf6f; --warn: #e0a030; --bad: #ef6c6c;
-  --t-A: #3987e5; --t-B: #d95926; --t-C: #199e70; --t-D: #c98500; --t-none: #6b7480;
-  --seq-0: #18202a; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #5598e7; --seq-5: #9ec5f4;
-  --g-expert: #c98500; --g-lead: #3987e5;
+  --bg: #0e0c16; --panel: #17141f; --ink: #ece9f5; --ink-2: #bdb7d0; --muted: #8d87a3; --line: #2a2638;
+  --accent: #a99cff; --accent-ink: #140f2b; --accent-soft: #262046; --hover: #1f1b2b;
+  --brass: #e2b45a; --brass-soft: #33281a; --stage: #07060c; --stage-ink: #f3f0ff; --stage-2: #a99cff;
+  --good: #6bbf6f; --warn: #e2b45a; --bad: #ef6c6c;
+  --t-A: #3987e5; --t-B: #d95926; --t-C: #199e70; --t-D: #c98500; --t-none: #6b6880;
+  --seq-0: #1b1828; --seq-1: #2f2766; --seq-2: #43389a; --seq-3: #6656d0; --seq-4: #8f80f0; --seq-5: #c4baff;
+  --g-expert: #e2b45a; --g-lead: #a99cff;
   color-scheme: dark; }
 
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body { background: var(--bg); color: var(--ink); font: 14px/1.45 var(--f-body); }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--f-body); }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel); }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -233,6 +238,7 @@ td.n, th.n { text-align: right; font-family: var(--f-mono); }
 
 @media (max-width: 1180px) {
   .mapwrap.has-detail { grid-template-columns: minmax(0, 1fr); }
+  .detail { bottom: var(--dock-h) !important; }
   .browse.has-detail { grid-template-columns: 250px minmax(0, 1fr); }
   .detail { position: fixed; right: 0; top: 0; bottom: 0; width: min(420px, 100%); max-height: none; z-index: 30; border-radius: 0;
     padding-top: calc(16px + env(safe-area-inset-top, 0px)); padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); box-shadow: -8px 0 30px rgba(0,0,0,.18); }
@@ -249,18 +255,174 @@ td.n, th.n { text-align: right; font-family: var(--f-mono); }
   .row .side { grid-column: 2; }
 }
 @media (prefers-reduced-motion: no-preference) { .row, .frow, .btn { transition: background-color .12s; } }
+
+/* ---- redesign: type, header, vinyl, home, stage, player ---- */
+h1 { font-family: var(--f-display); font-weight: 800; letter-spacing: .005em; line-height: .95; }
+h2, h3 { font-family: var(--f-body); font-weight: 700; letter-spacing: -0.01em; }
+.top { box-shadow: 0 1px 0 var(--line); border-bottom: 0; }
+.brand { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; color: var(--ink); font-family: var(--f-display); font-weight: 800; font-size: 24px; letter-spacing: .02em; text-transform: uppercase; }
+.brand .disc { width: 26px; }
+.nowm { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px 3px 4px; font-weight: 600; white-space: nowrap; max-width: 100%; }
+.nowm:hover { background: var(--hover); }
+.nowm .disc { width: 24px; }
+.nowm .chg { color: var(--muted); font-weight: 500; font-size: 12.5px; }
+.views { overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+.views::-webkit-scrollbar { display: none; }
+.views a { white-space: nowrap; }
+.views a[aria-current="page"] { color: var(--accent-ink); background: var(--accent); }
+.views .sep { width: 1px; background: var(--line); margin: 4px 6px; flex: none; }
+.gem { color: var(--brass); }
+.gem.rare { background: var(--brass); color: var(--panel); border-color: var(--brass); }
+.btn.primary { background: var(--accent); }
+.row .t { display: flex; gap: 8px; align-items: baseline; }
+.row .t .tt { min-width: 0; overflow-wrap: anywhere; }
+
+/* a vinyl record: grooves, a coloured label carrying the initials, the spindle hole */
+.disc { --h: 250; position: relative; display: inline-grid; place-items: center; flex: none; width: 56px; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle, hsl(var(--h) 62% 58%) 0 31%, #0d0c12 32% 34%, transparent 35%),
+    repeating-radial-gradient(circle, #16151c 0 1.5px, #24222d 2px 3px), #16151c;
+  box-shadow: 0 0 0 1px rgba(127, 120, 160, .25), 0 6px 14px -8px rgba(0, 0, 0, .55); }
+.disc::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 30deg, transparent 0 18%, rgba(255,255,255,.13) 22%, transparent 27% 68%, rgba(255,255,255,.08) 72%, transparent 77%); }
+.disc::after { content: ""; position: absolute; width: 6%; aspect-ratio: 1; border-radius: 50%; background: #0d0c12; }
+.disc b { position: absolute; top: 37%; font: 800 calc(var(--ds, 56px) * .16)/1 var(--f-display); color: #fff; letter-spacing: .04em; z-index: 1; pointer-events: none; }
+.disc.off { filter: grayscale(.85) brightness(.95); opacity: .75; }
+@media (prefers-reduced-motion: no-preference) { .disc.spin { animation: spin 3.2s linear infinite; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* home: the crate of maestros */
+.band { background: var(--stage); color: var(--stage-ink); margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px))) calc(-1 * max(16px, env(safe-area-inset-right, 0px))); margin-top: -16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 30px; position: relative; overflow: hidden; }
+.band .eyebrow { font: 500 11.5px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--stage-2); }
+.band h1 { font-size: clamp(44px, 8vw, 92px); text-transform: uppercase; margin-top: 6px; }
+.band .lede { color: #cfc9e8; max-width: 62ch; margin-top: 10px; font-size: 15px; }
+.band .muted, .band .k { color: #a49fbf; }
+.staff { position: absolute; top: 26px; right: 0; width: min(46%, 520px); height: 33px; pointer-events: none; opacity: .16;
+  background: repeating-linear-gradient(to bottom, var(--stage-2) 0 1px, transparent 1px 8px); }
+.bstats { display: flex; gap: 26px; flex-wrap: wrap; margin-top: 16px; }
+.bstats div { display: grid; }
+.bstats b { font: 500 22px var(--f-mono); color: var(--stage-ink); }
+.bstats span { font-size: 12px; color: #a49fbf; }
+.ready { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 14px; margin-top: 22px; }
+.rcard { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; color: var(--ink); text-decoration: none; }
+.rcard:hover { border-color: var(--accent); }
+.rcard .disc { width: 84px; --ds: 84px; }
+.rcard h3 { font: 800 28px/1 var(--f-display); text-transform: uppercase; letter-spacing: .01em; }
+.rcard .m { color: var(--ink-2); font-size: 13px; margin-top: 4px; }
+.rcard .n { font: 500 13px var(--f-mono); color: var(--accent); margin-top: 8px; }
+@media (prefers-reduced-motion: no-preference) { .rcard:hover .disc { animation: spin 2.4s linear infinite; } }
+.hsec { margin-top: 30px; }
+.hsec > h2 { font-size: 20px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.hsec > h2 .muted { font-size: 13px; font-weight: 500; }
+.hfilters { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center; margin: 12px 0 14px; }
+.hfilters input { flex: 1 1 220px; min-width: 0; border: 1.5px solid var(--line); background: var(--panel); border-radius: 999px; padding: 8px 14px; font-size: 14.5px; }
+.hfilters input:focus { border-color: var(--accent); outline: none; }
+.seg { display: flex; gap: 4px; flex-wrap: wrap; }
+.seg button { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 4px 11px; font-size: 13px; color: var(--ink-2); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.region h3 { font: 500 11.5px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
+.crate { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 10px; }
+.mcard { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center; text-align: left; border: 1px solid var(--line); background: var(--panel); border-radius: 12px; padding: 10px 12px; color: var(--ink); }
+.mcard:hover { background: var(--hover); }
+.mcard[aria-expanded="true"] { border-color: var(--accent); }
+.mcard .disc { width: 46px; --ds: 46px; }
+.mcard .nm { font-weight: 700; line-height: 1.2; }
+.mcard .g { font-size: 12.5px; color: var(--ink-2); line-height: 1.3; }
+.mcard .y { font: 11.5px var(--f-mono); color: var(--muted); margin-top: 2px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.status { font: 600 10.5px var(--f-body); letter-spacing: .06em; text-transform: uppercase; border-radius: 999px; padding: 1px 7px; border: 1px solid currentColor; }
+.status.soon { color: var(--muted); }
+.status.building { color: var(--brass); background: var(--brass-soft); border-color: transparent; }
+.status.live { color: var(--accent); }
+.mnote { grid-column: 1 / -1; background: var(--accent-soft); border-radius: 12px; padding: 14px 16px; font-size: 13.5px; display: grid; gap: 6px; }
+.mnote code { font-family: var(--f-mono); font-size: 12.5px; background: var(--panel); border-radius: 4px; padding: 1px 6px; user-select: all; }
+.foot { margin-top: 34px; color: var(--muted); font-size: 12.5px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+/* overview: the stage */
+.stagehead { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: center; }
+.stagehead .disc { width: 120px; --ds: 120px; }
+.stagehead h1 { font-size: clamp(40px, 7vw, 84px); text-transform: uppercase; }
+.stagehead .who { color: #cfc9e8; margin-top: 8px; font-size: 14.5px; }
+.wave { margin-top: 22px; position: relative; }
+.wave svg { display: block; width: 100%; height: auto; overflow: visible; }
+.wave text { fill: #a49fbf; font: 10.5px var(--f-mono); }
+.wave .bar { fill: var(--stage-2); }
+.wave .bar.post { fill: #6e6890; }
+.wave .hot { fill: transparent; cursor: pointer; }
+.wave .hot:hover + .bar, .wave .bar.on { fill: #fff; }
+.wave .gemdot { fill: var(--brass); }
+.wave .axis { stroke: #4a4466; }
+.wave .cap { fill: #a49fbf; font: 11px var(--f-body); }
+.ovgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 16px; margin-top: 18px; }
+.panel .phead { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-bottom: 4px; }
+.panel .phead h2 { margin: 0; }
+.panel .phead .btn { margin-left: auto; }
+.mini { display: grid; }
+.mini .it { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 4px; border-top: 1px solid var(--line); cursor: pointer; border-radius: 6px; }
+.mini .it:first-child { border-top: 0; }
+.mini .it:hover { background: var(--hover); }
+.mini .it .t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini .it .s { font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini .it .rk { font: 500 13px var(--f-mono); color: var(--muted); text-align: center; }
+.people { display: grid; gap: 12px; }
+.people h4 { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+.pchips { display: flex; gap: 6px; flex-wrap: wrap; }
+.pchip { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 4px 10px; font-size: 13px; display: inline-flex; gap: 6px; align-items: baseline; color: var(--ink); }
+.pchip:hover { border-color: var(--accent); }
+.pchip .mono { font-size: 11.5px; color: var(--muted); }
+.milestones { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 14px; font-size: 13.5px; }
+.milestones dt { font: 500 13px var(--f-mono); color: var(--accent); }
+.milestones dd { margin: 0; min-width: 0; }
+
+/* play buttons and the player dock */
+.play { flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-ink); font-size: 10px; text-decoration: none; padding: 0 0 0 2px; line-height: 1; }
+.play:hover { filter: brightness(1.12); }
+.play.lg { width: 34px; height: 34px; font-size: 13px; }
+.play.ghost { background: transparent; color: var(--muted); border: 1px dashed var(--line); }
+main { padding-bottom: calc(40px + var(--dock-h)); }
+@media (min-width: 761px) { .facets { max-height: calc(100vh - 150px - var(--dock-h)); } }
+@media (min-width: 1181px) { .detail { max-height: calc(100vh - 150px - var(--dock-h)); } }
+.ovgrid .lbars div { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 40px; }
+.dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 28; background: var(--stage); color: var(--stage-ink);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-top: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -10px 30px -12px rgba(0, 0, 0, .45); }
+.dock .in { display: flex; gap: 12px 16px; align-items: center; flex-wrap: wrap; }
+.dock .disc { width: 44px; --ds: 44px; }
+.dock .np { flex: 1 1 220px; min-width: 0; }
+.dock .np .k { font: 500 10.5px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--stage-2); }
+.dock .np .t { font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dock .np .s { font-size: 12.5px; color: #a49fbf; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dock .ctl { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.dock .dbtn { border: 1px solid #3b3557; background: transparent; color: var(--stage-ink); border-radius: 999px; padding: 6px 12px; font-size: 13px; text-decoration: none; display: inline-flex; gap: 6px; align-items: center; }
+.dock .dbtn:hover { background: #2a2540; }
+.dock .dbtn.go { background: var(--stage-ink); color: var(--stage); border-color: var(--stage-ink); font-weight: 600; }
+.dock .dbtn:disabled { opacity: .4; cursor: default; }
+.dock .q { font: 12px var(--f-mono); color: #a49fbf; }
+.dock .note { flex-basis: 100%; font-size: 12px; color: #a49fbf; }
+.dock .screen { width: min(300px, 100%); aspect-ratio: 16 / 9; max-width: 100%; border-radius: 8px; overflow: hidden; background: #000; }
+.dock .screen iframe { width: 100%; height: 100%; border: 0; display: block; }
+.dock.small .screen { display: none; }
+.playnote { font-size: 12px; color: var(--muted); margin-top: 6px; }
+@media (max-width: 760px) {
+  .stagehead { grid-template-columns: minmax(0, 1fr); }
+  .stagehead .disc { width: 84px; --ds: 84px; }
+  .dock .screen { width: 100%; }
+  .rcard .disc { width: 64px; --ds: 64px; }
+}
 </style>
 
 <header class="top">
   <div class="bar1">
-    <div class="brand">maestro <span>canon</span></div>
+    <a class="brand" href="#home" aria-label="maestro: all maestros"><span class="disc" style="--h:250" aria-hidden="true"></span>maestro</a>
     <nav class="maestros" id="maestros" aria-label="Maestro"></nav>
     <nav class="views" aria-label="View">
-      <a href="#browse" id="v-browse">Browse</a>
+      <a href="#home" id="v-home">Maestros</a>
+      <span class="sep" id="sep1" aria-hidden="true"></span>
+      <a href="#overview" id="v-overview">Overview</a>
+      <a href="#browse" id="v-browse">Songs</a>
       <a href="#gems" id="v-gems">Gems &amp; hits</a>
       <a href="#map" id="v-map">Map</a>
-      <a href="#insights" id="v-insights">Insights</a>
+      <a href="#insights" id="v-insights">Collaborators</a>
       <a href="#coverage" id="v-coverage">Coverage</a>
+      <span class="sep" id="sep2" aria-hidden="true"></span>
       <a href="#films" id="v-films" hidden>Films</a>
     </nav>
   </div>
@@ -272,6 +434,7 @@ td.n, th.n { text-align: right; font-family: var(--f-mono); }
   <div class="chips" id="chips"></div>
 </header>
 <main id="main"></main>
+<div class="dock" id="dock" hidden></div>
 <div class="backdrop" id="backdrop"></div>
 <div class="tip" id="tip" hidden></div>
 <input type="file" id="file" accept=".json,application/json" hidden>
@@ -297,39 +460,48 @@ const lsGet = k => { try { return localStorage.getItem(k); } catch { return null
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 
 // ---------------------------------------------------------------- state
-const S = { index: [], registers: [], snaps: {}, slug: null, d: null, f: blank(), view: "browse", limit: 150, sel: null, group: "none", answer: null, sample: null, busy: null };
+const S = { index: [], registers: [], cat: [], snaps: {}, slug: null, d: null, f: blank(), view: "home", limit: 150, sel: null, group: "none", answer: null, sample: null, busy: null,
+  loading: null, qsets: {}, home: { q: "", role: "", region: "", open: null } };
+const MAESTRO_VIEWS = ["overview", "browse", "gems", "map", "insights", "coverage"];
 function blank() { return { text: "", yFrom: null, yTo: null, tiers: [], people: [], containers: [], langs: [], perf: null, minLin: null, maxLin: null, live: false, noTier: false, noYear: false, gems: false, sort: "year" }; }
 
 // ---------------------------------------------------------------- loading
 async function boot() {
-  try {
-    const r = await fetch("canon/index.json");
-    if (!r.ok) throw new Error(r.status);
-    const idx = await r.json();
-    S.index = idx.maestros || [];
-    S.registers = idx.registers || [];
-  } catch { S.index = []; }
+  const getJson = async url => { const r = await fetch(url); if (!r.ok) throw new Error(r.status); return r.json(); };
+  const [idx, cat] = await Promise.all([getJson("canon/index.json").catch(() => ({})), getJson("catalogue.json").catch(() => ({}))]);
+  S.index = idx.maestros || [];
+  S.registers = idx.registers || [];
+  S.cat = cat.maestros || [];
   document.getElementById("v-films").hidden = !S.registers.length;
-  if (!S.index.length && S.registers.length) { location.hash = "#films"; return render(); }
-  if (!S.index.length) return renderDrop();
-  const want = lsGet("maestro") ;
-  await selectMaestro(S.index.some(m => m.slug === want) ? want : S.index[0].slug);
+  if (!S.index.length && S.registers.length && !location.hash) { location.hash = "#films"; return; }
+  render();
+}
+// The maestro to open when a maestro view is asked for and none is loaded: the last one, else the largest canon.
+function ensureMaestro() {
+  if (S.loading || !S.index.length) return;
+  const want = lsGet("maestro");
+  selectMaestro(S.index.some(m => m.slug === want) ? want : [...S.index].sort((a, b) => b.units - a.units)[0].slug);
 }
 async function selectMaestro(slug) {
   S.slug = slug; lsSet("maestro", slug);
   if (!S.snaps[slug]) {
     const m = S.index.find(x => x.slug === slug);
+    S.loading = slug; S.d = null;
     renderMaestros();
-    document.getElementById("main").innerHTML = `<div class="empty">Loading ${esc(m.name)}'s canon…</div>`;
+    if (S.view === "home" || S.view === "films") location.hash = "#overview";
+    else document.getElementById("main").innerHTML = loadingHtml(m);
     try {
       const r = await fetch(m.file);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       S.snaps[slug] = prep(await r.json());
     } catch (e) {
+      S.loading = null;
       document.getElementById("main").innerHTML = `<div class="empty">Could not load ${esc(m.file)} (${esc(e.message)}). Run maestro-explore again to rewrite it.</div>`;
       return;
-    }
+    } finally { if (S.loading === slug) S.loading = null; }
+    if (S.slug !== slug) return; // another maestro was picked while this one loaded
   }
+  if (S.view === "home" || S.view === "films") location.hash = "#overview";
   S.d = S.snaps[slug]; S.f = blank(); S.sel = null; S.answer = null; S.limit = 150;
   const q = document.getElementById("q"); q.value = "";
   q.placeholder = examples(S.d)[0] ? "Try: " + examples(S.d)[0] : "Search titles, people, years…";
@@ -338,7 +510,8 @@ async function selectMaestro(slug) {
 function addSnapshot(json) {
   const d = prep(json), m = d.maestro;
   S.snaps[m.slug] = d;
-  S.index = S.index.filter(x => x.slug !== m.slug).concat([{ slug: m.slug, name: m.name, unit: m.unit, units: d.units.length, file: null }]);
+  S.index = S.index.filter(x => x.slug !== m.slug).concat([{ slug: m.slug, name: m.name, unit: m.unit, units: d.units.length, file: null,
+    wikidata: (m.ids || {}).wikidata, active: m.active, roles: [m.roles && m.roles.primary].filter(Boolean) }]);
   selectMaestro(m.slug);
 }
 
@@ -664,32 +837,45 @@ function examples(d) {
 }
 
 // ---------------------------------------------------------------- rendering
+// The header: which maestro is open (a link back to the crate) and the views that apply.
 function renderMaestros() {
   const el = document.getElementById("maestros");
-  el.innerHTML = S.index.map(m => `<button type="button" data-s="${esc(m.slug)}" aria-pressed="${m.slug === S.slug}">${esc(m.name)}</button>`).join("")
-    + `<button type="button" id="openfile" title="Open a canon snapshot file">+ Open…</button>`;
-  el.querySelectorAll("[data-s]").forEach(b => b.onclick = () => selectMaestro(b.dataset.s));
-  document.getElementById("openfile").onclick = () => document.getElementById("file").click();
+  const m = S.index.find(x => x.slug === S.slug), inMaestro = MAESTRO_VIEWS.includes(S.view);
+  el.innerHTML = m && S.view !== "home" ? `<a class="nowm" href="#home" title="Choose another maestro">${discHtml(m.name, catFor(m))}<span>${esc(m.name)}</span><span class="chg">change</span></a>` : "";
+  for (const k of MAESTRO_VIEWS) document.getElementById("v-" + k).hidden = !m || (!inMaestro && S.view !== "films");
+  document.getElementById("sep1").hidden = document.getElementById("v-overview").hidden;
+  document.getElementById("sep2").hidden = document.getElementById("v-films").hidden;
+  const u = (S.d && S.d.unitWord) || (m && m.unit) || "song";
+  document.getElementById("v-browse").textContent = cap(u) + "s";
 }
 function setView() {
-  const v = (location.hash || "#browse").slice(1);
-  S.view = ["browse", "gems", "map", "insights", "coverage"].includes(v) || (v === "films" && S.registers.length) ? v : "browse";
-  for (const k of ["browse", "gems", "map", "insights", "coverage", "films"]) {
+  const v = (location.hash || "#home").slice(1);
+  S.view = v === "home" || MAESTRO_VIEWS.includes(v) || (v === "films" && S.registers.length) ? v : "home";
+  for (const k of ["home", ...MAESTRO_VIEWS, "films"]) {
     const a = document.getElementById("v-" + k);
     if (k === S.view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   }
 }
 function render() {
   setView();
-  const films = S.view === "films";
-  document.getElementById("askform").style.display = films ? "none" : "";
-  document.getElementById("chips").style.display = films ? "none" : "";
+  renderMaestros();
+  S.qsets = {};
+  const films = S.view === "films", home = S.view === "home";
+  document.getElementById("askform").style.display = films || home ? "none" : "";
+  document.getElementById("chips").style.display = films || home ? "none" : "";
+  if (home) { document.getElementById("backdrop").classList.remove("on"); return renderHome(); }
   if (films) { document.getElementById("backdrop").classList.toggle("on", FS.sel != null && innerWidth <= 1180); return renderFilms(); }
-  if (!S.d) return;
+  if (!S.d) {
+    if (!S.index.length) { location.hash = "#home"; return; }
+    const m = S.index.find(x => x.slug === (S.loading || lsGet("maestro"))) || S.index[0];
+    document.getElementById("main").innerHTML = loadingHtml(m);
+    return ensureMaestro();
+  }
   renderChips();
   const res = applyFilter(S.d, S.f);
   S.res = res;
-  if (S.view === "browse") renderBrowse(res);
+  if (S.view === "overview") renderOverview(res);
+  else if (S.view === "browse") renderBrowse(res);
   else if (S.view === "gems") renderGems(res);
   else if (S.view === "map") renderMap(res);
   else if (S.view === "insights") renderInsights(res);
@@ -770,11 +956,11 @@ function yrCell(u, d) {
   const p = posthumous(u, d);
   return `<div class="yr"${p ? ` title="Released after ${esc(d.maestro.name)}'s death (${d.maestro.died})"` : ""}>${u.year || "—"}${p ? `<span class="posth" aria-label="released after death">†</span>` : ""}</div>`;
 }
-function rowHtml(u, d) {
+function rowHtml(u, d, qs = "list") {
   const alt = (u.title_alt_script || [])[0];
   return `<div class="row${S.sel === u.id ? " sel" : ""}" data-u="${u.id}" tabindex="0" role="button">
     ${yrCell(u, d)}
-    <div style="min-width:0"><div class="t">${esc(u.title)}${alt ? ` <span class="alt">${esc(alt)}</span>` : ""}</div><div class="meta">${unitMeta(u, d)}</div></div>
+    <div style="min-width:0"><div class="t">${playBtn(u, qs)}<span class="tt">${esc(u.title)}${alt ? ` <span class="alt">${esc(alt)}</span>` : ""}</span></div><div class="meta">${unitMeta(u, d)}</div></div>
     <div class="side">${tagBadge(u)}${popMeter(u)}${linDots(u._lin)}<span class="tier ${esc(u.tier || "")}" title="${esc(u.tier ? "Tier " + u.tier + ": " + (d.tiers[u.tier] || {}).label : "No tier yet")}">${esc(u.tier || "–")}</span></div></div>`;
 }
 // Group the sorted results: each film (by id) or year is one block, the blocks are
@@ -810,10 +996,11 @@ function renderBrowse(res) {
       const label = S.group === "year" ? (g.key || "Year unknown") : (c ? c.title : `No ${d.contWord}`);
       const extra = c ? [c.year, c.listed ? `${c.listed} listed` : null].filter(Boolean).join(" · ") : "";
       rows += `<div class="ghead">${esc(label)} <span class="mono">${plural(g.units.length, d.unitWord)}${extra ? " · " + esc(extra) : ""}</span></div>`;
-      rows += g.units.slice(0, left).map(u => rowHtml(u, d)).join("");
+      rows += g.units.slice(0, left).map(u => rowHtml(u, d, "browse")).join("");
       left -= g.units.length;
     }
-  } else rows = res.slice(0, S.limit).map(u => rowHtml(u, d)).join("");
+  } else rows = res.slice(0, S.limit).map(u => rowHtml(u, d, "browse")).join("");
+  S.qsets.browse = res;
   const sel = S.sel != null ? d.byId.get(S.sel) : null;
   const total = d.units.length;
   main.innerHTML = `<div class="browse${sel ? " has-detail" : ""}">
@@ -821,7 +1008,7 @@ function renderBrowse(res) {
     <section style="min-width:0">
       ${answerHtml()}
       ${personCard(res)}
-      <div class="list-head"><h2>${plural(res.length, d.unitWord)}</h2>
+      <div class="list-head"><h2>${plural(res.length, d.unitWord)}</h2>${playAllBtn("browse", res)}
         <span class="muted">${res.length === total ? `the whole canon of ${esc(d.maestro.name)}` : `of ${total.toLocaleString()} in the canon`}</span>
         <div class="tools">
           <label class="muted" for="grp">Group</label><select id="grp"><option value="none">none</option><option value="container">by ${esc(d.contWord)}</option><option value="year">by year</option></select>
@@ -851,6 +1038,7 @@ function wireMain(main) {
   main.querySelectorAll("[data-apply]").forEach(b => b.onclick = () => { S.f = JSON.parse(b.dataset.apply); location.hash = "#browse"; render(); });
   main.querySelectorAll("[data-tag]").forEach(b => b.onclick = () => { const u = S.d.byId.get(+b.dataset.tag); if (u) setTag(u, !u._tag); });
   main.querySelectorAll("[data-tagx]").forEach(b => b.onclick = () => b.dataset.tagx === "export" ? downloadTags() : document.getElementById("tagfile").click());
+  wirePlay(main);
 }
 function openUnit(id) { S.sel = id; if (!["browse", "map"].includes(S.view)) location.hash = "#browse"; render(); const el = document.getElementById("detail"); if (el) el.scrollTop = 0; }
 
@@ -881,6 +1069,7 @@ function detailHtml(u, d) {
     <h2>${esc(u.title)}</h2>
     ${(u.title_alt_script || []).map(t => `<div class="script">${esc(t)}</div>`).join("")}
     ${u.alt_titles ? `<div class="muted" style="margin-top:6px;font-size:13px">Also listed as: ${esc(u.alt_titles.join(" · "))}</div>` : ""}
+    ${playerHtml(u, d)}
     ${mediaHtml(u, d)}
     ${tagBox(u, d)}
     <dl>${dl.join("")}</dl>
@@ -931,8 +1120,9 @@ function renderGems(res) {
   const mine = [...res].filter(u => u._tag).sort((a, b) => tagRank(b) - tagRank(a) || a._reach - b._reach), gems = mine.slice(0, 40);
   const rare = mine.filter(u => u._tag.rare).length;
   const leads = [...res].filter(u => u.pop && u.pop.lead).sort((a, b) => b.pop.lead.score - a.pop.lead.score || a._pop - b._pop).slice(0, 25);
-  const item = (u, extra, badge = "") => `<div class="row" data-u="${u.id}" tabindex="0" role="button">${yrCell(u, d)}
-    <div style="min-width:0"><div class="t">${esc(u.title)}</div><div class="meta">${unitMeta(u, d)}</div>${extra}</div>
+  S.qsets.gems = mine; S.qsets.hits = hits; S.qsets.leads = leads;
+  const item = (u, extra, badge = "", qs = "list") => `<div class="row" data-u="${u.id}" tabindex="0" role="button">${yrCell(u, d)}
+    <div style="min-width:0"><div class="t">${playBtn(u, qs)}<span class="tt">${esc(u.title)}</span></div><div class="meta">${unitMeta(u, d)}</div>${extra}</div>
     <div class="side">${badge}${popMeter(u)}</div></div>`;
   const sig = Object.entries(P.signals || {}).map(([k, v]) => `<li><b>${esc(k.replace(/_/g, " "))}</b> <span class="muted">· ${esc(FACET_LABEL[v.facet] || v.facet)} · ${v.units.toLocaleString()} ${esc(d.unitWord)}s</span></li>`).join("");
   const missing = (P.listed_without_data || []).map(x => x.replace(/_/g, " ")).join(", ");
@@ -940,14 +1130,14 @@ function renderGems(res) {
   main.innerHTML = `<div class="stack">
     ${answerHtml()}
     <div class="grid2">
-      <div class="panel"><h2>Your gems</h2><div class="sub">In ${scope}: the ${esc(d.unitWord)}s you tagged${mine.length ? ` (${mine.length.toLocaleString()}, ${rare.toLocaleString()} of them rare)` : ""}. A tagged ${esc(d.unitWord)} is a <span class="gem rare">rare gem</span> when its popularity is low: ${esc(LOW_RULE_TEXT)}. Otherwise it stays a <span class="gem">gem</span>.</div>
+      <div class="panel"><div class="phead"><h2>Your gems</h2>${playAllBtn("gems", mine)}</div><div class="sub">In ${scope}: the ${esc(d.unitWord)}s you tagged${mine.length ? ` (${mine.length.toLocaleString()}, ${rare.toLocaleString()} of them rare)` : ""}. A tagged ${esc(d.unitWord)} is a <span class="gem rare">rare gem</span> when its popularity is low: ${esc(LOW_RULE_TEXT)}. Otherwise it stays a <span class="gem">gem</span>.</div>
         ${tagTools(d)}
-        <div class="ledger">${gems.map(u => item(u, `<ul class="why">${lowWhy(u, d).slice(0, 2).map(r => `<li>${esc(r)}</li>`).join("")}</ul>`, tagBadge(u))).join("") || `<div class="empty">No gems tagged ${isBlank(S.f) ? "yet" : "among these"}. Open any ${esc(d.unitWord)} and press <b>Tag as gem</b>.</div>`}</div>
+        <div class="ledger">${gems.map(u => item(u, `<ul class="why">${lowWhy(u, d).slice(0, 2).map(r => `<li>${esc(r)}</li>`).join("")}</ul>`, tagBadge(u), "gems")).join("") || `<div class="empty">No gems tagged ${isBlank(S.f) ? "yet" : "among these"}. Open any ${esc(d.unitWord)} and press <b>Tag as gem</b>.</div>`}</div>
         ${mine.length > 40 ? `<button class="btn more" type="button" data-apply='${esc(JSON.stringify({ ...S.f, gems: "all", sort: "gem" }))}'>Browse all ${mine.length.toLocaleString()} of your gems</button>` : ""}
         ${leads.length ? `<h2 style="margin-top:18px">Worth a listen</h2><div class="sub">No expert word yet, but a strong team, a hit beside them, or reissues without chart success. Leads, not gems.</div>
-        <div class="ledger">${leads.map(u => item(u, `<ul class="why">${u.pop.lead.reasons.slice(0, 2).map(r => `<li>${esc(r)}</li>`).join("")}</ul>`)).join("")}</div>` : ""}</div>
-      <div class="panel"><h2>Biggest hits</h2><div class="sub">In ${scope}, by popularity: the share of the canon each ${esc(d.unitWord)} beats on its strongest evidence, plus agreement across kinds of evidence.</div>
-        <div class="ledger">${hits.map(u => item(u, `<ul class="why">${u.pop.evidence.slice(0, 2).map(e => `<li>${esc(e.note)}</li>`).join("")}</ul>`)).join("")}</div>
+        <div class="ledger">${leads.map(u => item(u, `<ul class="why">${u.pop.lead.reasons.slice(0, 2).map(r => `<li>${esc(r)}</li>`).join("")}</ul>`, "", "leads")).join("")}</div>` : ""}</div>
+      <div class="panel"><div class="phead"><h2>Biggest hits</h2>${playAllBtn("hits", hits)}</div><div class="sub">In ${scope}, by popularity: the share of the canon each ${esc(d.unitWord)} beats on its strongest evidence, plus agreement across kinds of evidence.</div>
+        <div class="ledger">${hits.map(u => item(u, `<ul class="why">${u.pop.evidence.slice(0, 2).map(e => `<li>${esc(e.note)}</li>`).join("")}</ul>`, "", "hits")).join("")}</div>
         <button class="btn more" type="button" data-apply='${esc(JSON.stringify({ ...S.f, sort: "popular" }))}'>Browse by popularity</button></div>
     </div>
     <div class="panel"><h2>What the scores rest on</h2><div class="sub">Each signal ranks ${esc(d.unitWord)}s within ${esc(d.maestro.name)}'s own canon only.${missing ? ` Listed in the pack but not collected yet: ${esc(missing)}.` : ""}</div><ul class="why">${sig}</ul></div>
@@ -1182,7 +1372,7 @@ function renderMap(res) {
       <div class="sub" style="margin:10px 0 0">${esc(M.about)}</div></div>
     <div class="panel"><h2>Top left: good and overlooked</h2><div class="sub">Highest gemness with the least popularity, in ${scope}.</div>
       <div class="ledger">${rated.sort((a, b) => (gemOf(b, model).score - b._reach) - (gemOf(a, model).score - a._reach)).slice(0, 15).map(u => { const g = gemOf(u, model); return `<div class="row${S.sel === u.id ? " sel" : ""}" data-u="${u.id}" tabindex="0" role="button"><div class="yr">${u.year || "—"}</div>
-        <div style="min-width:0"><div class="t">${esc(u.title)}</div><div class="meta">${unitMeta(u, d)}</div></div>
+        <div style="min-width:0"><div class="t">${playBtn(u)}<span class="tt">${esc(u.title)}</span></div><div class="meta">${unitMeta(u, d)}</div></div>
         <div class="side mono" style="font-size:11.5px;color:var(--muted)">pop ${u._reach} · gem ${g.score}</div></div>`; }).join("") || `<div class="empty">No ${esc(d.unitWord)} here has gemness evidence yet.</div>`}</div></div>
   </div>
   ${sel ? `<aside class="detail" id="detail" aria-label="${esc(d.unitWord)} details">${detailHtml(sel, d)}</aside>` : ""}</div>`;
@@ -1502,6 +1692,7 @@ let tmr;
 function runQuery() {
   const v = document.getElementById("q").value;
   S.f = v.trim() ? parseQuery(v, S.d) : blank(); S.limit = 150;
+  if (S.view === "overview" && v.trim()) { location.hash = "#browse"; return; }
   render();
 }
 document.getElementById("q").addEventListener("input", () => { clearTimeout(tmr); tmr = setTimeout(runQuery, 160); });
@@ -1509,17 +1700,259 @@ document.getElementById("askform").addEventListener("submit", e => { e.preventDe
 document.getElementById("askbtn").onclick = askClaude;
 document.getElementById("clearbtn").onclick = () => { document.getElementById("q").value = ""; S.f = blank(); S.answer = null; S.sel = null; render(); };
 document.getElementById("backdrop").onclick = () => { S.sel = null; FS.sel = null; render(); };
-document.addEventListener("keydown", e => { if (e.key === "Escape" && S.view === "films" && FS.sel != null) { FS.sel = null; render(); return; } if (e.key === "Escape" && S.sel != null) { S.sel = null; render(); } if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); document.getElementById("q").focus(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && S.view === "films" && FS.sel != null) { FS.sel = null; render(); return; } if (e.key === "Escape" && S.sel != null) { S.sel = null; render(); } if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); document.getElementById(S.view === "home" ? "hq" : S.view === "films" ? "fq" : "q")?.focus(); } });
 addEventListener("hashchange", render);
 let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(render, 200); });
 document.getElementById("file").onchange = async e => { const f = e.target.files[0]; if (!f) return; try { addSnapshot(JSON.parse(await f.text())); } catch (err) { alertBox(`That file is not a canon snapshot (${err.message}).`); } };
 addEventListener("dragover", e => e.preventDefault());
 addEventListener("drop", async e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (!f) return; try { addSnapshot(JSON.parse(await f.text())); } catch (err) { alertBox(`That file is not a canon snapshot (${err.message}).`); } });
 function alertBox(msg) { document.getElementById("main").insertAdjacentHTML("afterbegin", `<div class="card" style="border-color:var(--bad)">${esc(msg)}</div>`); }
-function renderDrop() {
-  renderMaestros();
-  document.getElementById("main").innerHTML = `<div class="dropzone"><h1>No canon loaded</h1><p>Write snapshots with <span class="mono">maestro-explore --maestro maestros/&lt;slug&gt;=&lt;dsn&gt;</span> and open this page from that folder, or drop a canon snapshot (<span class="mono">canon/&lt;slug&gt;.json</span>) here.</p><button class="btn primary" type="button" onclick="document.getElementById('file').click()">Open a snapshot…</button></div>`;
+
+// ---------------------------------------------------------------- maestros: the catalogue and the crate
+// catalogue.json lists the maestros the explorer offers (names, years and ids from Wikidata). A maestro whose
+// canon snapshot is in canon/index.json opens; the rest are shown as in progress or coming soon.
+const REGION_ORDER = ["South Asia", "Middle East & Africa", "The Americas", "Europe", "East Asia"];
+const ROLE_FILTERS = [["singer", "Singers"], ["composer", "Composers"], ["lyricist", "Lyricists"], ["instrumentalist", "Instrumentalists"], ["conductor", "Conductors"]];
+const hueOf = s => { let h = 7; for (const c of String(s)) h = (h * 31 + c.codePointAt(0)) % 360; return h; };
+function initials(name) {
+  const w = String(name).replace(/[.'’]/g, " ").split(/\s+/).filter(Boolean);
+  return (w.length > 1 ? w[0][0] + w[w.length - 1][0] : (w[0] || "?").slice(0, 2)).toUpperCase();
 }
+function catFor(m) {
+  if (!m) return null;
+  const qid = m.wikidata || (m.ids && m.ids.wikidata);
+  return S.cat.find(c => (qid && c.wikidata === qid) || fold(c.name) === fold(m.name)) || null;
+}
+function discHtml(name, c, cls = "") {
+  return `<span class="disc ${cls}" style="--h:${hueOf((c && c.genre) || name)}" aria-hidden="true"><b>${esc(initials(name))}</b></span>`;
+}
+function loadingHtml(m) {
+  return `<div class="empty">${m ? discHtml(m.name, catFor(m), "spin") : ""}<div style="margin-top:12px">Loading ${m ? esc(m.name) + "'s canon" : "the canon"}…</div></div>`;
+}
+function crate() {
+  const out = S.cat.map(c => ({ ...c, roles: c.roles || [], snap: S.index.find(m => (m.wikidata && m.wikidata === c.wikidata) || fold(m.name) === fold(c.name)) || null }));
+  for (const m of S.index) if (!out.some(x => x.snap === m)) out.push({ name: m.name, roles: m.roles || [], genre: "", country: "", region: "", snap: m });
+  return out;
+}
+const lifeYears = x => x.born ? `${x.born}–${x.died || ""}` : "";
+function readyCard(x) {
+  const m = x.snap, yrs = m.active ? `${m.active[0]}–${m.active[1]}` : lifeYears(x);
+  return `<button type="button" class="rcard" data-open="${esc(m.slug)}">${discHtml(m.name, x)}
+    <div style="min-width:0"><h3>${esc(m.name)}</h3><div class="m">${esc([x.genre, x.country, yrs].filter(Boolean).join(" · "))}</div>
+    <div class="n">${m.units.toLocaleString()} ${esc(m.unit)}s →</div></div></button>`;
+}
+function filmsCard(r) {
+  return `<a class="rcard" href="#films"><span class="disc" style="--h:28" aria-hidden="true"><b>FILM</b></span>
+    <div style="min-width:0"><h3>${esc(r.name)}</h3><div class="m">Every film, matched across Wikidata, Wikipedia and HFGK. Separate from any maestro.</div>
+    <div class="n">${r.films.toLocaleString()} films →</div></div></a>`;
+}
+function maestroCard(x) {
+  const st = x.snap ? ["live", "Ready"] : x.status === "building" ? ["building", "In progress"] : ["soon", "Coming soon"];
+  const open = S.home.open === x.name;
+  const card = `<button type="button" class="mcard" ${x.snap ? `data-open="${esc(x.snap.slug)}"` : `data-more="${esc(x.name)}" aria-expanded="${open}"`}>
+    ${discHtml(x.name, x, x.snap ? "" : "off")}<div style="min-width:0"><div class="nm">${esc(x.name)}</div>
+    <div class="g">${esc([x.genre, x.country].filter(Boolean).join(" · "))}</div>
+    <div class="y">${lifeYears(x) ? `<span>${lifeYears(x)}</span>` : ""}<span class="status ${st[0]}">${st[1]}</span></div></div></button>`;
+  if (!open) return card;
+  const why = x.status === "building"
+    ? `<div>The canon for <b>${esc(x.name)}</b> is being built now. It opens here as soon as its first snapshot is published.</div>`
+    : `<div><b>${esc(x.name)}</b> has no canon yet. To start one, run this in Claude Code in the maestro repository:</div><div><code>/profile-maestro ${esc(x.name)}</code></div>
+       <div class="muted">It researches ${esc(x.name)}, proposes a pack of sources and tiers for your approval, then the crawl builds the canon.</div>`;
+  return card + `<div class="mnote">${why}${x.wikidata ? `<div><a href="https://www.wikidata.org/wiki/${esc(x.wikidata)}" target="_blank" rel="noopener noreferrer">${esc(x.name)} on Wikidata</a></div>` : ""}</div>`;
+}
+function renderHome() {
+  const main = document.getElementById("main"), H = S.home, all = crate(), ready = all.filter(x => x.snap);
+  const words = fold(H.q).split(" ").filter(Boolean);
+  const shown = all.filter(x => (!H.role || x.roles.includes(H.role)) && (!H.region || x.region === H.region)
+    && words.every(w => fold([x.name, x.genre, x.country, x.region, ...x.roles].join(" ")).includes(w)));
+  const regions = REGION_ORDER.filter(r => all.some(x => x.region === r));
+  const units = ready.reduce((n, x) => n + x.snap.units, 0), building = all.filter(x => !x.snap && x.status === "building").length;
+  const flat = H.region || words.length || !regions.length;
+  const groups = flat ? `<div class="crate">${shown.map(maestroCard).join("")}</div>`
+    : [...regions, ""].map(r => { const xs = shown.filter(x => (x.region || "") === r); return xs.length ? `<div class="region"><h3>${esc(r || "Other")}</h3><div class="crate">${xs.map(maestroCard).join("")}</div></div>` : ""; }).join("");
+  const seg = (id, cur, opts) => `<div class="seg" id="${id}" role="group">${[["", "All"], ...opts].map(([v, l]) => `<button type="button" data-v="${esc(v)}" aria-pressed="${v === cur}">${esc(l)}</button>`).join("")}</div>`;
+  main.innerHTML = `<section class="band"><div class="eyebrow">Canon explorer</div><h1>Choose a maestro</h1>
+      <p class="lede">A canon is everything one maestro sang, composed or wrote, gathered from discographies, film registers and archives, with every fact traced to its source.</p>
+      <div class="bstats"><div><b>${ready.length}</b><span>canons to explore</span></div><div><b>${units.toLocaleString()}</b><span>songs, recordings and works</span></div>
+        ${S.registers.map(r => `<div><b>${r.films.toLocaleString()}</b><span>films in the ${esc(r.name)} register</span></div>`).join("")}
+        ${all.length > ready.length ? `<div><b>${all.length - ready.length}</b><span>more maestros planned</span></div>` : ""}</div>
+      <div class="staff"></div></section>
+    ${ready.length || S.registers.length ? `<div class="ready">${ready.map(readyCard).join("")}${S.registers.map(filmsCard).join("")}</div>`
+      : `<div class="card" style="margin-top:18px">No canon is loaded. Write snapshots with <span class="mono">maestro-explore --maestro maestros/&lt;slug&gt;=&lt;dsn&gt;</span> and open this page from that folder, or open a snapshot file below.</div>`}
+    ${all.length ? `<section class="hsec"><h2>Every maestro <span class="muted">${all.length} across ${regions.length} regions${building ? `, ${building} in progress` : ""}</span></h2>
+      <div class="hfilters"><input id="hq" type="search" aria-label="Search maestros" placeholder="Name, genre or country" value="${esc(H.q)}">
+        ${seg("hrole", H.role, ROLE_FILTERS.filter(([r]) => all.some(x => x.roles.includes(r))))}${seg("hregion", H.region, regions.map(r => [r, r]))}</div>
+      ${shown.length ? groups : `<div class="empty">No maestro matches. Clear the search or a filter.</div>`}</section>` : ""}
+    <div class="foot"><span>Have a canon snapshot file?</span><button class="btn" type="button" id="openfile">Open a snapshot…</button><span>Names, years and Wikidata ids from Wikidata.</span></div>`;
+  main.querySelectorAll("[data-open]").forEach(b => b.onclick = () => selectMaestro(b.dataset.open));
+  main.querySelectorAll("[data-more]").forEach(b => b.onclick = () => { H.open = H.open === b.dataset.more ? null : b.dataset.more; renderHome(); });
+  for (const [id, key] of [["hrole", "role"], ["hregion", "region"]]) {
+    const g = document.getElementById(id); if (g) g.querySelectorAll("button").forEach(b => b.onclick = () => { H[key] = b.dataset.v; renderHome(); });
+  }
+  const q = document.getElementById("hq");
+  if (q) { let t; q.oninput = () => { clearTimeout(t); t = setTimeout(() => { H.q = q.value; renderHome(); const n = document.getElementById("hq"); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 150); }; }
+  document.getElementById("openfile").onclick = () => document.getElementById("file").click();
+}
+
+// ---------------------------------------------------------------- overview: the maestro's stage
+function renderOverview() {
+  const d = S.d, M = d.maestro, me = M.person_id, units = d.units, main = document.getElementById("main");
+  const c = catFor(S.index.find(x => x.slug === M.slug) || M), U = d.unitWord;
+  const roles = [M.roles.primary, ...(M.roles.in_scope || [])].filter((r, i, a) => r && a.indexOf(r) === i).map(roleName);
+  const who = [roles.join(", "), c && c.country, c && c.genre, c ? lifeYears(c) : M.died ? `died ${M.died}` : ""].filter(Boolean).join(" · ");
+  const conts = Object.keys(d.contCount).length, people = Object.keys(d.roleCount).length;
+  const vids = units.filter(videoOf).sort((a, b) => b._pop - a._pop);
+  const top = d.hasPop ? units.filter(u => u._pop).sort((a, b) => b._pop - a._pop).slice(0, 10) : [];
+  const mine = units.filter(u => u._tag).sort((a, b) => tagRank(b) - tagRank(a) || a._reach - b._reach);
+  S.qsets.top = top; S.qsets.mygems = mine; S.qsets.videos = vids;
+  const it = (u, i, qs, extra) => `<div class="it" data-unit="${u.id}" tabindex="0" role="button"><span class="rk">${playBtn(u, qs) || (i + 1)}</span>
+    <div style="min-width:0"><div class="t">${esc(u.title)}</div><div class="s">${esc([u.year, u._c && u._c.title, ...(u.credits.composer || []).slice(0, 1).map(pname)].filter(Boolean).join(" · "))}</div></div><span>${extra || ""}</span></div>`;
+  const collab = rolesIn(d, units).slice(0, 3).map(r => {
+    const t = counts(units, u => (u.credits[r] || []).filter(p => p !== me)).slice(0, 8);
+    return t.length ? `<div><h4>${r === d.perfRole ? "Sang with" : esc(cap(roleName(r))) + "s"}</h4><div class="pchips">${t.map(([p, n]) => `<button type="button" class="pchip" data-person="${p}" data-role="${esc(r)}">${esc(pname(+p))}<span class="mono">${n}</span></button>`).join("")}</div></div>` : "";
+  }).join("");
+  const dated = units.filter(u => u.year).sort((a, b) => a.year - b.year);
+  const byYear = counts(dated, u => [u.year]), busiest = byYear[0];
+  const live = M.died ? dated.filter(u => u.year <= M.died) : dated, last = live[live.length - 1];
+  const posth = M.died ? dated.length - live.length : 0;
+  const topConts = counts(units, u => u.container != null ? [u.container] : []).slice(0, 8);
+  const ms = [];
+  if (dated[0]) ms.push([dated[0].year, `Earliest ${esc(U)} in the canon: <button class="linklike" data-unit="${dated[0].id}">${esc(dated[0].title)}</button>${dated[0]._c ? ` <span class="muted">(${esc(dated[0]._c.title)})</span>` : ""}`]);
+  if (busiest) ms.push([busiest[0], `Busiest year: <button class="linklike" data-year="${busiest[0]}">${plural(busiest[1], U)}</button>`]);
+  if (last && last !== dated[0]) ms.push([last.year, `Last ${esc(U)}${M.died ? " in their lifetime" : ""}: <button class="linklike" data-unit="${last.id}">${esc(last.title)}</button>`]);
+  if (posth) ms.push(["†", `${plural(posth, U)} first released after ${M.died}`]);
+  main.innerHTML = `<section class="band">
+      <div class="stagehead">${discHtml(M.name, c)}<div style="min-width:0"><div class="eyebrow">The canon of</div><h1>${esc(M.name)}</h1><div class="who">${esc(who)}</div></div></div>
+      <div class="bstats"><div><b>${units.length.toLocaleString()}</b><span>${esc(U)}s</span></div>
+        ${conts ? `<div><b>${conts.toLocaleString()}</b><span>${esc(d.contWord)}s</span></div>` : ""}
+        <div><b>${people.toLocaleString()}</b><span>collaborators</span></div>
+        ${isFinite(d.yMin) ? `<div><b>${d.yMin}–${d.yMax}</b><span>years on record</span></div>` : ""}
+        ${d.langs.length > 1 ? `<div><b>${d.langs.length}</b><span>languages</span></div>` : ""}
+        ${vids.length ? `<div><b>${vids.length.toLocaleString()}</b><span>with a known video</span></div>` : ""}
+        ${d.tagCount ? `<div><b>${d.tagCount}</b><span>your gems</span></div>` : ""}</div>
+      <div class="wave" id="wave"></div>
+      <div class="staff"></div></section>
+    ${answerHtml()}
+    <div class="ovgrid">
+      ${top.length ? `<div class="panel"><div class="phead"><h2>Signature ${esc(U)}s</h2>${playAllBtn("top", top)}</div><div class="sub">The most popular in the canon: charts, awards, listeners, views and reissues.</div>
+        <div class="mini">${top.map((u, i) => it(u, i, "top", `<span class="pop"><span class="bar"><i style="width:${u._pop}%"></i></span>${u._pop}</span>`)).join("")}</div>
+        <button class="btn more" type="button" data-apply='${esc(JSON.stringify({ ...blank(), sort: "popular" }))}'>All by popularity</button></div>` : ""}
+      <div class="panel"><div class="phead"><h2>Your gems</h2>${playAllBtn("mygems", mine)}</div><div class="sub">${mine.length ? `${plural(mine.length, U)} you tagged, rare gems first.` : `Open any ${esc(U)} and press <b>Tag as gem</b>. A tagged ${esc(U)} with low popularity shows as a <span class="gem rare">rare gem</span>.`}</div>
+        ${mine.length ? `<div class="mini">${mine.slice(0, 8).map((u, i) => it(u, i, "mygems", tagBadge(u))).join("")}</div>
+        <a class="btn more" href="#gems" style="text-align:center;text-decoration:none">Gems &amp; hits</a>` : ""}</div>
+      ${collab ? `<div class="panel"><h2>Closest collaborators</h2><div class="sub">Who appears most often beside ${esc(M.name)}. Pick a name to see the ${esc(U)}s you share.</div><div class="people">${collab}</div>
+        <a class="btn more" href="#insights" style="text-align:center;text-decoration:none">Who, and when</a></div>` : ""}
+      <div class="panel"><h2>Milestones</h2><div class="sub">From the dated ${esc(U)}s in the canon.</div><dl class="milestones">${ms.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl></div>
+      ${topConts.length ? `<div class="panel"><h2>Most ${esc(U)}s in one ${esc(d.contWord)}</h2><div class="sub">Pick one to see its ${esc(U)}s.</div>
+        <div class="lbars">${topConts.map(([id, n]) => { const ct = d.C[id] || {}; return `<div><button class="linklike" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-cont="${id}" title="${esc([ct.title, ct.year].filter(Boolean).join(", "))}">${esc(ct.title || id)}${ct.year ? ` <span class="muted mono">${ct.year}</span>` : ""}</button><span class="b" style="width:${(n / topConts[0][1] * 100).toFixed(1)}%"></span><span class="n">${n}</span></div>`; }).join("")}</div></div>` : ""}
+      ${vids.length ? `<div class="panel"><div class="phead"><h2>Watch and listen</h2>${playAllBtn("videos", vids)}</div><div class="sub">${plural(vids.length, U)} have a known video from a label's own channel, most viewed first. The rest have search links.${PL.embed ? "" : " Inside claude.ai each video opens on YouTube in a new tab; served with maestro-explore it plays here."}</div>
+        <div class="mini">${vids.slice(0, 6).map((u, i) => it(u, i, "videos", "")).join("")}</div></div>` : ""}
+    </div>`;
+  drawWave(units);
+  wireMain(main);
+  main.querySelectorAll(".mini .it").forEach(r => r.onkeydown = e => { if (e.key === "Enter") openUnit(+r.dataset.unit); });
+  main.querySelectorAll("[data-year]").forEach(b => b.onclick = () => { S.f = blank(); S.f.yFrom = S.f.yTo = +b.dataset.year; location.hash = "#browse"; });
+}
+// The career as a waveform: one bar per year, mirrored about the centre line; brass dots mark years with gems.
+function drawWave(units) {
+  const d = S.d, el = document.getElementById("wave"), died = d.maestro.died;
+  const ys = units.map(u => u.year).filter(Boolean);
+  if (!ys.length) { el.remove(); return; }
+  const lo = Math.min(...ys), hi = Math.max(...ys), n = hi - lo + 1, by = {}, gems = {};
+  for (const u of units) if (u.year) { by[u.year] = (by[u.year] || 0) + 1; if (u._tag) gems[u.year] = (gems[u.year] || 0) + 1; }
+  const max = Math.max(...Object.values(by)), W = 1000, H = 150, mid = 66, half = 58, bw = W / n, gap = Math.min(3, bw * 0.28);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(d.unitWord)}s per year, ${lo} to ${hi}"><line class="axis" x1="0" x2="${W}" y1="${mid}" y2="${mid}" />`;
+  for (let y = lo; y <= hi; y++) {
+    const v = by[y] || 0, h = v ? Math.max(2, Math.sqrt(v / max) * half) : 0, x = (y - lo) * bw;
+    svg += `<rect class="hot" data-y="${y}" x="${x}" y="0" width="${bw}" height="${mid + half + 2}" />`;
+    svg += v ? `<rect class="bar${died && y > died ? " post" : ""}" x="${(x + gap / 2).toFixed(1)}" y="${(mid - h).toFixed(1)}" width="${Math.max(1, bw - gap).toFixed(1)}" height="${(2 * h).toFixed(1)}" rx="${Math.min(2, (bw - gap) / 2).toFixed(1)}" />` : `<rect class="bar" x="0" y="0" width="0" height="0" />`;
+    if (gems[y]) svg += `<circle class="gemdot" cx="${(x + bw / 2).toFixed(1)}" cy="${(mid - h - 6).toFixed(1)}" r="2.6" />`;
+    const step = n > 60 ? 10 : n > 25 ? 5 : n > 10 ? 2 : 1;
+    if (y % step === 0) svg += `<text x="${(x + bw / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle">${y}</text>`;
+  }
+  el.innerHTML = svg + `</svg><div class="cap" style="font-size:12px;color:#a49fbf;margin-top:2px">${esc(cap(d.unitWord))}s per year (height grows with the square root of the count). Pick a year to list its ${esc(d.unitWord)}s.${Object.keys(gems).length ? " Brass dots: years with your gems." : ""}${died && hi > died ? ` Paler bars: released after ${died}.` : ""}</div>`;
+  el.querySelectorAll("rect.hot").forEach(r => {
+    const y = +r.dataset.y;
+    r.onmousemove = e => showTip(e, `<b>${y}</b> · ${plural(by[y] || 0, d.unitWord)}${gems[y] ? `<br>${plural(gems[y], "gem")} of yours` : ""}`);
+    r.onmouseleave = hideTip;
+    r.onclick = () => { hideTip(); S.f = blank(); S.f.yFrom = S.f.yTo = y; location.hash = "#browse"; };
+  });
+}
+
+// ---------------------------------------------------------------- player
+// Units carry outbound media links only (popularity evidence, pack sources); nothing is copied or hosted.
+// Served by maestro-explore (or any plain web server) the page plays known videos in place through YouTube's
+// privacy-enhanced embed, or Internet Archive's player. Inside claude.ai the frame allows no outside
+// embeds, so the same controls open each video on its own site in a new tab.
+const PL = { q: [], i: -1, d: null, small: false, embed: !(window.claude && typeof window.claude.use === "function") && /^https?:$/.test(location.protocol) && !/(^|\.)claude(usercontent)?\.(ai|com)$/.test(location.hostname) };
+function ytId(url) { const m = String(url).match(/(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/)([\w-]{11})/); return m ? m[1] : null; }
+function videoOf(u) {
+  for (const m of u.media || []) if (m.kind === "watch") { const id = ytId(m.url); if (id) return { kind: "youtube", id, url: m.url, note: m.note, site: "YouTube" }; }
+  for (const m of u.media || []) { const a = String(m.url).match(/archive\.org\/details\/([^/?#]+)/); if (a) return { kind: "archive", id: a[1], url: m.url, note: m.note, site: "Internet Archive" }; }
+  return null;
+}
+function embedUrl(v) {
+  return v.kind === "youtube" ? `https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&modestbranding=1&playsinline=1` : `https://archive.org/embed/${encodeURIComponent(v.id)}?autoplay=1`;
+}
+function playBtn(u, qs = "list", cls = "") {
+  const v = videoOf(u); if (!v) return "";
+  return PL.embed ? `<button class="play ${cls}" type="button" data-play="${u.id}" data-qs="${qs}" aria-label="Play ${esc(u.title)}" title="Play">▶</button>`
+    : `<a class="play ${cls}" href="${esc(v.url)}" target="_blank" rel="noopener noreferrer" data-play="${u.id}" data-qs="${qs}" aria-label="Play ${esc(u.title)} on ${v.site}" title="Play on ${v.site}">▶</a>`;
+}
+function playAllBtn(qs, list) {
+  const first = list.find(videoOf); if (!first) return "";
+  const n = list.filter(videoOf).length, lbl = `▶ Play ${n > 1 ? (n > 99 ? "99+" : n) : ""}`.trim();
+  return PL.embed ? `<button class="btn" type="button" data-playall="${qs}" title="Play the ${n} with a known video, in order">${lbl}</button>`
+    : `<a class="btn" style="text-decoration:none" href="${esc(videoOf(first).url)}" target="_blank" rel="noopener noreferrer" data-playall="${qs}" title="Open the first of ${n} on YouTube; the player below steps through the rest">${lbl}</a>`;
+}
+function wirePlay(root) {
+  root.querySelectorAll("[data-play]").forEach(b => b.onclick = e => {
+    e.stopPropagation(); if (PL.embed) e.preventDefault();
+    const id = +b.dataset.play; startQueue(S.qsets[b.dataset.qs] || [S.d.byId.get(id)], id);
+  });
+  root.querySelectorAll("[data-playall]").forEach(b => b.onclick = e => { e.stopPropagation(); if (PL.embed) e.preventDefault(); startQueue(S.qsets[b.dataset.playall] || [], null); });
+}
+function startQueue(list, id) {
+  PL.q = list.filter(u => u && videoOf(u)); PL.d = S.d;
+  PL.i = Math.max(0, id == null ? 0 : PL.q.findIndex(u => u.id === id));
+  renderDock();
+}
+function playerHtml(u, d) {
+  const v = videoOf(u);
+  if (!v) return "";
+  return `<div class="media" style="align-items:center;gap:10px">${playBtn(u, S.qsets.browse && S.qsets.browse.includes(u) ? "browse" : "list", "lg")}
+    <span style="font-size:13px"><b>${PL.embed ? "Play here" : `Play on ${esc(v.site)}`}</b>${v.note ? ` <span class="muted">${esc(v.note)}</span>` : ""}</span></div>`;
+}
+function renderDock() {
+  const el = document.getElementById("dock"), u = PL.q[PL.i];
+  const setH = () => document.documentElement.style.setProperty("--dock-h", (el.hidden ? 0 : el.offsetHeight) + "px");
+  if (!u) { el.hidden = true; el.innerHTML = ""; return setH(); }
+  const d = PL.d, v = videoOf(u), pn = id => (d.P[id] || {}).name || "";
+  const sub = [u.year, u._c && u._c.title, (u.credits.composer || []).map(pn).filter(Boolean).join(", ")].filter(Boolean).join(" · ");
+  const step = (w, x, lbl) => !x ? `<button class="dbtn" type="button" disabled>${lbl}</button>` : PL.embed ? `<button class="dbtn" type="button" data-dock="${w}">${lbl}</button>`
+    : `<a class="dbtn" href="${esc(videoOf(x).url)}" target="_blank" rel="noopener noreferrer" data-dock="${w}">${lbl}</a>`;
+  el.hidden = false; el.classList.toggle("small", PL.small);
+  el.innerHTML = `<div class="in">
+    ${PL.embed ? `<div class="screen"><iframe src="${esc(embedUrl(v))}" title="${esc(u.title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>` : ""}
+    ${discHtml(d.maestro.name, catFor(d.maestro), PL.embed ? "spin" : "")}
+    <div class="np"><div class="k">${PL.embed ? "Now playing" : "Up next on " + esc(v.site)}</div><div class="t">${esc(u.title)}</div><div class="s">${esc(sub)}</div></div>
+    <div class="ctl">${step("prev", PL.q[PL.i - 1], "◀ Prev")}
+      ${PL.embed ? "" : `<a class="dbtn go" href="${esc(v.url)}" target="_blank" rel="noopener noreferrer">▶ Play on ${esc(v.site)}</a>`}
+      ${step("next", PL.q[PL.i + 1], "Next ▶")}<span class="q">${PL.i + 1} / ${PL.q.length}</span>
+      ${PL.embed ? `<button class="dbtn" type="button" data-dock="size">${PL.small ? "Show video" : "Hide video"}</button>` : ""}
+      <button class="dbtn" type="button" data-dock="info">Details</button>
+      <button class="dbtn" type="button" data-dock="close" aria-label="Close the player">×</button></div>
+    ${PL.embed ? "" : `<div class="note">claude.ai can't play outside video inside this page, so each ${esc(d.unitWord)} opens on ${esc(v.site)} in a new tab.</div>`}</div>`;
+  el.querySelectorAll("[data-dock]").forEach(b => b.onclick = async e => {
+    const w = b.dataset.dock;
+    if (w === "prev" || w === "next") { if (PL.embed) e.preventDefault(); PL.i += w === "next" ? 1 : -1; return renderDock(); }
+    if (w === "size") { PL.small = !PL.small; el.classList.toggle("small", PL.small); b.textContent = PL.small ? "Show video" : "Hide video"; return setH(); }
+    if (w === "close") { PL.q = []; PL.i = -1; return renderDock(); }
+    if (w === "info") { const cur = PL.q[PL.i]; if (PL.d.maestro.slug !== S.slug) await selectMaestro(PL.d.maestro.slug); S.sel = cur.id; location.hash = "#browse"; render(); }
+  });
+  setH();
+}
+addEventListener("resize", () => { const el = document.getElementById("dock"); document.documentElement.style.setProperty("--dock-h", (el.hidden ? 0 : el.offsetHeight) + "px"); });
 
 // ---------------------------------------------------------------- films (a film register: every film, apart from any maestro)
 const FS = { d: null, loading: null, q: "", flag: "", src: "", yFrom: "", yTo: "", sort: "year", limit: 200, sel: null };
@@ -1611,7 +2044,7 @@ function filmSongs(f) {
   const names = ns => ns.map(n => `<button class="linklike" data-fq="${esc(n)}">${esc(n)}</button>`).join(", ");
   const same = (a, b) => a && b && a.length === b.length && a.every((x, i) => x === b[i]);
   const src = xs[0].src === "hfgk_online" ? "HFGK" : "Wikipedia";
-  return `<h4>Songs <span class="muted" style="font-weight:400">(${xs.length}, from ${src}${f.new_songs != null && f.new_songs !== xs.length ? `; ${f.new_songs} new compositions` : ""})</span></h4>
+  return `<h4>Songs <span class="muted" style="font-weight:400">(${xs.length}, from ${src}${f.new_songs != null && f.new_songs !== xs.length ? `; ${plural(f.new_songs, "new composition")}` : ""})</span></h4>
     <ol class="songlist">${xs.map(x => {
       const q = `${x.t} ${f.title} ${f.year || ""}`;
       const tags = [x.k ? SONG_KIND[x.k] + (x.ch && x.k !== "chorus" ? " + chorus" : "") : "", x.v || "", ...(x.r || []).map(r => `raga ${r}`)].filter(Boolean);

@@ -45,7 +45,9 @@
             "viaf": {"type": ["string", "null"]},
             "isni": {"type": ["string", "null"]},
             "bnf": {"type": ["string", "null"]},
-            "discogs": {"type": ["string", "null"], "pattern": "^[0-9]+$"}
+            "discogs": {"type": ["string", "null"], "pattern": "^[0-9]+$"},
+            "hfgk": {"type": ["string", "null"], "pattern": "^[0-9]+$", "description": "Person id in HFGK Online V2.0 (hamraaz.org/filmssite/public/person.php?id=N). The core hamraaz extractor records the maestro's filmography and credits from it."},
+            "hindigeetmala": {"type": ["string", "null"], "pattern": "^[a-z0-9_]+$", "description": "Page name on hindigeetmala.net (/singer/<name>.php, e.g. mohammed_rafi). The core hindigeetmala extractor reads that list."}
           },
           "additionalProperties": false
         },
@@ -161,8 +163,8 @@
     },
     "lexicon": {
       "type": "object",
-      "additionalProperties": {"type": "string"},
-      "description": "Paths, relative to the pack folder, of alias and transliteration tables."
+      "additionalProperties": {"oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}, "minItems": 1}]},
+      "description": "Paths, relative to the pack folder, of alias and transliteration tables. A list merges several tables, earlier ones winning: the pack's own table first, then shared ones such as ../hindi-films/lexicon/people.tsv (name spellings every Hindi film canon needs)."
     },
     "collaborators": {
       "type": "object",

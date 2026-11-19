@@ -1,0 +1,760 @@
+{
+ "format": "maestro-catalogue/1",
+ "about": "Maestros the explorer offers. A maestro whose canon snapshot is loaded (matched by Wikidata id) opens; status 'building' marks a canon under way; the rest are planned. Birth and death years and ids from Wikidata.",
+ "regions": {
+  "SA": "South Asia",
+  "AM": "The Americas",
+  "EU": "Europe",
+  "MEA": "Middle East & Africa",
+  "EA": "East Asia"
+ },
+ "maestros": [
+  {
+   "name": "Mohammed Rafi",
+   "wikidata": "Q156815",
+   "born": 1924,
+   "died": 1980,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Hindi film songs"
+  },
+  {
+   "name": "Lata Mangeshkar",
+   "wikidata": "Q156347",
+   "born": 1929,
+   "died": 2022,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Hindi film songs",
+   "status": "building"
+  },
+  {
+   "name": "Kishore Kumar",
+   "wikidata": "Q471542",
+   "born": 1929,
+   "died": 1987,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Hindi film songs"
+  },
+  {
+   "name": "Asha Bhosle",
+   "wikidata": "Q38393",
+   "born": 1933,
+   "region": "South Asia",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Hindi film songs",
+   "died": 2026,
+   "country": "India"
+  },
+  {
+   "name": "Mukesh",
+   "wikidata": "Q2367593",
+   "born": 1923,
+   "died": 1976,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Hindi film songs"
+  },
+  {
+   "name": "Manna Dey",
+   "wikidata": "Q156310",
+   "born": 1919,
+   "died": 2013,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Hindi and Bengali film songs"
+  },
+  {
+   "name": "Geeta Dutt",
+   "wikidata": "Q470416",
+   "born": 1930,
+   "died": 1972,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Hindi film songs"
+  },
+  {
+   "name": "Talat Mahmood",
+   "wikidata": "Q3595869",
+   "born": 1924,
+   "died": 1998,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Film songs and ghazals"
+  },
+  {
+   "name": "S. D. Burman",
+   "wikidata": "Q2723913",
+   "born": 1906,
+   "died": 1975,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "composer",
+    "singer"
+   ],
+   "genre": "Hindi and Bengali film music"
+  },
+  {
+   "name": "R. D. Burman",
+   "wikidata": "Q3351160",
+   "born": 1939,
+   "died": 1994,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "composer"
+   ],
+   "genre": "Hindi film music"
+  },
+  {
+   "name": "Naushad",
+   "wikidata": "Q674337",
+   "born": 1919,
+   "died": 2006,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "composer"
+   ],
+   "genre": "Hindi film music"
+  },
+  {
+   "name": "Madan Mohan",
+   "wikidata": "Q422999",
+   "born": 1924,
+   "died": 1975,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "composer"
+   ],
+   "genre": "Hindi film music"
+  },
+  {
+   "name": "O. P. Nayyar",
+   "wikidata": "Q1397628",
+   "born": 1926,
+   "died": 2007,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "composer"
+   ],
+   "genre": "Hindi film music"
+  },
+  {
+   "name": "Sahir Ludhianvi",
+   "wikidata": "Q1102757",
+   "born": 1921,
+   "died": 1980,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "lyricist"
+   ],
+   "genre": "Hindi and Urdu film lyrics"
+  },
+  {
+   "name": "Gulzar",
+   "wikidata": "Q468339",
+   "born": 1933,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "lyricist"
+   ],
+   "genre": "Hindi film lyrics"
+  },
+  {
+   "name": "A. R. Rahman",
+   "wikidata": "Q108560",
+   "born": 1966,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "composer"
+   ],
+   "genre": "Tamil and Hindi film music"
+  },
+  {
+   "name": "Ilaiyaraaja",
+   "wikidata": "Q2720141",
+   "born": 1943,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "composer"
+   ],
+   "genre": "Tamil film music"
+  },
+  {
+   "name": "M. S. Subbulakshmi",
+   "wikidata": "Q465067",
+   "born": 1916,
+   "died": 2004,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Carnatic"
+  },
+  {
+   "name": "Bhimsen Joshi",
+   "wikidata": "Q121077",
+   "born": 1922,
+   "died": 2011,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Hindustani classical"
+  },
+  {
+   "name": "Ravi Shankar",
+   "wikidata": "Q103774",
+   "born": 1920,
+   "died": 2012,
+   "country": "India",
+   "region": "South Asia",
+   "roles": [
+    "instrumentalist",
+    "composer"
+   ],
+   "genre": "Hindustani classical, sitar"
+  },
+  {
+   "name": "Noor Jehan",
+   "wikidata": "Q466955",
+   "born": 1920,
+   "died": 2000,
+   "country": "Pakistan",
+   "region": "South Asia",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Film songs and ghazals"
+  },
+  {
+   "name": "Mehdi Hassan",
+   "wikidata": "Q395249",
+   "born": 1927,
+   "died": 2012,
+   "country": "Pakistan",
+   "region": "South Asia",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Ghazal"
+  },
+  {
+   "name": "Nusrat Fateh Ali Khan",
+   "wikidata": "Q299073",
+   "born": 1948,
+   "died": 1997,
+   "country": "Pakistan",
+   "region": "South Asia",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Qawwali"
+  },
+  {
+   "name": "Umm Kulthum",
+   "wikidata": "Q1110560",
+   "born": 1898,
+   "died": 1975,
+   "country": "Egypt",
+   "region": "Middle East & Africa",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Arabic classical song"
+  },
+  {
+   "name": "Fairuz",
+   "wikidata": "Q3247658",
+   "born": 1935,
+   "country": "Lebanon",
+   "region": "Middle East & Africa",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Arabic popular song"
+  },
+  {
+   "name": "Fela Kuti",
+   "wikidata": "Q313868",
+   "born": 1938,
+   "died": 1997,
+   "country": "Nigeria",
+   "region": "Middle East & Africa",
+   "roles": [
+    "composer",
+    "instrumentalist",
+    "singer"
+   ],
+   "genre": "Afrobeat"
+  },
+  {
+   "name": "Miriam Makeba",
+   "wikidata": "Q146256",
+   "born": 1932,
+   "died": 2008,
+   "country": "South Africa",
+   "region": "Middle East & Africa",
+   "roles": [
+    "singer"
+   ],
+   "genre": "South African popular song"
+  },
+  {
+   "name": "Cesária Évora",
+   "wikidata": "Q103759",
+   "born": 1941,
+   "died": 2011,
+   "country": "Cape Verde",
+   "region": "Middle East & Africa",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Morna"
+  },
+  {
+   "name": "Youssou N'Dour",
+   "wikidata": "Q210734",
+   "born": 1959,
+   "country": "Senegal",
+   "region": "Middle East & Africa",
+   "roles": [
+    "singer",
+    "composer"
+   ],
+   "genre": "Mbalax"
+  },
+  {
+   "name": "Eddy Arnold",
+   "wikidata": "Q721943",
+   "born": 1918,
+   "died": 2008,
+   "country": "United States",
+   "region": "The Americas",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Country"
+  },
+  {
+   "name": "Hank Williams",
+   "wikidata": "Q206181",
+   "born": 1923,
+   "died": 1953,
+   "country": "United States",
+   "region": "The Americas",
+   "roles": [
+    "singer",
+    "composer"
+   ],
+   "genre": "Country"
+  },
+  {
+   "name": "Patsy Cline",
+   "wikidata": "Q273080",
+   "born": 1932,
+   "died": 1963,
+   "country": "United States",
+   "region": "The Americas",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Country"
+  },
+  {
+   "name": "Johnny Cash",
+   "wikidata": "Q42775",
+   "born": 1932,
+   "died": 2003,
+   "country": "United States",
+   "region": "The Americas",
+   "roles": [
+    "singer",
+    "composer"
+   ],
+   "genre": "Country"
+  },
+  {
+   "name": "Frank Sinatra",
+   "wikidata": "Q40912",
+   "born": 1915,
+   "died": 1998,
+   "country": "United States",
+   "region": "The Americas",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Traditional pop"
+  },
+  {
+   "name": "Ella Fitzgerald",
+   "wikidata": "Q1768",
+   "born": 1917,
+   "died": 1996,
+   "country": "United States",
+   "region": "The Americas",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Jazz"
+  },
+  {
+   "name": "Billie Holiday",
+   "wikidata": "Q104358",
+   "born": 1915,
+   "died": 1959,
+   "country": "United States",
+   "region": "The Americas",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Jazz"
+  },
+  {
+   "name": "Louis Armstrong",
+   "wikidata": "Q1779",
+   "born": 1901,
+   "died": 1971,
+   "country": "United States",
+   "region": "The Americas",
+   "roles": [
+    "instrumentalist",
+    "singer"
+   ],
+   "genre": "Jazz"
+  },
+  {
+   "name": "Duke Ellington",
+   "wikidata": "Q4030",
+   "born": 1899,
+   "died": 1974,
+   "country": "United States",
+   "region": "The Americas",
+   "roles": [
+    "composer",
+    "conductor"
+   ],
+   "genre": "Jazz"
+  },
+  {
+   "name": "Cole Porter",
+   "wikidata": "Q215120",
+   "born": 1891,
+   "died": 1964,
+   "country": "United States",
+   "region": "The Americas",
+   "roles": [
+    "composer",
+    "lyricist"
+   ],
+   "genre": "Great American Songbook"
+  },
+  {
+   "name": "Irving Berlin",
+   "wikidata": "Q128746",
+   "born": 1888,
+   "died": 1989,
+   "country": "United States",
+   "region": "The Americas",
+   "roles": [
+    "composer",
+    "lyricist"
+   ],
+   "genre": "Great American Songbook"
+  },
+  {
+   "name": "Johnny Mercer",
+   "wikidata": "Q363698",
+   "born": 1909,
+   "died": 1976,
+   "country": "United States",
+   "region": "The Americas",
+   "roles": [
+    "lyricist"
+   ],
+   "genre": "Great American Songbook"
+  },
+  {
+   "name": "Aretha Franklin",
+   "wikidata": "Q125121",
+   "born": 1942,
+   "died": 2018,
+   "country": "United States",
+   "region": "The Americas",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Soul"
+  },
+  {
+   "name": "Bob Dylan",
+   "wikidata": "Q392",
+   "born": 1941,
+   "country": "United States",
+   "region": "The Americas",
+   "roles": [
+    "singer",
+    "composer",
+    "lyricist"
+   ],
+   "genre": "Folk and rock"
+  },
+  {
+   "name": "Carlos Gardel",
+   "wikidata": "Q229613",
+   "born": 1890,
+   "died": 1935,
+   "country": "Argentina",
+   "region": "The Americas",
+   "roles": [
+    "singer",
+    "composer"
+   ],
+   "genre": "Tango"
+  },
+  {
+   "name": "Antônio Carlos Jobim",
+   "wikidata": "Q200131",
+   "born": 1927,
+   "died": 1994,
+   "country": "Brazil",
+   "region": "The Americas",
+   "roles": [
+    "composer"
+   ],
+   "genre": "Bossa nova"
+  },
+  {
+   "name": "Caetano Veloso",
+   "wikidata": "Q309983",
+   "born": 1942,
+   "country": "Brazil",
+   "region": "The Americas",
+   "roles": [
+    "singer",
+    "composer"
+   ],
+   "genre": "MPB, Tropicália"
+  },
+  {
+   "name": "Mercedes Sosa",
+   "wikidata": "Q216450",
+   "born": 1935,
+   "died": 2009,
+   "country": "Argentina",
+   "region": "The Americas",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Nueva canción"
+  },
+  {
+   "name": "Celia Cruz",
+   "wikidata": "Q474045",
+   "born": 1925,
+   "died": 2003,
+   "country": "Cuba",
+   "region": "The Americas",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Salsa"
+  },
+  {
+   "name": "Jean Wiener",
+   "wikidata": "Q553384",
+   "born": 1896,
+   "died": 1982,
+   "country": "France",
+   "region": "Europe",
+   "roles": [
+    "composer",
+    "instrumentalist"
+   ],
+   "genre": "Film scores, jazz piano"
+  },
+  {
+   "name": "Édith Piaf",
+   "wikidata": "Q1631",
+   "born": 1915,
+   "died": 1963,
+   "country": "France",
+   "region": "Europe",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Chanson"
+  },
+  {
+   "name": "Charles Aznavour",
+   "wikidata": "Q1785",
+   "born": 1924,
+   "died": 2018,
+   "country": "France",
+   "region": "Europe",
+   "roles": [
+    "singer",
+    "composer"
+   ],
+   "genre": "Chanson"
+  },
+  {
+   "name": "Jacques Brel",
+   "wikidata": "Q1666",
+   "born": 1929,
+   "died": 1978,
+   "country": "Belgium",
+   "region": "Europe",
+   "roles": [
+    "singer",
+    "composer"
+   ],
+   "genre": "Chanson"
+  },
+  {
+   "name": "Georges Brassens",
+   "wikidata": "Q449",
+   "born": 1921,
+   "died": 1981,
+   "country": "France",
+   "region": "Europe",
+   "roles": [
+    "singer",
+    "composer"
+   ],
+   "genre": "Chanson"
+  },
+  {
+   "name": "Serge Gainsbourg",
+   "wikidata": "Q1698",
+   "born": 1928,
+   "died": 1991,
+   "country": "France",
+   "region": "Europe",
+   "roles": [
+    "singer",
+    "composer"
+   ],
+   "genre": "Chanson and pop"
+  },
+  {
+   "name": "Michel Legrand",
+   "wikidata": "Q313281",
+   "born": 1932,
+   "died": 2019,
+   "country": "France",
+   "region": "Europe",
+   "roles": [
+    "composer"
+   ],
+   "genre": "Film scores"
+  },
+  {
+   "name": "Ennio Morricone",
+   "wikidata": "Q23848",
+   "born": 1928,
+   "died": 2020,
+   "country": "Italy",
+   "region": "Europe",
+   "roles": [
+    "composer",
+    "conductor"
+   ],
+   "genre": "Film scores"
+  },
+  {
+   "name": "Amália Rodrigues",
+   "wikidata": "Q214813",
+   "born": 1920,
+   "died": 1999,
+   "country": "Portugal",
+   "region": "Europe",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Fado"
+  },
+  {
+   "name": "Mikis Theodorakis",
+   "wikidata": "Q151976",
+   "born": 1925,
+   "died": 2021,
+   "country": "Greece",
+   "region": "Europe",
+   "roles": [
+    "composer"
+   ],
+   "genre": "Greek art song, film scores"
+  },
+  {
+   "name": "Johann Sebastian Bach",
+   "wikidata": "Q1339",
+   "born": 1685,
+   "died": 1750,
+   "country": "Germany",
+   "region": "Europe",
+   "roles": [
+    "composer"
+   ],
+   "genre": "Baroque"
+  },
+  {
+   "name": "Teresa Teng",
+   "wikidata": "Q463945",
+   "born": 1953,
+   "died": 1995,
+   "country": "Taiwan",
+   "region": "East Asia",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Mandopop"
+  },
+  {
+   "name": "Hibari Misora",
+   "wikidata": "Q147811",
+   "born": 1937,
+   "died": 1989,
+   "country": "Japan",
+   "region": "East Asia",
+   "roles": [
+    "singer"
+   ],
+   "genre": "Kayōkyoku, enka"
+  }
+ ]
+}
