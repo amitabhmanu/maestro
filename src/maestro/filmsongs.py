@@ -27,10 +27,13 @@ from typing import Any
 from maestro.resolve import Groups, fold
 
 CHORUS = re.compile(r"\b(chorus|korus|others|group|children|kids)\b", re.I)
-RECREATION = re.compile(r"\b(recreat\w*|remix\w*|revisit\w*|reloaded|redux|reprised from|original(?:ly)? (?:from|by|composed)"
+# Words that say a song is an older film's song made again. A remix alone is a version of the film's own
+# song (a remix of "Challa" in the same film), not an older film's.
+RECREATION = re.compile(r"\b(recreat\w*|revisit\w*|reprised from|original(?:ly)? (?:from|by|composed|sung)"
                         r"|from the (?:\d{4} )?film|old song|rehash\w*)\b", re.I)
 SAME_COMPOSITION = {"reprise", "female", "male", "sad", "duet", "unplugged", "version", "film version", "instrumental",
-                    "theme", "extended", "acoustic", "lofi", "lo-fi"}
+                    "theme", "extended", "acoustic", "lofi", "lo-fi", "remix", "remixed", "club mix", "dance mix",
+                    "mashup", "lounge", "redux", "reloaded", "revisited"}
 
 
 def title_key(title: str | None, words: int = 4) -> str:
@@ -143,7 +146,8 @@ def mark_reuse(by_film: dict[int, list[dict[str, Any]]], years: dict[int, int | 
                     s["reuse"] = {"kind": "recreated", "film": o["film"], "title": titles.get(o["film"]),
                                   "year": years[o["film"]], "rule": "an older film's song, its music director credited"}
                     break
-            if not s.get("reuse") and s["src"] != "hfgk_online" and RECREATION.search(text):
+            own = any(o is not s and title_key(o["title"], 2) == title_key(s["title"], 2) for o in songs)
+            if not s.get("reuse") and s["src"] != "hfgk_online" and RECREATION.search(text) and not own:
                 o = earlier[0] if earlier else None
                 s["reuse"] = {"kind": "recreated", "rule": "the listing says it is a recreation or remix",
                               **({"film": o["film"], "title": titles.get(o["film"]), "year": years[o["film"]]}
