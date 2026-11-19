@@ -289,3 +289,15 @@ def test_names_agree_first_word_teams_and_b_v():
     assert films.names_agree(["Madhulal Damodar Master"], ["Master Madhavlal Damodar"])
     assert films.names_agree(["R. D. Burman"], ["S. D. Burman"]) is False
     assert films.names_agree(["C Ramchandra"], ["Annasaheb Mainkar"]) is False
+
+
+def test_year_majority_vote():
+    f = {"kind": "year_mismatch"}
+    films._resolve_year(f, {"hfgk_online": 1960, "wikidata": 1961, "wikipedia": 1961})
+    assert f["status"] == "resolved" and f["value"] == 1961 and "majority" in f["rule"]
+    f = {"kind": "year_mismatch"}
+    films._resolve_year(f, {"hfgk_online": 1946, "wikidata": 1946, "wikipedia": 2020})
+    assert f["value"] == 1946 and "majority" in f["rule"]
+    f = {"kind": "year_mismatch"}
+    films._resolve_year(f, {"wikidata": 1995, "wikipedia": 1985})  # the user's rule: Wikipedia wins
+    assert f["status"] == "resolved" and f["value"] == 1985

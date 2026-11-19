@@ -627,6 +627,13 @@ def resolve_flags(film: Film, flags: list[dict[str, Any]], norm: Normaliser,
 
 
 def _resolve_year(f: dict[str, Any], years: dict[str, int]) -> None:
+    # The user's rule (19 Nov 2026): the year most sources give wins, where there is such a year.
+    votes = Counter(years.values()).most_common()
+    if votes and votes[0][1] >= 2 and (len(votes) == 1 or votes[0][1] > votes[1][1]):
+        y = votes[0][0]
+        agree = [SOURCE_WORDS.get(s, s) for s, v in years.items() if v == y]
+        f.update(status="resolved", value=y, rule=f"the majority of sources: {' and '.join(agree)} say {y}")
+        return
     h, wd, wp = years.get("hfgk_online"), years.get("wikidata"), years.get("wikipedia")
     if h is not None:
         others = [y for s, y in years.items() if s != "hfgk_online"]
@@ -649,6 +656,8 @@ def _resolve_year(f: dict[str, Any], years: dict[str, int]) -> None:
             f.update(status="resolved", value=wp,
                      rule="Wikipedia's year list (the Indian release); Wikidata's earliest date is often a "
                           "festival premiere or an earlier release")
+        else:  # the user's rule (19 Nov 2026): Wikipedia's year wins over Wikidata's
+            f.update(status="resolved", value=wp, rule="Wikipedia's year list, as you chose over Wikidata")
 
 
 def _resolve_composer(f: dict[str, Any], composers: dict[str, list[str]], years: dict[str, int],
@@ -675,14 +684,14 @@ def _resolve_title(f: dict[str, Any], film: Film, norm: Normaliser) -> None:
     hfgk = [m.title for m in film.by_source("hfgk_online") if m.title]
     for m in film.by_source("wikidata"):
         t = m.title or ""
+        if t and t.isascii():
+            # The user's rule (19 Nov 2026): Wikidata's spelling is the correct one.
+            f.update(status="resolved", value=t,
+                     rule="Wikidata's spelling, the others kept as alternatives")
+            return
         if not t.isascii():
             f.update(status="resolved", value=hfgk[0] if hfgk else t,
                      rule="Wikidata has only a Hindi-script title: HFGK's transliteration is used")
-            return
-        if hfgk and any(skeleton(norm.container(t)) == skeleton(norm.container(x)) for x in hfgk):
-            f.update(status="resolved", value=hfgk[0],
-                     rule="the same title in another transliteration: HFGK's spelling first, the other kept "
-                          "as an alternative")
             return
 
 
