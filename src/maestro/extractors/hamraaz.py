@@ -33,18 +33,25 @@ PLACEHOLDER_PERSON_IDS = {"10000"}  # "Others": unnamed chorus or co-singers
 
 # ---- extractor entry point ---------------------------------------------------
 
-def maestro_person_id(store) -> str:
-    """The maestro's person id in this database, from the pack's `identity.ids.hfgk`."""
+def maestro_person_ids(store) -> list[str]:
+    """The maestro's person ids in this database, from the pack's `identity.ids.hfgk`: one id, or a
+    list whose first id is the maestro's own filmography page and whose others are credit records the
+    user ruled are the maestro too (e.g. Lata's "Lata Mangeshkar + Rafi", 16433)."""
     pid = (store.pack.data["identity"].get("ids") or {}).get("hfgk")
     if not pid:
         raise ValueError("the pack has no identity.ids.hfgk: find the maestro's person.php?id= on hamraaz.org")
-    return str(pid)
+    return [str(p) for p in pid] if isinstance(pid, list) else [str(pid)]
+
+
+def maestro_person_id(store) -> str:
+    """The maestro's own filmography page id."""
+    return maestro_person_ids(store)[0]
 
 
 def _person(store, pid: str | None, name: str) -> int | None:
     if pid is None or pid in PLACEHOLDER_PERSON_IDS:
         return None
-    if pid == maestro_person_id(store):
+    if pid in maestro_person_ids(store):
         eid = store.maestro_entity()
         store.upsert_claim(eid, "xref", value=pid, source_id=SOURCE)
         return eid
@@ -133,5 +140,5 @@ def extract(ctx) -> None:
             # Tier A = Hindi film songs from released films; HFGK gives undated (unreleased) films a decade only.
             store.upsert_claim(song, "tier", value="A" if year.isdigit() else "C", source_id="claude",
                                kind="decided", extractor="hamraaz")
-    if any(c["role"] == "singer" and c["person_id"] == maestro_person_id(store) for s in data["songs"] for c in s["credits"]):
+    if any(c["role"] == "singer" and c["person_id"] in maestro_person_ids(store) for s in data["songs"] for c in s["credits"]):
         claim(film, "credit", {"role": "singer"}, ref=maestro)
