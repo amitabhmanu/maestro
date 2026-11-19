@@ -1764,7 +1764,7 @@ function filmsCard(r) {
     <div class="n">${r.films.toLocaleString()} films →</div></div></a>`;
 }
 function maestroCard(x) {
-  const st = x.snap ? ["live", "Ready"] : x.status === "building" ? ["building", "In progress"] : ["soon", "Coming soon"];
+  const st = x.snap ? (x.snap.draft ? ["building", "Draft"] : ["live", "Ready"]) : x.status === "building" ? ["building", "In progress"] : ["soon", "Coming soon"];
   const open = S.home.open === x.name;
   const card = `<button type="button" class="mcard" ${x.snap ? `data-open="${esc(x.snap.slug)}"` : `data-more="${esc(x.name)}" aria-expanded="${open}"`}>
     ${discHtml(x.name, x, x.snap ? "" : "off")}<div style="min-width:0"><div class="nm">${esc(x.name)}</div>
@@ -1840,6 +1840,7 @@ function renderOverview() {
   if (posth) ms.push(["†", `${plural(posth, U)} first released after ${M.died}`]);
   main.innerHTML = `<section class="band">
       <div class="stagehead">${discHtml(M.name, c)}<div style="min-width:0"><div class="eyebrow">The canon of</div><h1>${esc(M.name)}</h1><div class="who">${esc(who)}</div></div></div>
+      ${d.draft ? `<div class="mnote"><div><b>Draft canon.</b> ${d.draft.note ? esc(d.draft.note) + " " : ""}${d.draft.open_reviews ? `${d.draft.open_reviews.toLocaleString()} possible duplicates and close calls are still waiting for review, so some songs may appear twice and counts will change.` : "Counts may still change."}</div></div>` : ""}
       <div class="bstats"><div><b>${units.length.toLocaleString()}</b><span>${esc(U)}s</span></div>
         ${conts ? `<div><b>${conts.toLocaleString()}</b><span>${esc(d.contWord)}s</span></div>` : ""}
         <div><b>${people.toLocaleString()}</b><span>collaborators</span></div>

@@ -46,6 +46,17 @@ def test_snapshot(store_for):
     assert snap["coverage"]["canon_units"] == 2
     assert snap["gemness"]["default"] == "provisional" and snap["gemness"]["models"][0]["provisional"]
     json.dumps(snap, default=str)
+    assert "draft" not in snap
+
+
+def test_draft_snapshot_is_marked_in_the_index(store_for, tmp_path):
+    s = store_for("rafi")
+    build(s)
+    snap = snapshot(s, draft="Review still open.")
+    assert snap["draft"]["note"] == "Review still open." and snap["draft"]["open_reviews"] >= 0
+    write_site(tmp_path, [snap])
+    index = json.loads((tmp_path / "canon" / "index.json").read_text("utf-8"))
+    assert index["maestros"][0]["draft"] is True
 
 
 def test_private_claims_stay_out(store_for):
