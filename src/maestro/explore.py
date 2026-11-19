@@ -443,6 +443,14 @@ def write_site(out: Path, snaps: list[dict[str, Any]], registers: list[dict[str,
     for reg in registers or []:
         r = reg["register"]
         (out / "canon" / "films").mkdir(exist_ok=True)
+        songs = reg.pop("songs", None) or {}
+        reg["song_files"] = {}
+        for decade, rows in sorted(songs.items()):  # each decade's songs load when a film of it opens
+            spath = out / "canon" / "films" / f"{r['slug']}-songs-{decade}.json"
+            spath.write_text(json.dumps({"format": 1, "decade": decade, "songs": rows}, ensure_ascii=False,
+                                        separators=(",", ":"), default=str), "utf-8")
+            reg["song_files"][decade] = f"canon/films/{r['slug']}-songs-{decade}.json"
+            written.append(spath)
         path = out / "canon" / "films" / f"{r['slug']}.json"
         path.write_text(json.dumps(reg, ensure_ascii=False, separators=(",", ":"), default=str), "utf-8")
         written.append(path)

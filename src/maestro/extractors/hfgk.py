@@ -91,6 +91,33 @@ _ON_SCREEN = re.compile(r"<span title=\"([^\"]*)\"[^>]*window\.location='person\
 _SONG_TITLES = re.compile(r'<div[^>]*font-weight:600[^>]*>(.*?)</div>\s*(?:<div[^>]*>([^<]*)</div>)?', re.S)
 
 
+_CENSOR = re.compile(r"Film Censor Info</h3>\s*<p[^>]*>(.*?)</p>", re.S)
+_CENSOR_KEYS = {"Cens No": "number", "Len (ft)": "length_ft", "Reels": "reels", "Time(mts)": "duration", "Date": "date"}
+
+
+def parse_censor(page_html: str) -> dict | None:
+    """'Cens No=Bombay/41745(cut) Len (ft)=10500 Reels=10 Time(mts)=116m40s Date=18.04.1949' as a dict
+    (the date as YYYY-MM-DD). The certificate date is what HFGK dates a film by."""
+    m = _CENSOR.search(page_html)
+    if not m:
+        return None
+    text = _text(m.group(1))
+    out: dict = {}
+    keys = "|".join(re.escape(k) for k in _CENSOR_KEYS)
+    for k, v in re.findall(rf"({keys})=(.*?)(?=\s+(?:{keys})=|$)", text):
+        v = v.strip()
+        if not v:
+            continue
+        name = _CENSOR_KEYS[k]
+        if name == "date":
+            d = re.match(r"(\d{1,2})\.(\d{1,2})\.(\d{4})$", v)
+            v = f"{d.group(3)}-{int(d.group(2)):02d}-{int(d.group(1)):02d}" if d else v
+        elif name in ("length_ft", "reels") and v.isdigit():
+            v = int(v)
+        out[name] = v
+    return out or None
+
+
 def parse_film(page_html: str) -> dict:
     m = _H1.search(page_html)
     film = {
@@ -100,9 +127,15 @@ def parse_film(page_html: str) -> dict:
         "crew": [],
         "songs": [],
     }
+    film["cast"] = []
+    film["censor"] = parse_censor(page_html)
     for heading, box in _ROLE_BOX.findall(page_html):
         role = FILM_ROLE_HEADINGS.get(_text(heading))
-        if role:
+        if _text(heading) == "Artists":  # the cast, apart from the crew (Rafi's pack reads only the crew)
+            for pid, inner in _PERSON_LINK.findall(box):
+                spans = _SPAN.findall(inner)
+                film["cast"].append({"person_id": pid, "name": _text(spans[-1]) if spans else ""})
+        elif role:
             for pid, inner in _PERSON_LINK.findall(box):
                 spans = _SPAN.findall(inner)  # an avatar initial may come first; the name is last
                 film["crew"].append({"role": role, "person_id": pid, "name": _text(spans[-1]) if spans else ""})
@@ -237,6 +270,12 @@ def extract(ctx) -> None:
             claim(film, "credit_unlinked", {"role": c["role"], "name": c["name"]})
         else:
             claim(film, "credit", {"role": c["role"]}, ref=pid)
+    for c in data.get("cast", []):
+        pid = _person(store, c["person_id"], c["name"])
+        if pid is not None:
+            claim(film, "credit", {"role": "actor"}, ref=pid)
+    if data.get("censor"):
+        claim(film, "censor", data["censor"])
     claim(film, "song_count", len(data["songs"]))
 
     # The pack tiers songs by kind (canon_model.kind_tiers): a dated film was released.
