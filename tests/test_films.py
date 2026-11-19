@@ -228,3 +228,59 @@ def test_hfgk_bot_check_page_writes_nothing(store_for):
 def test_latin_fixes_cyrillic_lookalikes():
     assert films.latin("Chitragupт") == "Chitragupt"
     assert films.latin("मोहम्मद रफ़ी") == "मोहम्मद रफ़ी"
+
+
+def test_resolutions_and_decisions(store_for, tmp_path):
+    s = store_for("hindi-films")
+    _register(s)
+    films.match(s)
+    films.report(s, tmp_path)
+    review = {(r["title"], r["flag"]): r for r in csv.DictReader((tmp_path / "review.csv").open(encoding="utf-8-sig"))}
+    awara = review[("Awara", "year_mismatch")]
+    assert awara["status"] == "resolved" and awara["value"] == "1952" and "censor" in awara["rule"]
+    pyasa = review[("Pyasa", "composer_mismatch")]
+    assert pyasa["status"] == "resolved" and pyasa["value"] == "R. D. Burman"
+    assert review[("Lost Reel", "no_wikidata")]["status"] == "info"
+    todo = {(r["title"], r["flag"]) for r in csv.DictReader((tmp_path / "to-review.csv").open(encoding="utf-8-sig"))}
+    assert ("Remake", "match_review") in todo and ("Not In Hfgk", "not_in_hfgk") in todo
+    assert ("Awara", "year_mismatch") not in todo
+    rows = {r["title"]: r for r in csv.DictReader((tmp_path / "films.csv").open(encoding="utf-8-sig"))}
+    assert rows["Awara"]["year"] == "1952"
+    # The user's decision wins over the rule, and a second decision replaces the first.
+    fid = int(awara["film_id"])
+    films.decide(s, fid, "year_mismatch", "1950", note="first try")
+    films.decide(s, fid, "year_mismatch", "1951", note="release date")
+    films.report(s, tmp_path)
+    review = {(r["title"], r["flag"]): r for r in csv.DictReader((tmp_path / "review.csv").open(encoding="utf-8-sig"))}
+    assert review[("Awara", "year_mismatch")]["value"] == "1951"
+    assert review[("Awara", "year_mismatch")]["rule"] == "your decision: release date"
+
+
+def test_tie_break_rules(store_for):
+    s = store_for("hindi-films")
+    _film(s, "wikidata", "Q21", "Gangs of Wasseypur – Part 1", 2012, wikidata="Q21")
+    _film(s, "wikidata", "Q22", "Gangs of Wasseypur – Part 2", 2012, wikidata="Q22")
+    _film(s, "wikidata", "Q23", "Gangs of Wasseypur", 2012, wikidata="Q23")
+    _film(s, "wikipedia", "2012:Gangs of Wasseypur – Part 2", "Gangs of Wasseypur – Part 2", 2012)
+    _film(s, "wikidata", "Q31", "Agaman", 1982, wikidata="Q31", wikipedia="Aagaman")
+    _film(s, "wikidata", "Q32", "Agaman", 1982, wikidata="Q32")
+    _film(s, "hfgk_online", "301", "Agaman", 1982)
+    films.match(s)
+    report = {(r["title"], tuple(r["sources"].split("; "))) for r in
+              (films.film_row(f) for f in films.films_in_groups(s))}
+    assert ("Gangs of Wasseypur – Part 2", ("wikidata", "wikipedia")) in report
+    assert ("Agaman", ("hfgk_online", "wikidata")) in report
+    reasons = [r["value"]["reason"] for r in s.conn.execute(
+        "SELECT value FROM claim WHERE field = 'same_as' ORDER BY id").fetchall()]
+    assert any("exact title" in r for r in reasons) and any("Wikipedia article or IMDb" in r for r in reasons)
+
+
+def test_names_agree_first_word_teams_and_b_v():
+    assert films.names_agree(["Jaidev"], ["Jaidev Verma"])
+    assert films.names_agree(["Naushad Ali"], ["Naushad"])
+    assert films.names_agree(["Kalyanji-Anandji"], ["Kalyanji Virji Shah"])
+    assert films.names_agree(["Vrijlal Varma"], ["Brijlal Varma"])
+    assert films.names_agree(["Master Sundar Das"], ["Sunderdas Bhatia"])
+    assert films.names_agree(["Madhulal Damodar Master"], ["Master Madhavlal Damodar"])
+    assert films.names_agree(["R. D. Burman"], ["S. D. Burman"]) is False
+    assert films.names_agree(["C Ramchandra"], ["Annasaheb Mainkar"]) is False

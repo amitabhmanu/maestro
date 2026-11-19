@@ -170,7 +170,8 @@ UNIT_TEXT_KEYS = {"title", "alt_titles", "title_alt_script", "lyrics", "lyric"}
 
 
 def check_snapshot(path: Path, policy: Policy) -> dict[str, Any]:
-    """An explorer snapshot (canon/<slug>.json) must hold no lyric text beyond first lines. Only units
+    """An explorer snapshot (canon/<slug>.json, or a film register's song file) must hold no lyric text
+    beyond first lines. Only units and register songs
     are checked: container and people names are not lyrics (a film shown as "Juari / Majboor" is two
     films, not two lines)."""
     data = json.loads(Path(path).read_text("utf-8"))
@@ -189,6 +190,8 @@ def check_snapshot(path: Path, policy: Policy) -> dict[str, Any]:
 
     for unit in data.get("units", []):
         walk({k: v for k, v in unit.items() if k in UNIT_TEXT_KEYS})
+    for song in data.get("songs", []) if isinstance(data.get("songs"), list) else []:
+        walk({"title": song.get("t")})  # a film register's song file (canon/films/<slug>-songs-<decade>.json)
     return {"snapshot": str(path), "beyond_first_line": len(bad), "sample": bad[:10], "ok": not bad}
 
 
