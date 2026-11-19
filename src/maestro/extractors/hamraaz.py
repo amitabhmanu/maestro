@@ -1,9 +1,10 @@
 """Extractor for the HFGK Online database V2.0 (hamraaz.org/filmssite).
 
 Two page kinds:
-  person.php?id=N  a filmography: queues one film job per film (optionally limited by year). On Rafi's
-                   own page it also records each film and Rafi's roles in it, so a film that credits
-                   him but yields no Rafi song shows up as a gap.
+  person.php?id=N  a filmography: queues one film job per film (optionally limited by year). On the
+                   maestro's own page (the pack's `identity.ids.hfgk`, e.g. 4357 "Md Rafi") it also
+                   records each film and the maestro's roles in it, so a film that credits them but
+                   yields no song of theirs shows up as a gap.
   film.php?id=N    a film with its full song list: writes the film, its songs and every credit
 
 Song-level singers, lyricists and composers come from the song rows; actors shown with a song
@@ -27,16 +28,23 @@ from maestro.extractors.hfgk import (  # noqa: F401  (parsers shared with the fi
     parse_person,
 )
 
-MAESTRO_PERSON_ID = "4357"  # "Md Rafi" in this database
 PLACEHOLDER_PERSON_IDS = {"10000"}  # "Others": unnamed chorus or co-singers
 
 
 # ---- extractor entry point ---------------------------------------------------
 
+def maestro_person_id(store) -> str:
+    """The maestro's person id in this database, from the pack's `identity.ids.hfgk`."""
+    pid = (store.pack.data["identity"].get("ids") or {}).get("hfgk")
+    if not pid:
+        raise ValueError("the pack has no identity.ids.hfgk: find the maestro's person.php?id= on hamraaz.org")
+    return str(pid)
+
+
 def _person(store, pid: str | None, name: str) -> int | None:
     if pid is None or pid in PLACEHOLDER_PERSON_IDS:
         return None
-    if pid == MAESTRO_PERSON_ID:
+    if pid == maestro_person_id(store):
         eid = store.maestro_entity()
         store.upsert_claim(eid, "xref", value=pid, source_id=SOURCE)
         return eid
@@ -67,7 +75,7 @@ def extract(ctx) -> None:
     url = ctx.page.url
     if "person.php" in url:
         years = _year_range(ctx.options.get("years"))
-        is_maestro = re.search(r"id=(\d+)", url).group(1) == MAESTRO_PERSON_ID
+        is_maestro = re.search(r"id=(\d+)", url).group(1) == maestro_person_id(ctx.store)
         for film in parse_person(ctx.page.text):
             if years and (film["year"] is None or not years[0] <= film["year"] <= years[1]):
                 continue
@@ -125,5 +133,5 @@ def extract(ctx) -> None:
             # Tier A = Hindi film songs from released films; HFGK gives undated (unreleased) films a decade only.
             store.upsert_claim(song, "tier", value="A" if year.isdigit() else "C", source_id="claude",
                                kind="decided", extractor="hamraaz")
-    if any(c["role"] == "singer" and c["person_id"] == MAESTRO_PERSON_ID for s in data["songs"] for c in s["credits"]):
+    if any(c["role"] == "singer" and c["person_id"] == maestro_person_id(store) for s in data["songs"] for c in s["credits"]):
         claim(film, "credit", {"role": "singer"}, ref=maestro)

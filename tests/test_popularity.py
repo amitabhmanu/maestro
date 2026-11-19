@@ -363,3 +363,9 @@ def test_reissues_popular_only_at_the_top():
     assert not low_popularity(scored[95], th)
     few = {i: Scored(unit=Unit(id=i, label=f"v{i}"), facet_of=facet_of, signals={"reissues": 1.0}) for i in range(10)}
     assert count_thresholds(few, facet_of)["reissues"] == 2.0
+
+
+def test_filmfare_names_the_award_from_the_page():
+    mod = load("rafi", "filmfare")
+    assert mod.award_name("https://en.wikipedia.org/wiki/Filmfare_Award_for_Best_Female_Playback_Singer") == "Best Female Playback"
+    assert mod.award_name("https://en.wikipedia.org/wiki/Filmfare_Award_for_Best_Male_Playback_Singer") == "Best Male Playback"

@@ -8,8 +8,8 @@ song list and credits (films never released carry a decade instead of a year). P
   person.php?id=N            a person's filmography
   film.php?id=N              a film with its full song list and every credit
 
-Rafi's pack reads person pages with its own extractor (`maestros/rafi/extractors/hamraaz.py`), which
-imports these parsers. The `extract` here serves a film register (a pack of `identity.kind: register`,
+A singer's pack reads person pages with the core `hamraaz` extractor (the maestro's person id is the
+pack's `identity.ids.hfgk`), which imports these parsers. The `extract` here serves a film register (a pack of `identity.kind: register`,
 e.g. hindi-films): the home page queues every year, a year page queues its films, and a film page
 writes the film, its crew, every song and every song credit. Persons are keyed by HFGK person id.
 """
