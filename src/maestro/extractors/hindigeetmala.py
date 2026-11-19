@@ -86,13 +86,14 @@ GAP_FIELD = "listing_gap"
 
 def _canon_index(store):
     """Per film-title key, the canon's films (merge roots) and their years; per film, its songs' titles."""
-    from maestro.resolve import Groups, Normaliser, _squash_container
+    from maestro.resolve import SKELETON_MIN, Groups, Normaliser, _squash_container, skeleton
 
     cached = getattr(store, "_hgm_canon_index", None)
     if cached is not None:
         return cached
     norm, groups = Normaliser.for_store(store), Groups(store)
     films: dict[str, dict[int, set[int]]] = {}
+    skeletons: dict[tuple[str, int], set[int]] = {}  # (consonants, year) -> film roots, for spellings the key keeps apart
     for r in store.conn.execute(
             """SELECT e.id, e.label, (SELECT min((c.value #>> '{}')::int) FROM claim c WHERE c.entity_id = e.id
                      AND c.field = 'year' AND c.status = 'active' AND jsonb_typeof(c.value) = 'number') AS year
@@ -104,6 +105,9 @@ def _canon_index(store):
             years = films.setdefault(key, {}).setdefault(groups.find(r["id"]), set())
             if r["year"]:
                 years.add(r["year"])
+        sk = skeleton(norm.container(r["label"]))
+        if r["year"] and len(sk) >= SKELETON_MIN:
+            skeletons.setdefault((sk, r["year"]), set()).add(groups.find(r["id"]))
     songs: dict[int, list[tuple[int, str]]] = {}
     for r in store.conn.execute(
             """SELECT e.id, e.label, p.ref_entity_id AS film FROM entity e
@@ -112,6 +116,7 @@ def _canon_index(store):
         key = norm.title(r["label"])
         if key:
             songs.setdefault(groups.find(r["film"]), []).append((groups.find(r["id"]), key))
+    store._hgm_skeletons = skeletons
     cached = store._hgm_canon_index = (films, songs, norm, groups)
     return cached
 
@@ -125,6 +130,11 @@ def place(store, film: dict, title: str) -> tuple[list[int], str]:
     films, songs, norm, _groups = _canon_index(store)
     roots = [root for root, years in films.get(_squash_container(norm.container(film["title"])), {}).items()
              if not years or not film["year"] or any(abs(y - film["year"]) <= 1 for y in years)]
+    if not roots and film["year"]:
+        # One letter spelt differently ("Chunaria"/"Chunariya", "Jashan"/"Jashn"): the same consonants
+        # in the same year. Looser, so the year must agree outright.
+        from maestro.resolve import skeleton
+        roots = sorted(getattr(store, "_hgm_skeletons", {}).get((skeleton(norm.container(film["title"])), film["year"]), ()))
     if not roots:
         return [], "film_not_in_canon"
     # A film the canon still holds twice (HFGK's and Atul's Pyaasa, not yet merged) is searched as one:

@@ -168,3 +168,13 @@ def test_enrich_until_creates_only_songs_after_the_register_ends(store_for):
     assert films and all(y and y[0] > 1959 for y in years.values())
     gaps = {g["title"] for g in _values(s, s.maestro_entity(), "listing_gap")}
     assert "Chaudhavi Ka Chand Ho, Ya Aaftab Ho" not in gaps   # created, not a gap
+
+
+def test_place_finds_a_film_spelt_one_letter_differently_in_the_same_year(store_for):
+    s = store_for("rafi")
+    f = film(s, "hfgk_online", "1", "Dil Apna Aur Preet Parayi", 1960)
+    u = song(s, "hfgk_online", "2", "Ajeeb Dastan Hai Yeh Kahan Shuru Kahan Khatam", f)
+    units, why = hgm.place(s, {"title": "Dil Apna Aur Preet Parai", "year": 1960}, "Ajib Dastan Hai Yeh")
+    assert why == "matched" and units == [u]
+    s._hgm_canon_index = None
+    assert hgm.place(s, {"title": "Dil Apna Aur Preet Parai", "year": 1962}, "Ajib Dastan Hai Yeh")[1] == "film_not_in_canon"

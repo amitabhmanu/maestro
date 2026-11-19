@@ -180,8 +180,16 @@ def run_main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _utf8_stdout() -> None:
+    """Print names in any script: a Windows console defaults to cp1252 and fails on Devanagari."""
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure") and (stream.encoding or "").lower().replace("-", "") != "utf8":
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
+
 def report_main(argv: list[str] | None = None) -> int:
     """`maestro-report`: completeness report (tiers, published counts, containers, open reviews)."""
+    _utf8_stdout()
     from maestro.completeness import completeness_report, render_markdown
 
     p = argparse.ArgumentParser(description=report_main.__doc__)
