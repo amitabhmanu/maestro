@@ -1,6 +1,7 @@
-"""hindigeetmala.net's song list for Rafi: every song the site credits to him, with film, year and credits.
+"""hindigeetmala.net's song list for a singer: every song the site credits to them, with film, year and credits.
 
-Seed: https://www.hindigeetmala.net/singer/mohammed_rafi.php (robots.txt allows everything). The list
+Seed: https://www.hindigeetmala.net/singer/<identity.ids.hindigeetmala>.php, e.g. mohammed_rafi
+(robots.txt allows everything). The list
 runs over pages of ten (`?page=2` ... "Page 1 of 456" in the title); the first page queues the rest.
 Each song is marked up with schema.org microdata: title, singers, music director, film with its year,
 lyricist, actors on screen and the site's categories (moods, and ragas such as "Raga - Pahadi").
@@ -28,7 +29,14 @@ from urllib.parse import urljoin
 SOURCE = "hindigeetmala"
 EXTRACTOR = "hindigeetmala"
 BASE = "https://www.hindigeetmala.net/"
-MAESTRO_PATH = "/singer/mohammed_rafi.php"
+
+
+def maestro_path(store) -> str:
+    """The maestro's list page on the site, from the pack's `identity.ids.hindigeetmala`."""
+    name = (store.pack.data["identity"].get("ids") or {}).get("hindigeetmala")
+    if not name:
+        raise ValueError("the pack has no identity.ids.hindigeetmala (the <name> in /singer/<name>.php)")
+    return f"/singer/{name}.php"
 
 TRACK = re.compile(r'<tr itemprop="track".*?</tr></table></td></tr>', re.S)
 NON_FILM = re.compile(r"^non[- ]?film", re.I)
@@ -66,7 +74,7 @@ def parse(page: str) -> dict:
 
 
 def _person(store, path: str, name: str) -> int:
-    if path == MAESTRO_PATH:
+    if path == maestro_path(store):
         eid = store.maestro_entity()
         store.upsert_claim(eid, "xref", value=path, source_id=SOURCE)
         return eid
@@ -174,7 +182,7 @@ def extract(ctx) -> None:
     data = parse(ctx.page.text)
     if "page=" not in ctx.page.url:
         for p in range(2, data["pages"] + 1):
-            ctx.enqueue(urljoin(BASE, f"{MAESTRO_PATH.lstrip('/')}?page={p}"), EXTRACTOR, "spine")
+            ctx.enqueue(urljoin(BASE, f"{maestro_path(ctx.store).lstrip('/')}?page={p}"), EXTRACTOR, "spine")
 
     store, raw = ctx.store, ctx.raw_page_id
     maestro = store.maestro_entity()
