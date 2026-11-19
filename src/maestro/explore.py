@@ -189,7 +189,7 @@ def person_name(spellings: list[str], norm: Normaliser) -> str:
     return fix_lookalikes(plain[0] if tagged and plain else spellings[0])
 
 
-def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
+def snapshot(store: Store, include_private: bool = False, draft: bool | str = False) -> dict[str, Any]:
     pack = store.pack
     groups = Groups(store)
     units = load_units(store, groups)
@@ -409,6 +409,9 @@ def snapshot(store: Store, include_private: bool = False) -> dict[str, Any]:
         "popularity": popularity,
         "gemness": gemness.describe(),
     }
+    if draft:  # published before review is done: the picker and overview say so
+        snap["draft"] = {"note": draft if isinstance(draft, str) else "",
+                         "open_reviews": sum((report or {}).get("open_reviews", {}).values())}
     return add_media(snap, pack.data)
 
 
@@ -446,6 +449,7 @@ def write_site(out: Path, snaps: list[dict[str, Any]], registers: list[dict[str,
             # what the picker shows before the snapshot loads, and how it finds the catalogue entry
             "wikidata": (m.get("ids") or {}).get("wikidata"), "active": m.get("active"),
             "roles": [r for r in [(m.get("roles") or {}).get("primary")] if r],
+            **({"draft": True} if snap.get("draft") else {}),
         }]
     index["maestros"].sort(key=lambda x: x["name"])
     for reg in registers or []:
@@ -496,6 +500,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--relink", action="store_true",
                    help="refresh the watch, listen and lyrics links of the snapshots already in --out from their "
                         "packs (maestros/<slug>), without a database")
+    p.add_argument("--draft", nargs="?", const=True, metavar="NOTE",
+                   help="mark the snapshots as drafts (review items still open), with an optional note")
     p.add_argument("--serve", type=int, nargs="?", const=8765, metavar="PORT", help="serve the site on localhost")
     args = p.parse_args(argv)
     from maestro import config
@@ -517,7 +523,7 @@ def main(argv: list[str] | None = None) -> int:
                 registers.append(films_snapshot(store))
                 print(f"{pack.data['identity']['name']}: {len(registers[-1]['films'])} films")
                 continue
-            snaps.append(snapshot(store, include_private=args.include_private))
+            snaps.append(snapshot(store, include_private=args.include_private, draft=args.draft))
         finally:
             store.close()
         print(f"{snaps[-1]['maestro']['name']}: {len(snaps[-1]['units'])} {snaps[-1]['maestro']['unit']}s")
