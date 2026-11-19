@@ -842,7 +842,7 @@ def film_details(film: Film, by_qid: dict[str, int] | None = None) -> dict[str, 
     for role, key in (("producer", "prod"), ("actor", "cast"), ("screenwriter", "wri"), ("cinematographer", "cin"),
                       ("editor", "edit"), ("choreographer", "chor")):
         if crew.get(role):
-            out[key] = crew[role]
+            out[key] = crew[role][:15] if role == "actor" else crew[role]
     for k, key in (("banner", "banner"), ("distributor", "dist"), ("record_company", "label"), ("subject", "genre"),
                    ("language", "lang"), ("alt_title", "aka")):
         vals = [v for v in extra.get(k, []) if isinstance(v, str)]

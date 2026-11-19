@@ -172,6 +172,13 @@ main { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: m
 .mlink .k { font-size: 11px; color: var(--muted); }
 .mlink.search { border-style: dashed; color: var(--ink-2); background: transparent; }
 .medianote { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.songlist { margin: 0; padding-left: 22px; display: grid; gap: 10px; }
+.songlist li { font-size: 14px; }
+.songlist .st { font-weight: 600; }
+.songlist .sm { font-size: 13px; margin-top: 2px; }
+.songlist .sm .mlink { padding: 1px 8px; font-size: 12px; }
+.songlist li.reused .st { color: var(--ink-2); }
+.songlist .reuse { font-size: 13px; margin-top: 2px; }
 .backdrop { display: none; }
 
 /* insights + coverage */
@@ -1526,6 +1533,28 @@ const FLAG_WORDS = {
   duplicate_in_source: ["Listed twice", "A source lists this film twice."],
   match_review: ["Match needs a decision", "More than one Wikidata film fits; a person picks."],
 };
+const openFlags = f => f.flags.filter(x => !x.status || x.status === "open");
+const LINK_SITES = { tmdb: ["TMDB", "https://www.themoviedb.org/movie/"], letterboxd: ["Letterboxd", "https://letterboxd.com/film/"],
+  indiancine: ["Indiancine.ma", "https://indiancine.ma/"], rottentomatoes: ["Rotten Tomatoes", "https://www.rottentomatoes.com/"],
+  bollywoodhungama: ["Bollywood Hungama", "https://www.bollywoodhungama.com/movie/"], hiwiki: ["Hindi Wikipedia", "https://hi.wikipedia.org/wiki/"] };
+const SONG_KIND = { solo: "solo", duet: "duet", trio: "trio", group: "group", chorus: "chorus" };
+FS.songs = {}; FS.songsLoading = {};
+async function loadSongs(decade) {
+  const file = (FS.d.song_files || {})[decade];
+  if (!file || FS.songs[decade] || FS.songsLoading[decade]) return;
+  FS.songsLoading[decade] = (async () => {
+    const r = await fetch(file); if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json(); const by = new Map();
+    for (const x of d.songs) { if (!by.has(x.f)) by.set(x.f, []); by.get(x.f).push(x); }
+    FS.songs[decade] = by;
+  })();
+  try { await FS.songsLoading[decade]; } catch (e) { FS.songs[decade] = new Map(); FS.songErr = e.message; } finally { delete FS.songsLoading[decade]; }
+  if (S.view === "films") render();
+}
+const fdate = d => { if (!d) return ""; const [y, m, dd] = String(d).split("-"); const M = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; return dd ? `${+dd} ${M[+m - 1]} ${y}` : m ? `${M[+m - 1]} ${y}` : y; };
+const money = b => { const n = +b.amount; if (b.unit === "INR") return n >= 1e7 ? `₹${(n / 1e7).toLocaleString(undefined, { maximumFractionDigits: 2 })} crore` : `₹${n.toLocaleString()}`; return `${b.unit || ""} ${n.toLocaleString()}`.trim(); };
+const ytSearch = q => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
+const lyricsSearch = q => `https://www.google.com/search?q=${encodeURIComponent(q + " lyrics")}`;
 const SRC_WORDS = { hfgk_online: "HFGK", wikidata: "Wikidata", wikipedia: "Wikipedia" };
 const flagWord = k => (FLAG_WORDS[k] || [roleName(k)])[0];
 async function loadFilms() {
@@ -1536,8 +1565,9 @@ async function loadFilms() {
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
     for (const f of d.films) {
-      f._k = fold([f.title, f.title_hi, ...(f.alt || []), ...f.md, ...f.lyr, ...f.sing, ...f.dir].join(" "));
-      f._kinds = new Set(f.flags.map(x => x.kind));
+      f._k = fold([f.title, f.title_hi, ...(f.alt || []), ...f.md, ...f.lyr, ...f.sing, ...f.dir, ...(f.prod || []), ...(f.cast || []).slice(0, 8), ...(f.banner || []), ...(f.label || [])].join(" "));
+      f._open = openFlags(f);
+      f._kinds = new Set(f._open.map(x => x.kind));
     }
     d.byId = new Map(d.films.map(f => [f.id, f]));
     FS.d = d;
@@ -1546,7 +1576,7 @@ async function loadFilms() {
   render();
 }
 function filmMatches(f) {
-  if (FS.flag === "any" ? !f.flags.length : FS.flag === "none" ? f.flags.length : FS.flag && !f._kinds.has(FS.flag)) return false;
+  if (FS.flag === "any" ? !f._open.length : FS.flag === "none" ? f._open.length : FS.flag === "settled" ? !f.flags.some(x => x.status === "resolved") : FS.flag === "reused" ? !f.reused_songs : FS.flag === "remake" ? !(f.based_on || []).length : FS.flag && !f._kinds.has(FS.flag)) return false;
   if (FS.src === "only_hfgk") { if (f.src.some(x => x !== "hfgk_online")) return false; }
   else if (FS.src && !f.src.includes(FS.src)) return false;
   if (FS.yFrom && !(f.year >= +FS.yFrom)) return false;
@@ -1558,7 +1588,7 @@ function filmMatches(f) {
   }
   return true;
 }
-const FILM_SORTS = { year: "Year", title: "Title", songs: "Most songs", flags: "Most flags" };
+const FILM_SORTS = { year: "Year", title: "Title", songs: "Most songs", awards: "Most awards", flags: "Most to check" };
 function canonLinks(f) { // films the loaded maestro canons hold, by HFGK film id
   if (!f.hfgk) return [];
   const out = [];
@@ -1572,31 +1602,80 @@ function canonLinks(f) { // films the loaded maestro canons hold, by HFGK film i
   }
   return out;
 }
+function filmSongs(f) {
+  if (!f.song_file) return `<h4>Songs</h4><div class="muted">${f.songs != null ? `${plural(f.songs, "song")}, not listed one by one yet.` : "No song list yet: HFGK covers 1931–1985, and this film's Wikipedia page has no track listing."}</div>`;
+  const by = FS.songs[f.song_file];
+  if (!by) { loadSongs(f.song_file); return `<h4>Songs</h4><div class="muted">Loading the songs…</div>`; }
+  const xs = by.get(f.id) || [];
+  if (!xs.length) return "";
+  const names = ns => ns.map(n => `<button class="linklike" data-fq="${esc(n)}">${esc(n)}</button>`).join(", ");
+  const same = (a, b) => a && b && a.length === b.length && a.every((x, i) => x === b[i]);
+  const src = xs[0].src === "hfgk_online" ? "HFGK" : "Wikipedia";
+  return `<h4>Songs <span class="muted" style="font-weight:400">(${xs.length}, from ${src}${f.new_songs != null && f.new_songs !== xs.length ? `; ${f.new_songs} new compositions` : ""})</span></h4>
+    <ol class="songlist">${xs.map(x => {
+      const q = `${x.t} ${f.title} ${f.year || ""}`;
+      const tags = [x.k ? SONG_KIND[x.k] + (x.ch && x.k !== "chorus" ? " + chorus" : "") : "", x.v || "", ...(x.r || []).map(r => `raga ${r}`)].filter(Boolean);
+      const reuse = x.u ? `<div class="reuse"><b>${x.u.kind === "reused" ? "Reused" : "Recreated"}</b>${x.u.title ? ` from <button class="linklike" data-film="${x.u.film}">${esc(x.u.title)}</button>${x.u.year ? ` (${x.u.year})` : ""}` : ""}: not a new musical offering <span class="muted">(${esc(x.u.rule)})</span></div>` : "";
+      return `<li${x.u ? ' class="reused"' : ""}><div class="st">${esc(x.t)}${x.d ? ` <span class="muted mono">${esc(x.d)}</span>` : ""}</div>
+        <div class="sm">${x.s && x.s.length ? names(x.s) : `<span class="muted">singer not listed</span>`}${x.l && x.l.length && !same(x.l, f.lyr) ? ` · <span class="muted">lyrics</span> ${names(x.l)}` : ""}${x.m && x.m.length && !same(x.m, f.md) ? ` · <span class="muted">music</span> ${names(x.m)}` : ""}</div>
+        ${x.sc && x.sc.length ? `<div class="sm"><span class="muted">on screen</span> ${names(x.sc)}</div>` : ""}
+        ${tags.length ? `<div class="sm muted">${esc(tags.join(" · "))}</div>` : ""}${reuse}
+        <div class="sm"><a class="mlink search" href="${esc(ytSearch(q))}" target="_blank" rel="noopener noreferrer" title="A YouTube search, not a known video">▶ YouTube <span class="k">search</span></a> <a class="mlink search" href="${esc(lyricsSearch(x.t + " " + f.title))}" target="_blank" rel="noopener noreferrer" title="A web search, not a known page">✎ Lyrics <span class="k">search</span></a></div></li>`;
+    }).join("")}</ol>`;
+}
 function filmDetail(f) {
   const dl = [];
   const add = (k, v) => { if (v != null && v !== "" && !(Array.isArray(v) && !v.length)) dl.push(`<dt>${esc(k)}</dt><dd>${v}</dd>`); };
-  const names = xs => xs.map(n => `<button class="linklike" data-fq="${esc(n)}">${esc(n)}</button>`).join(", ");
-  add("Year", f.year ? `<span class="mono">${f.year}</span>` : esc(f.period || "unknown"));
+  const names = (xs, max) => { const shown = max && xs.length > max ? xs.slice(0, max) : xs; return shown.map(n => `<button class="linklike" data-fq="${esc(n)}">${esc(n)}</button>`).join(", ") + (shown.length < xs.length ? ` <span class="muted">+${xs.length - shown.length} more</span>` : ""); };
+  const settledYear = f.flags.find(x => x.kind === "year_mismatch" && x.status === "resolved");
+  add("Year", (f.year ? `<span class="mono">${f.year}</span>` : esc(f.period || "unknown")) + (settledYear ? ` <span class="muted">(sources differ; see below)</span>` : ""));
+  add("Released", f.released && String(f.released) !== String(f.year) ? esc(fdate(f.released)) + (f.premiere ? ` <span class="muted">(first shown ${esc(fdate(f.premiere))})</span>` : "") : "");
+  add("Censor certificate", f.censor ? esc([f.censor.date ? fdate(f.censor.date) : "", f.censor.number, f.censor.duration].filter(Boolean).join(" · ")) : "");
   add(f.md.length > 1 ? "Music directors" : "Music director", names(f.md));
   add(f.lyr.length > 1 ? "Lyricists" : "Lyricist", names(f.lyr));
-  add(f.sing.length > 1 ? "Singers" : "Singer", names(f.sing));
+  const sing = f.sing.filter(n => !/^(others|chorus)$/i.test(n));
+  add(sing.length > 1 ? "Singers" : "Singer", names(sing, 12));
   add(f.dir.length > 1 ? "Directors" : "Director", names(f.dir));
-  add("Songs", f.songs != null ? `<span class="mono">${f.songs}</span>${f.songs_listed != null ? ` <span class="muted">(${f.songs_listed} stored)</span>` : ""}` : `<span class="muted">no song list yet</span>`);
+  add((f.prod || []).length > 1 ? "Producers" : "Producer", names(f.prod || []));
+  add("Cast", names(f.cast || [], 10));
+  add("Writers", names(f.wri || []));
+  add("Cinematography", names(f.cin || []));
+  add("Banner", esc((f.banner || []).join(" · ")));
+  add("Distributor", esc((f.dist || []).join(" · ")));
+  add("Record label", esc((f.label || []).join(" · ")) + (f.album_released ? ` <span class="muted">(album ${esc(f.album_released)})</span>` : ""));
+  add("Genre", esc((f.genre || []).join(" · ")));
+  add("Languages", (f.lang || []).length > 1 || ((f.lang || [])[0] && f.lang[0] !== "Hindi") ? esc(f.lang.join(" · ")) : "");
+  add("Box office", (f.box_office || []).length ? esc(f.box_office.slice(0, 2).map(money).join(" · ")) : "");
+  add("Budget", (f.budget || []).length ? esc(money(f.budget[0])) : "");
+  add("Songs", f.songs != null ? `<span class="mono">${f.songs}</span>${f.songs_listed != null ? ` <span class="muted">(${f.songs_listed} stored)</span>` : ""}${f.reused_songs ? ` <span class="muted">(${f.reused_songs} from earlier films)</span>` : ""}` : `<span class="muted">no song list yet</span>`);
   add("Sources", esc(f.src.map(s => SRC_WORDS[s] || s).join(" · ")));
+  const rel = (xs, word) => xs && xs.length ? `<li class="src" style="display:block"><b>${word}</b> ${xs.map(b => b.film != null && FS.d.byId.has(b.film) ? `<button class="linklike" data-film="${b.film}">${esc(FS.d.byId.get(b.film).title)} (${FS.d.byId.get(b.film).year || "?"})</button>` : `<a href="https://www.wikidata.org/wiki/${esc(b.qid)}" target="_blank" rel="noopener noreferrer">${esc(b.label || b.qid)}</a>`).join(", ")}</li>` : "";
+  const remakes = rel(f.based_on, "Based on or a remake of") + rel(f.remade_as, "Remade or adapted as");
+  const awards = f.awards || [];
   const links = [];
   if (f.wikidata) links.push(["Wikidata", `https://www.wikidata.org/wiki/${f.wikidata}`]);
   if (f.imdb) links.push(["IMDb", `https://www.imdb.com/title/${f.imdb}/`]);
   if (f.wikipedia) links.push(["Wikipedia", `https://en.wikipedia.org/wiki/${encodeURIComponent(f.wikipedia.replace(/ /g, "_"))}`]);
+  if (f.soundtrack_article) links.push(["Soundtrack (Wikipedia)", `https://en.wikipedia.org/wiki/${encodeURIComponent(f.soundtrack_article.replace(/ /g, "_"))}`]);
   if (f.hfgk) links.push(["HFGK", `https://hamraaz.org/filmssite/public/film.php?id=${f.hfgk}`]);
+  for (const [k, id] of Object.entries(f.links || {})) if (LINK_SITES[k]) links.push([LINK_SITES[k][0], LINK_SITES[k][1] + (k === "hiwiki" ? encodeURIComponent(id.replace(/ /g, "_")) : id)]);
   const canon = canonLinks(f);
+  const open = f.flags.filter(x => x.status === "open" || !x.status), settled = f.flags.filter(x => x.status === "resolved"), info = f.flags.filter(x => x.status === "info");
+  const flagLi = x => `<li class="src" style="display:block"><b>${esc(flagWord(x.kind))}</b>${x.severity === "major" ? ` <span class="muted">(more than a year)</span>` : ""}<div class="muted" style="font-size:13px">${esc(x.detail)}</div>${x.rule ? `<div style="font-size:13px">${x.status === "resolved" ? "Settled: " : ""}${esc(x.rule)}${x.status === "resolved" && x.value != null ? ` → <b>${esc(Array.isArray(x.value) ? x.value.join(", ") : x.value)}</b>` : ""}</div>` : ""}</li>`;
   return `<button class="btn x" id="closefilm" type="button" aria-label="Close">×</button>
     <h2>${esc(f.title)}</h2>
     ${f.title_hi ? `<div class="script">${esc(f.title_hi)}</div>` : ""}
     ${f.alt && f.alt.length ? `<div class="muted" style="margin-top:6px;font-size:13px">Also listed as: ${esc(f.alt.join(" · "))}</div>` : ""}
+    <div class="media"><a class="mlink search" href="${esc(ytSearch(`${f.title} ${f.year || ""} songs`))}" target="_blank" rel="noopener noreferrer" title="A YouTube search, not a known video">▶ Songs on YouTube <span class="k">search</span></a></div>
     <dl>${dl.join("")}</dl>
     ${canon.length ? `<h4>In a maestro's canon</h4><ul>${canon.map(c => `<li class="src"><button class="linklike" data-canon="${esc(c.slug)}" data-cid="${c.cid}">${esc(c.name)}: ${plural(c.n, c.word)}</button></li>`).join("")}</ul>` : ""}
-    ${f.flags.length ? `<h4>To check</h4><ul>${f.flags.map(x => `<li class="src" style="display:block"><b>${esc(flagWord(x.kind))}</b>${x.severity === "major" ? ` <span class="muted">(more than a year)</span>` : ""}<div class="muted" style="font-size:13px">${esc(x.detail)}</div></li>`).join("")}</ul>` : `<h4>To check</h4><div class="muted">Nothing: the sources agree.</div>`}
-    ${links.length ? `<h4>Pages</h4><ul>${links.map(([k, u]) => `<li class="src"><a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(k)}</a><span class="muted">${esc(u.replace(/^https?:\/\/(www\.)?/, "").slice(0, 48))}</span></li>`).join("")}</ul>` : ""}`;
+    ${remakes ? `<h4>Remakes</h4><ul>${remakes}</ul><div class="medianote">A remake's songs are new unless a song is marked reused or recreated.</div>` : ""}
+    ${awards.length ? `<h4>Awards</h4><ul>${awards.slice(0, 14).map(a => `<li class="src"><span>${a.status === "won" ? "Won" : "Nominated"}: ${esc(a.award)}${a.to ? ` <span class="muted">(${esc(a.to)})</span>` : ""}</span><span class="muted mono">${a.year || ""}</span></li>`).join("")}${awards.length > 14 ? `<li class="muted">+${awards.length - 14} more</li>` : ""}</ul>` : ""}
+    ${filmSongs(f)}
+    <h4>To check</h4>${open.length ? `<ul>${open.map(flagLi).join("")}</ul>` : `<div class="muted">Nothing open${settled.length ? "" : ": the sources agree"}.</div>`}
+    ${settled.length ? `<details style="margin-top:8px"><summary class="muted">Settled by a rule or your decision (${settled.length})</summary><ul>${settled.map(flagLi).join("")}</ul></details>` : ""}
+    ${info.length ? `<div class="medianote">${info.map(x => esc(flagWord(x.kind) + ": " + x.rule)).join(" · ")}</div>` : ""}
+    ${links.length ? `<h4>Pages</h4><ul>${links.map(([k, u]) => `<li class="src"><a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(k)}</a><span class="muted">${esc(decodeURIComponent(u.replace(/^https?:\/\/(www\.)?/, "")).slice(0, 48))}</span></li>`).join("")}</ul><div class="medianote">Links only: these sites are never copied.</div>` : ""}`;
 }
 function renderFilms() {
   const main = document.getElementById("main");
@@ -1609,33 +1688,36 @@ function renderFilms() {
   let res = all.filter(filmMatches);
   if (FS.sort === "title") res = res.slice().sort((a, b) => a.title.localeCompare(b.title));
   else if (FS.sort === "songs") res = res.slice().sort((a, b) => (b.songs || 0) - (a.songs || 0));
-  else if (FS.sort === "flags") res = res.slice().sort((a, b) => b.flags.length - a.flags.length || (a.year || 9999) - (b.year || 9999));
+  else if (FS.sort === "flags") res = res.slice().sort((a, b) => b._open.length - a._open.length || (a.year || 9999) - (b.year || 9999));
+  else if (FS.sort === "awards") res = res.slice().sort((a, b) => (b.awards || []).filter(x => x.status === "won").length - (a.awards || []).filter(x => x.status === "won").length || (b.awards || []).length - (a.awards || []).length);
   const sel = FS.sel != null ? d.byId.get(FS.sel) : null;
   const flagCounts = new Map(); for (const f of res) for (const k of f._kinds) flagCounts.set(k, (flagCounts.get(k) || 0) + 1);
   const withSongs = res.filter(f => f.songs != null).length, songs = res.reduce((n, f) => n + (f.songs || 0), 0);
+  const reusedN = res.reduce((n, f) => n + (f.reused_songs || 0), 0);
   const [y0, y1] = d.hfgk_years || [];
   const rows = res.slice(0, FS.limit).map(f => `<div class="row" tabindex="0" data-film="${f.id}">
       <div class="yr mono">${f.year || "—"}</div>
       <div class="mainc"><div class="t">${esc(f.title)}${f.title_hi ? ` <span class="muted">${esc(f.title_hi)}</span>` : ""}</div>
         <div class="meta">${esc([f.md.join(", "), f.songs != null ? plural(f.songs, "song") : null, f.sing.slice(0, 3).join(", ") + (f.sing.length > 3 ? ` +${f.sing.length - 3}` : "")].filter(Boolean).join(" · "))}</div></div>
-      <div class="side">${f.year && f.year < 1931 ? `<span class="muted" title="Hindi talkies began in 1931">silent</span> ` : ""}${f.flags.length ? f.flags.slice(0, 2).map(x => `<span class="tier" title="${esc(x.detail)}">${esc(flagWord(x.kind))}</span>`).join(" ") : ""}</div>
+      <div class="side">${f.year && f.year < 1931 ? `<span class="muted" title="Hindi talkies began in 1931">silent</span> ` : ""}${f._open.length ? f._open.slice(0, 2).map(x => `<span class="tier" title="${esc(x.detail)}">${esc(flagWord(x.kind))}</span>`).join(" ") : ""}</div>
     </div>`).join("");
   const opt = (v, l, cur) => `<option value="${esc(v)}"${v === cur ? " selected" : ""}>${esc(l)}</option>`;
   main.innerHTML = `<div class="browse${sel ? " has-detail" : ""}" style="grid-template-columns:minmax(0,1fr)${sel && innerWidth > 1180 ? " 420px" : ""}">
     <section style="min-width:0">
       <div class="panel"><h2>${esc(S.registers[0].name)}: every film</h2>
-        <div class="sub">Films from Wikidata, Wikipedia's yearly lists and HFGK${y0 ? ` (songs and credits for ${y0}–${y1})` : ""}, matched film by film. Separate from any maestro's canon.</div>
+        <div class="sub">Films from Wikidata, Wikipedia's yearly lists and HFGK${y0 ? ` (songs and credits for ${y0}–${y1})` : ""}, with songs after ${y1 || 1985} from Wikipedia's soundtrack listings, matched film by film. Separate from any maestro's canon.</div>
         <div class="stats" style="display:flex;gap:18px;flex-wrap:wrap;margin-top:10px">
           <div><b class="mono">${res.length.toLocaleString()}</b> <span class="muted">films${res.length !== all.length ? ` of ${all.length.toLocaleString()}` : ""}</span></div>
           <div><b class="mono">${withSongs.toLocaleString()}</b> <span class="muted">with song lists</span></div>
           <div><b class="mono">${songs.toLocaleString()}</b> <span class="muted">songs</span></div>
-          <div><b class="mono">${res.filter(f => f.flags.length).length.toLocaleString()}</b> <span class="muted">to check</span></div>
+          ${reusedN ? `<div><b class="mono">${reusedN.toLocaleString()}</b> <span class="muted">songs reused from earlier films</span></div>` : ""}
+          <div><b class="mono">${res.filter(f => f._open.length).length.toLocaleString()}</b> <span class="muted">to check</span></div>
         </div></div>
       <div class="list-head" style="flex-wrap:wrap;gap:8px">
         <div class="fq" style="flex:1 1 260px;min-width:0"><input id="fq" type="search" aria-label="Search films" placeholder="Title, music director, singer, lyricist, year or 1960s" value="${esc(FS.q)}"></div>
         <div class="tools ftools" style="flex-wrap:wrap">
           <label class="muted" for="fy0">Years</label><input id="fy0" class="mono" inputmode="numeric" size="4" placeholder="from" value="${esc(FS.yFrom)}"><input id="fy1" class="mono" inputmode="numeric" size="4" placeholder="to" value="${esc(FS.yTo)}">
-          <label class="muted" for="fflag">Check</label><select id="fflag">${opt("", "all films", FS.flag)}${opt("any", "any flag", FS.flag)}${opt("none", "nothing to check", FS.flag)}${Object.keys(FLAG_WORDS).map(k => opt(k, `${flagWord(k)}${flagCounts.has(k) ? ` (${flagCounts.get(k).toLocaleString()})` : ""}`, FS.flag)).join("")}</select>
+          <label class="muted" for="fflag">Check</label><select id="fflag">${opt("", "all films", FS.flag)}${opt("any", "any flag", FS.flag)}${opt("none", "nothing to check", FS.flag)}${opt("settled", "settled by a rule", FS.flag)}${opt("reused", "has reused songs", FS.flag)}${opt("remake", "a remake", FS.flag)}${Object.keys(FLAG_WORDS).map(k => opt(k, `${flagWord(k)}${flagCounts.has(k) ? ` (${flagCounts.get(k).toLocaleString()})` : ""}`, FS.flag)).join("")}</select>
           <label class="muted" for="fsrc">Source</label><select id="fsrc">${opt("", "any", FS.src)}${Object.entries(SRC_WORDS).map(([k, v]) => opt(k, `in ${v}`, FS.src)).join("")}${opt("only_hfgk", "only in HFGK", FS.src)}</select>
           <label class="muted" for="fsort">Sort</label><select id="fsort">${Object.entries(FILM_SORTS).map(([k, v]) => opt(k, v, FS.sort)).join("")}</select>
         </div></div>

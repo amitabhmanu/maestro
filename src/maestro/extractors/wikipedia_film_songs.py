@@ -55,7 +55,7 @@ def _names(text: str) -> list[str]:
     text = re.sub(r"\[\d+\]|\[[a-z]\]", "", text or "")
     out = []
     for n in _SPLIT.split(text):
-        n = n.strip(" .​")
+        n = n.strip(" .\u200b")
         if n and len(n) <= 60 and not n.lower().startswith(("feat", "featuring")):
             out.append(re.sub(r"^(?:feat\.?|featuring)\s+", "", n, flags=re.I))
     return out

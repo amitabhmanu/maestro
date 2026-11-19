@@ -54,7 +54,8 @@ def title_key(title: str, words: int = 3) -> str:
     from maestro.films import skeleton
 
     w = re.sub(r"[^a-z0-9 ]+", " ", fold(title or "")).split()
-    return " ".join(skeleton(x) or x for x in w[:words])
+    keys = [k for k in (skeleton(x) for x in w) if k]  # vowel-only words ("A", "Aa") spelt every way: left out
+    return " ".join(keys[:words])
 
 
 def extract(ctx) -> None:

@@ -39,7 +39,8 @@ def title_key(title: str | None, words: int = 4) -> str:
 
     t = re.sub(r"\([^)]*\)", " ", fold(title or ""))
     w = re.sub(r"[^a-z0-9 ]+", " ", t).split()
-    return " ".join(skeleton(x) or x for x in w[:words])
+    keys = [k for k in (skeleton(x) for x in w) if k]  # vowel-only words ("A", "Aa") spelt every way: left out
+    return " ".join(keys[:words])
 
 
 def load_songs(store, groups: Groups | None = None) -> dict[int, list[dict[str, Any]]]:
