@@ -656,6 +656,8 @@ def _resolve_year(f: dict[str, Any], years: dict[str, int]) -> None:
             f.update(status="resolved", value=wp,
                      rule="Wikipedia's year list (the Indian release); Wikidata's earliest date is often a "
                           "festival premiere or an earlier release")
+        else:  # the user's rule (19 Nov 2026): Wikipedia's year wins over Wikidata's
+            f.update(status="resolved", value=wp, rule="Wikipedia's year list, as you chose over Wikidata")
 
 
 def _resolve_composer(f: dict[str, Any], composers: dict[str, list[str]], years: dict[str, int],

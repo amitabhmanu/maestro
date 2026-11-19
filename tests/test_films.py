@@ -298,6 +298,6 @@ def test_year_majority_vote():
     f = {"kind": "year_mismatch"}
     films._resolve_year(f, {"hfgk_online": 1946, "wikidata": 1946, "wikipedia": 2020})
     assert f["value"] == 1946 and "majority" in f["rule"]
-    f = {"kind": "year_mismatch", "status": "open"}
-    films._resolve_year(f, {"wikidata": 1995, "wikipedia": 1985})  # no majority: the older rules
-    assert f["status"] == "open"
+    f = {"kind": "year_mismatch"}
+    films._resolve_year(f, {"wikidata": 1995, "wikipedia": 1985})  # the user's rule: Wikipedia wins
+    assert f["status"] == "resolved" and f["value"] == 1985
