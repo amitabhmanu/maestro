@@ -147,11 +147,11 @@ def place(store, film: dict, title: str) -> tuple[list[int], str]:
     return [], "song_not_in_film"
 
 
-def _enrich(ctx, data: dict, claim) -> None:
+def _enrich(ctx, songs: list[dict], claim) -> None:
     from maestro.lyrics import first_line
 
     store, maestro = ctx.store, ctx.store.maestro_entity()
-    for s in data["songs"]:
+    for s in songs:
         film = s["film"]
         if film is None or NON_FILM.match(film["title"]):
             continue
@@ -192,11 +192,17 @@ def extract(ctx) -> None:
                            extractor=EXTRACTOR, extractor_version="1", raw_page_id=raw)
 
     source = next((x for x in store.pack.data.get("sources", []) if x["id"] == SOURCE), {})
+    songs = data["songs"]
     if source.get("unit_mode") == "enrich":
-        _enrich(ctx, data, claim)
-        return
+        # With enrich_until, only film songs dated after that year create units: the years the
+        # register does not cover (HFGK stops at 1985). Earlier, undated and non-film songs add details.
+        until = source.get("enrich_until")
+        later = [s for s in songs if until is not None and s["film"] and s["film"]["year"]
+                 and not NON_FILM.match(s["film"]["title"]) and s["film"]["year"] > until]
+        _enrich(ctx, [s for s in songs if s not in later], claim)
+        songs = later
 
-    for s in data["songs"]:
+    for s in songs:
         film = s["film"]
         non_film = film is None or bool(NON_FILM.match(film["title"]))
         song = store.find_or_create_by_xref("song", SOURCE, f"song:{s['key']}", s["title"])

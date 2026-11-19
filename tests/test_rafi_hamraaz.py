@@ -118,3 +118,10 @@ def test_replay_rebuilds_a_store_from_the_cache(store_for, tmp_path):
     # The new store can be replayed in turn.
     assert len(new.query_graph("SELECT id FROM job")) == 1
     assert len(new.query_graph("SELECT id FROM import_log")) == 1
+
+
+def test_more_hfgk_ids_can_name_the_maestro(store_for):
+    s = store_for("rafi")
+    s.pack.data["identity"]["ids"]["hfgk"] = ["4357", "601"]
+    assert hamraaz.maestro_person_id(s) == "4357" and hamraaz.maestro_person_ids(s) == ["4357", "601"]
+    assert hamraaz._person(s, "601", "Rafi + Someone") == s.maestro_entity()

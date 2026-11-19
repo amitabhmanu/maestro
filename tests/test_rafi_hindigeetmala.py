@@ -155,3 +155,16 @@ def test_reread_supersedes_a_gap_once_the_song_is_placed(store_for):
     n = len(_values(s, s.maestro_entity(), "listing_gap"))
     _run(s, SEED, "page1.html")                     # the same outcome again: nothing new, nothing superseded
     assert len(_values(s, s.maestro_entity(), "listing_gap")) == n
+
+
+def test_enrich_until_creates_only_songs_after_the_register_ends(store_for):
+    s = store_for("rafi")
+    src = next(x for x in s.pack.data["sources"] if x["id"] == "hindigeetmala")
+    src["enrich_until"] = 1959                    # Chaudhvin Ka Chand (1960) is past it, Baiju Bawra (1952) is not
+    _run(s, SEED, "page1.html")
+    films = {r["label"]: r["id"] for r in s.conn.execute(
+        "SELECT e.id, e.label FROM entity e WHERE e.type = 'container'").fetchall()}
+    years = {lbl: _values(s, fid, "year") for lbl, fid in films.items()}
+    assert films and all(y and y[0] > 1959 for y in years.values())
+    gaps = {g["title"] for g in _values(s, s.maestro_entity(), "listing_gap")}
+    assert "Chaudhavi Ka Chand Ho, Ya Aaftab Ho" not in gaps   # created, not a gap

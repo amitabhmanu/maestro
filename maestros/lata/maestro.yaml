@@ -1,30 +1,31 @@
-# DRAFT pack (profiled 19 Nov 2026): proposals for Amitabh to confirm. No canon run until he approves.
-version: 1
-status: draft
+# Profiled 19 Nov 2026; approved by Amitabh the same day ("go with your suggestions").
+version: 2
+status: approved
 identity:
   name: Lata Mangeshkar
   slug: lata
   # hfgk: HFGK V2.0 gives one person a separate id per role. 17375 is the singer (1,734 films, 1945-1985);
-  # 4276 holds her acting (4 films) and producing (1) credits, out of scope.
-  ids: {wikidata: Q156347, musicbrainz: aeb71bd8-447d-4415-8ea1-2b7d664f67e1, viaf: "15578255", isni: "0000000080955165", bnf: "139215454", discogs: "342906", hfgk: "17375", hindigeetmala: lata_mangeshkar}
-  variants: [Lataji, Latha Mangeshkar, Lata Dinanath Mangeshkar, लता मंगेशकर, লতা মঙ্গেশকর]
+  # 4276 holds her acting (4 films) and producing (1) credits, out of scope. 16433 "Lata Mangeshkar + Rafi"
+  # (one Ganga Jamuna song) counts as hers (Amitabh, 19 Nov 2026). 11013 "Another Lata Mangeshkar" is still to check.
+  ids: {wikidata: Q156347, musicbrainz: aeb71bd8-447d-4415-8ea1-2b7d664f67e1, viaf: "15578255", isni: "0000000080955165", bnf: "139215454", discogs: "342906", hfgk: ["17375", "16433"], hindigeetmala: lata_mangeshkar}
+  variants: [Anandghan, Lataji, Latha Mangeshkar, Lata Dinanath Mangeshkar, लता मंगेशकर, লতা মঙ্গেশকর]
   namesakes: []  # Wikidata has no other human of this name; see the open question on HFGK person 11013
   active: [1942, 2019]
   died: 2022
-  reissues_after: 2022  # died 6 Feb 2022; her last new song came out in 2019. Confirm (open question).
+  reissues_after: 2022  # died 6 Feb 2022; her last new song came out in 2019 (Amitabh confirmed, 19 Nov 2026)
   _why:
     reason: Wikidata Q156347 is the only human match (maestro-identify, 19 Nov 2026); IDs from its claims (Discogs P1953, MusicBrainz P434).
     confidence: 0.95
     evidence: [https://www.wikidata.org/wiki/Q156347, "https://hamraaz.org/filmssite/public/search.php?q=Lata+Mangeshkar"]
 roles:
   primary: singer
-  in_scope: [singer]
+  in_scope: [singer, composer]
   out_of_scope: [actor, producer]
   _why:
     reason: >-
-      Music contributions only (project rule). She also composed Marathi film music as "Anandghan"
-      (1960s) and produced four films; whether her compositions are in scope is an open question.
-    confidence: 0.7
+      Music contributions only (project rule). Her Marathi film music as composer "Anandghan" (1960s)
+      is in scope as its own tier D (Amitabh, 19 Nov 2026); acting and producing are not.
+    confidence: 0.85
 canon_model:
   unit: song
   version_levels: [work, recording, release]
@@ -37,6 +38,7 @@ tiers:
   A: {label: "Hindi film songs from released films", target_missing: 0.01}
   B: {label: "Non-Hindi film songs and non-film songs (bhajans, ghazals, Marathi bhavgeet, patriotic songs)", target_missing: 0.05}
   C: {label: "Unreleased or shelved films, chorus, radio and live recordings", target_missing: report_only}
+  D: {label: "Her compositions as Anandghan (Marathi films, 1960s)", target_missing: report_only}
 registers:
   - name: HFGK Online V2.0 (Hindi Film Geet Kosh database, films and songs 1931-1985)
     tiers: [A]
@@ -63,7 +65,7 @@ registers:
       confidence: 0.7
 sources:
   - {id: hfgk_online, kind: structured, lineage: hfgk, reliability: 0.95, access: crawlable, url: "https://hamraaz.org/filmssite/public/", sweep: {url: "https://hamraaz.org/filmssite/public/person.php?id=17375", extractor: hamraaz, purpose: spine}, container_url: "https://hamraaz.org/filmssite/public/film.php?id={xref}"}
-  - {id: hindigeetmala, kind: semi, lineage: hfgk, reliability: 0.85, access: crawlable, url: "https://www.hindigeetmala.net", unit_mode: enrich, extractor: hindigeetmala, sweep: {url: "https://www.hindigeetmala.net/singer/lata_mangeshkar.php", extractor: hindigeetmala, purpose: spine}, _why: {reason: "5,700+ Lata songs over 571 pages (19 Nov 2026), all years. Details only, as for Rafi: up to 1985 it mostly copies HFGK. After 1985 it may be the best list there is (open question: let it add songs for 1986 onwards)."}}
+  - {id: hindigeetmala, kind: semi, lineage: hindigeetmala, reliability: 0.85, access: crawlable, url: "https://www.hindigeetmala.net", unit_mode: enrich, enrich_until: 1985, extractor: hindigeetmala, sweep: {url: "https://www.hindigeetmala.net/singer/lata_mangeshkar.php", extractor: hindigeetmala, purpose: spine}, _why: {reason: "5,700+ Lata songs over 571 pages (19 Nov 2026), all years. Details only to 1985, where it mostly copies HFGK (and adds no lineage); from 1986, where HFGK stops, it creates her Hindi film songs (Amitabh, 19 Nov 2026), so its lineage is its own."}}
   - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api, api_rps: 1, distinct_ids: false, url: "https://musicbrainz.org/ws/2/", sweep: {url: "https://musicbrainz.org/ws/2/release?track_artist=aeb71bd8-447d-4415-8ea1-2b7d664f67e1&limit=100&offset=0&fmt=json&inc=recordings+release-groups+artist-credits", purpose: spine}}
   - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api, api_rps: 0.4, api_auth: {env: DISCOGS_TOKEN, format: "Discogs token={token}", rps: 0.9}, distinct_ids: false, unit_mode: enrich, url: "https://api.discogs.com/", extractor: discogs, sweep: {url: "https://api.discogs.com/artists/342906/releases?sort=year&per_page=100&page=1", extractor: discogs, purpose: spine}, _why: {reason: "Details only, as for Rafi and Arnold: compilations would become their own containers."}}
   - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api, api_rps: 1, url: "https://query.wikidata.org/sparql"}
@@ -108,10 +110,8 @@ budget:
   model_spend_usd: null
   review_hours_per_week: null
 open_questions:
-  - "Hindi film songs from 1986 to 2019 have no register (HFGK stops at 1985). Let Hindi Geetmala add songs for those years (create mode after 1985, details only before), or wait for the film register's post-1985 song data?"
-  - Are her compositions as Anandghan (Marathi films, 1960s) in scope, as a separate tier like Jean Wiener's?
-  - "Tier B register for non-Hindi and non-film songs: she sang in about 36 languages. Candidates to check: aathavanitli-gani.com (Marathi), MusicBrainz, Discogs, Wikipedia; any fan database you trust or can save pages from?"
-  - Confirm reissues_after 2022 (no new release expected after her death).
-  - "HFGK has two odd singer records: 'Lata Mangeshkar + Rafi' (person 16433, one Ganga Jamuna song, credited as if one singer) and 'Another Lata Mangeshkar' (person 11013, one Farmaish 1953 duet with Shamshad Begum). Count both songs as hers, or leave them out until checked?"
-  - Your trusted experts and expert lists for Lata (Songs of Yore posts to save), and later 10-15 gem picks.
+  - "Tier B register for non-Hindi and non-film songs (about 36 languages): candidates aathavanitli-gani.com (Marathi, check robots.txt from the PC), MusicBrainz, Discogs, Wikipedia; any fan list Amitabh can save pages from."
+  - "Tier D (Anandghan): no source yet. Candidates: MusicBrainz and Wikidata credits under Anandghan, Marathi film pages on Wikipedia."
+  - "HFGK person 11013 'Another Lata Mangeshkar' (one Farmaish 1953 duet with Shamshad Begum): check whether it is her."
+  - Expert lists for Lata (Songs of Yore posts to save); Amitabh will tag gems in the explorer.
   - Permission from the HFGK Online site master before going live (same as Rafi).
