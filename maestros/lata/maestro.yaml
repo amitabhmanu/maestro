@@ -1,0 +1,117 @@
+# DRAFT pack (profiled 19 Nov 2026): proposals for Amitabh to confirm. No canon run until he approves.
+version: 1
+status: draft
+identity:
+  name: Lata Mangeshkar
+  slug: lata
+  # hfgk: HFGK V2.0 gives one person a separate id per role. 17375 is the singer (1,734 films, 1945-1985);
+  # 4276 holds her acting (4 films) and producing (1) credits, out of scope.
+  ids: {wikidata: Q156347, musicbrainz: aeb71bd8-447d-4415-8ea1-2b7d664f67e1, viaf: "15578255", isni: "0000000080955165", bnf: "139215454", discogs: "342906", hfgk: "17375", hindigeetmala: lata_mangeshkar}
+  variants: [Lataji, Latha Mangeshkar, Lata Dinanath Mangeshkar, लता मंगेशकर, লতা মঙ্গেশকর]
+  namesakes: []  # Wikidata has no other human of this name; see the open question on HFGK person 11013
+  active: [1942, 2019]
+  died: 2022
+  reissues_after: 2022  # died 6 Feb 2022; her last new song came out in 2019. Confirm (open question).
+  _why:
+    reason: Wikidata Q156347 is the only human match (maestro-identify, 19 Nov 2026); IDs from its claims (Discogs P1953, MusicBrainz P434).
+    confidence: 0.95
+    evidence: [https://www.wikidata.org/wiki/Q156347, "https://hamraaz.org/filmssite/public/search.php?q=Lata+Mangeshkar"]
+roles:
+  primary: singer
+  in_scope: [singer]
+  out_of_scope: [actor, producer]
+  _why:
+    reason: >-
+      Music contributions only (project rule). She also composed Marathi film music as "Anandghan"
+      (1960s) and produced four films; whether her compositions are in scope is an open question.
+    confidence: 0.7
+canon_model:
+  unit: song
+  version_levels: [work, recording, release]
+  container: film
+  container_has_full_listing: true
+  _why:
+    reason: Same shape as Rafi's canon. HFGK lists every song of every Hindi film to 1985, so films are the checkable unit there.
+    confidence: 0.9
+tiers:
+  A: {label: "Hindi film songs from released films", target_missing: 0.01}
+  B: {label: "Non-Hindi film songs and non-film songs (bhajans, ghazals, Marathi bhavgeet, patriotic songs)", target_missing: 0.05}
+  C: {label: "Unreleased or shelved films, chorus, radio and live recordings", target_missing: report_only}
+registers:
+  - name: HFGK Online V2.0 (Hindi Film Geet Kosh database, films and songs 1931-1985)
+    tiers: [A]
+    access: crawlable
+    role: ground_truth
+    url: "https://hamraaz.org/filmssite/public/person.php?id=17375"
+    _why:
+      reason: >-
+        Lists 1,734 Hindi films with a Lata song, 1945-1985 (19 undated). It stops at 1985, so her
+        Hindi film songs from 1986 to 2019 have no register here (see open questions).
+        Same permission caveat as Rafi: crawl for development, ask the site master before going live.
+      confidence: 0.85
+      evidence: ["https://hamraaz.org/filmssite/public/person.php?id=17375"]
+  - name: Hindi Film Geet Kosh (print, vols. 1-5, 1931-1980)
+    tiers: [A]
+    access: print
+    role: independent_check
+  - name: Hindi film register (maestros/hindi-films), all Hindi films to 2028 with HFGK songs to 1985
+    tiers: [A]
+    access: crawlable
+    role: independent_check
+    _why:
+      reason: "`maestro-films check-canon` checks the canon's films against it; song details after 1985 are being added by the 'Enrich Bollywood film and song data' thread."
+      confidence: 0.7
+sources:
+  - {id: hfgk_online, kind: structured, lineage: hfgk, reliability: 0.95, access: crawlable, url: "https://hamraaz.org/filmssite/public/", sweep: {url: "https://hamraaz.org/filmssite/public/person.php?id=17375", extractor: hamraaz, purpose: spine}, container_url: "https://hamraaz.org/filmssite/public/film.php?id={xref}"}
+  - {id: hindigeetmala, kind: semi, lineage: hfgk, reliability: 0.85, access: crawlable, url: "https://www.hindigeetmala.net", unit_mode: enrich, extractor: hindigeetmala, sweep: {url: "https://www.hindigeetmala.net/singer/lata_mangeshkar.php", extractor: hindigeetmala, purpose: spine}, _why: {reason: "5,700+ Lata songs over 571 pages (19 Nov 2026), all years. Details only, as for Rafi: up to 1985 it mostly copies HFGK. After 1985 it may be the best list there is (open question: let it add songs for 1986 onwards)."}}
+  - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api, api_rps: 1, distinct_ids: false, url: "https://musicbrainz.org/ws/2/", sweep: {url: "https://musicbrainz.org/ws/2/release?track_artist=aeb71bd8-447d-4415-8ea1-2b7d664f67e1&limit=100&offset=0&fmt=json&inc=recordings+release-groups+artist-credits", purpose: spine}}
+  - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api, api_rps: 0.4, api_auth: {env: DISCOGS_TOKEN, format: "Discogs token={token}", rps: 0.9}, distinct_ids: false, unit_mode: enrich, url: "https://api.discogs.com/", extractor: discogs, sweep: {url: "https://api.discogs.com/artists/342906/releases?sort=year&per_page=100&page=1", extractor: discogs, purpose: spine}, _why: {reason: "Details only, as for Rafi and Arnold: compilations would become their own containers."}}
+  - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api, api_rps: 1, url: "https://query.wikidata.org/sparql"}
+  - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable, url: https://en.wikipedia.org/wiki/List_of_songs_recorded_by_Lata_Mangeshkar}
+  - {id: atulsongaday, kind: semi, lineage: atul, reliability: 0.75, access: unavailable, url: https://atulsongaday.me}  # bot challenge: reuse the saved "List of songs yearwise" page (manual-imports/rafi/atul-songs-yearwise.html; it lists every song on the blog)
+  - {id: lastfm, kind: structured, lineage: lastfm, reliability: 0.6, access: api, api_rps: 2, url: "https://ws.audioscrobbler.com/2.0/", api_auth: {env: LASTFM_API_KEY, param: api_key}}
+  - {id: youtube, kind: structured, lineage: youtube, reliability: 0.6, access: api, api_rps: 2, url: "https://www.googleapis.com/youtube/v3/", api_auth: {env: YOUTUBE_API_KEY, param: key}}
+  - {id: songsofyore, kind: prose, lineage: songsofyore, reliability: 0.75, access: unavailable, url: https://www.songsofyore.com}  # robots.txt shuts out AI crawlers: import posts the user saves
+lexicon:
+  people_aliases: [lexicon/people.tsv, ../hindi-films/lexicon/people.tsv]
+  not_people: ../hindi-films/lexicon/not_people.tsv
+collaborators:
+  composers: [Laxmikant-Pyarelal, Shankar-Jaikishan, S. D. Burman, R. D. Burman, Madan Mohan, C. Ramchandra, Naushad, Salil Chowdhury, Kalyanji-Anandji, Hridaynath Mangeshkar]
+  co_singers: [Mohammed Rafi, Kishore Kumar, Mukesh, Manna Dey, Hemant Kumar, Talat Mahmood, Asha Bhosle]
+verification:
+  method: voice
+  references: gold/voice_refs/
+  confusables: [Suman Kalyanpur, Asha Bhosle, Usha Mangeshkar, Meena Mangeshkar, Kavita Krishnamurthy, Anuradha Paudwal]
+checksums:
+  - {scope: "Hindi film songs to 1991 (count cited against the Guinness claim)", total: 5025, source: "https://en.wikipedia.org/wiki/Lata_Mangeshkar", filter: {tiers: [A, C], years: [1942, 1991]}, tolerance: 0.05}
+  - {scope: "Bengali songs", total: 185, source: "https://en.wikipedia.org/wiki/Lata_Mangeshkar"}
+  - {scope: "composer Laxmikant-Pyarelal (over 700, 35 years)", total: 700, source: "https://en.wikipedia.org/wiki/Lata_Mangeshkar", filter: {tiers: [A, C], collaborator: {role: composer, name: Laxmikant-Pyarelal}}, tolerance: 0.1}
+taxonomies:
+  style: raga
+media_links:
+  lyrics_sites: [hindigeetmala.net, atulsongaday.me]
+  sources: {atulsongaday: lyrics}
+popularity_signals:
+  contemporary: [binaca_geetmala, filmfare]
+  enduring: [reissues, wikipedia_articles, youtube, lastfm]
+  esteem: [songsofyore, expert_posts, atulsongaday]
+  lists: expert_lists.tsv
+legal:
+  purpose: personal_then_foss
+  lyrics: first_line_only
+  # Hindi film song titles are the opening words and HFGK gives the whole opening: as for Rafi.
+  lyric_fields: [title, title_hi]
+  audio: derived_features_only
+budget:
+  crawl_requests_per_round: 5000
+  per_domain_rps: 0.5
+  model_spend_usd: null
+  review_hours_per_week: null
+open_questions:
+  - "Hindi film songs from 1986 to 2019 have no register (HFGK stops at 1985). Let Hindi Geetmala add songs for those years (create mode after 1985, details only before), or wait for the film register's post-1985 song data?"
+  - Are her compositions as Anandghan (Marathi films, 1960s) in scope, as a separate tier like Jean Wiener's?
+  - "Tier B register for non-Hindi and non-film songs: she sang in about 36 languages. Candidates to check: aathavanitli-gani.com (Marathi), MusicBrainz, Discogs, Wikipedia; any fan database you trust or can save pages from?"
+  - Confirm reissues_after 2022 (no new release expected after her death).
+  - "HFGK has two odd singer records: 'Lata Mangeshkar + Rafi' (person 16433, one Ganga Jamuna song, credited as if one singer) and 'Another Lata Mangeshkar' (person 11013, one Farmaish 1953 duet with Shamshad Begum). Count both songs as hers, or leave them out until checked?"
+  - Your trusted experts and expert lists for Lata (Songs of Yore posts to save), and later 10-15 gem picks.
+  - Permission from the HFGK Online site master before going live (same as Rafi).

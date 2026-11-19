@@ -1,6 +1,6 @@
 # maestro
 
-A Claude Code harness that builds a complete, sourced canon for one specified maestro (singer, composer, lyricist or other music role, from any country or genre). Pilots: Mohammed Rafi, Eddy Arnold, Jean Wiener.
+A Claude Code harness that builds a complete, sourced canon for one specified maestro (singer, composer, lyricist or other music role, from any country or genre). Pilots: Mohammed Rafi, Eddy Arnold, Jean Wiener. Draft: Lata Mangeshkar (`maestros/lata`, awaiting approval).
 
 ## Architecture in one paragraph
 
@@ -42,7 +42,7 @@ A generic core is driven by a per-maestro pack, `maestros/<slug>/maestro.yaml`. 
 - Validate packs: `uv run maestro-validate`
 - Identity lookup: `uv run maestro-identify "<name>"` (needs access to wikidata.org)
 - Crawl: `uv run maestro-crawl --pack maestros/rafi --dsn ... --seed <url> --extractor hamraaz --purpose spine [--opt years=1944-1950] [--max-jobs N]`
-- Import a saved or copied page (sites whose robots.txt forbids crawling): `uv run maestro-import --pack maestros/<slug> --dsn ... --extractor <name> --url <page url> [--opt key=value] <file>` (extractors: rafi/mohdrafi, rafi/atul, eddy-arnold/praguefrank, core dahr for saved DAHR name pages)
+- Import a saved or copied page (sites whose robots.txt forbids crawling): `uv run maestro-import --pack maestros/<slug> --dsn ... --extractor <name> --url <page url> [--opt key=value] <file>` (extractors: rafi/mohdrafi, eddy-arnold/praguefrank, core `atul` (Atul's saved "List of songs yearwise" page, usable by any Hindi film maestro), core `songsofyore` for saved expert posts, core dahr for saved DAHR name pages)
 - Discogs (all pilots): `uv run maestro-crawl --pack maestros/<slug> --seed "https://api.discogs.com/artists/<identity.ids.discogs>/releases?sort=year&per_page=100&page=1" --extractor discogs --purpose spine` (or let `maestro-run` plan the pack's sweep). An optional free personal token as `DISCOGS_TOKEN` in `.env` raises the rate from 25 to 60 requests a minute; packs name the variable in `api_auth`, never the token. A source's `unit_mode: enrich` (Eddy Arnold, Rafi) only adds catalogue numbers and issue years to units the canon has, and adds no lineage; Jean Wiener's pack has no Discogs sweep (release-level composer credits).
 - Shared Hindi film lexicons: `maestros/hindi-films/lexicon/` holds name spellings (`people.tsv`) and non-person credits (`not_people.tsv`) every Hindi film canon needs; a pack lists them after its own table (`people_aliases: [lexicon/people.tsv, ../hindi-films/lexicon/people.tsv]`, earlier files win). Put a user's name correction there unless it holds for one maestro only.
 - Hindi Geetmala (Rafi): `uv run maestro-crawl --pack maestros/rafi --seed https://www.hindigeetmala.net/singer/mohammed_rafi.php --extractor hindigeetmala --purpose spine --max-jobs 1000` (or the pack's sweep) reads all of the site's Rafi songs, ten a page, with film, year, credits, actors on screen, categories and ragas. Rafi's pack runs it in `unit_mode: enrich`: songs are placed in the canon's own film by title and gain `raga`, `on_screen` and `category` claims only (no lineage); songs it cannot place become `listing_gap` claims on the maestro (reason `film_not_in_canon` or `song_not_in_film`; a film the canon still holds twice is searched as one).
