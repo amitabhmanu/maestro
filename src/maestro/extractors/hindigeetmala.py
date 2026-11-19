@@ -93,7 +93,7 @@ def _canon_index(store):
         return cached
     norm, groups = Normaliser.for_store(store), Groups(store)
     films: dict[str, dict[int, set[int]]] = {}
-    skeletons: dict[tuple[str, int], set[int]] = {}  # (consonants, year) -> film roots, for spellings the key keeps apart
+    skeletons: dict[tuple[str, int], set[tuple[int, str]]] = {}  # (consonants, year) -> (film root, squash key)
     for r in store.conn.execute(
             """SELECT e.id, e.label, (SELECT min((c.value #>> '{}')::int) FROM claim c WHERE c.entity_id = e.id
                      AND c.field = 'year' AND c.status = 'active' AND jsonb_typeof(c.value) = 'number') AS year
@@ -107,7 +107,7 @@ def _canon_index(store):
                 years.add(r["year"])
         sk = skeleton(norm.container(r["label"]))
         if r["year"] and len(sk) >= SKELETON_MIN:
-            skeletons.setdefault((sk, r["year"]), set()).add(groups.find(r["id"]))
+            skeletons.setdefault((sk, r["year"]), set()).add((groups.find(r["id"]), key))
     songs: dict[int, list[tuple[int, str]]] = {}
     for r in store.conn.execute(
             """SELECT e.id, e.label, p.ref_entity_id AS film FROM entity e
@@ -133,8 +133,10 @@ def place(store, film: dict, title: str) -> tuple[list[int], str]:
     if not roots and film["year"]:
         # One letter spelt differently ("Chunaria"/"Chunariya", "Jashan"/"Jashn"): the same consonants
         # in the same year. Looser, so the year must agree outright.
-        from maestro.resolve import skeleton
-        roots = sorted(getattr(store, "_hgm_skeletons", {}).get((skeleton(norm.container(film["title"])), film["year"]), ()))
+        from maestro.resolve import close_spelling, skeleton
+        mine = _squash_container(norm.container(film["title"]))
+        roots = sorted({root for root, key in getattr(store, "_hgm_skeletons", {}).get(
+            (skeleton(norm.container(film["title"])), film["year"]), ()) if close_spelling(mine, key)})
     if not roots:
         return [], "film_not_in_canon"
     # A film the canon still holds twice (HFGK's and Atul's Pyaasa, not yet merged) is searched as one:
