@@ -181,6 +181,11 @@ def test_explorer_films_view(store_for, tmp_path):
     assert snap["register"]["slug"] == "hindi-films" and len(snap["films"]) == 9
     barsat = next(f for f in snap["films"] if f["hfgk"] == "101")
     assert barsat["wikidata"] == "Q1" and barsat["sing"] == ["Lata Mangeshkar", "Mukesh"] and not barsat["flags"]
+    # every song carries its store id: the explorer keys gem tags on register songs by it
+    for sid in [r["id"] for r in s.conn.execute("SELECT id FROM entity WHERE type = 'song'").fetchall()]:
+        s.upsert_claim(sid, "title", value=f"Song {sid}", source_id="hfgk_online")
+    rows = [x for xs in films.films_snapshot(s)["songs"].values() for x in xs]
+    assert rows and all(isinstance(x["id"], int) for x in rows) and len({x["id"] for x in rows}) == len(rows)
     write_site(tmp_path, [], [snap])
     index = json.loads((tmp_path / "canon" / "index.json").read_text())
     assert index["registers"][0]["file"] == "canon/films/hindi-films.json" and index["maestros"] == []

@@ -1027,7 +1027,8 @@ def _song_out(film_id: int, x: dict[str, Any]) -> dict[str, Any]:
     from maestro import filmsongs
 
     r = filmsongs.roles(x["sing"])
-    out = {"f": film_id, "n": x["n"], "t": x["title"], "s": x["sing"], "l": x["lyr"], "m": x["md"],
+    # "id" is the song's entity id in the register store: gem tags on register songs key on it.
+    out = {"id": x["id"], "f": film_id, "n": x["n"], "t": x["title"], "s": x["sing"], "l": x["lyr"], "m": x["md"],
            "sc": x["screen"], "r": x["raga"], "d": x["dur"], "v": x["ver"], "k": r["kind"],
            "ch": r["chorus"], "u": x.get("reuse"), "p": x["part"], "src": x["src"]}
     return {k: v for k, v in out.items() if v not in (None, [], "", False)}
