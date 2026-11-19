@@ -1,6 +1,7 @@
-"""Wikipedia's "Filmfare Award for Best Male Playback Singer": the maestro's wins and nominations.
+"""Wikipedia's "Filmfare Award for Best Male (or Female) Playback Singer": the maestro's wins and nominations.
 
-Seed: https://en.wikipedia.org/wiki/Filmfare_Award_for_Best_Male_Playback_Singer (robots.txt allows
+Seed: https://en.wikipedia.org/wiki/Filmfare_Award_for_Best_Male_Playback_Singer, or
+https://en.wikipedia.org/wiki/Filmfare_Award_for_Best_Female_Playback_Singer (robots.txt allows
 /wiki/ pages). The "Winners and nominees" tables list year, singer, song and film per row; the
 winner's row is in bold (and marked with a double dagger). Each row naming the maestro becomes a
 `filmfare` mention with the film, strength 2 for a win and 1 for a nomination.
@@ -39,12 +40,21 @@ def parse(page: str) -> list[dict]:
     return out
 
 
+def award_name(url: str) -> str:
+    """"Best Male Playback" or "Best Female Playback", from the page the rows were read from."""
+    for kind in ("Female", "Male"):
+        if f"_{kind}_" in url or f" {kind} " in url:
+            return f"Best {kind} Playback"
+    return "Best Playback"
+
+
 def extract(ctx) -> None:
+    award = award_name(ctx.page.url)
     for r in parse(ctx.page.text):
         if not names_maestro(ctx.store, r["singer"]):
             continue
         what = "won" if r["won"] else "nominated"
         # The award year is the ceremony's; the song is from the film year before.
         record_mention(ctx, SOURCE, "filmfare", r["song"], strength=2 if r["won"] else 1, year=r["year"] - 1,
-                       container=r["film"], note=f"Filmfare Best Male Playback, {what} ({r['year']})",
+                       container=r["film"], note=f"Filmfare {award}, {what} ({r['year']})",
                        extractor="filmfare", award_year=r["year"], won=r["won"])

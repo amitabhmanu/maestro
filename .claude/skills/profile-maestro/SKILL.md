@@ -21,6 +21,8 @@ Re-profiling an existing maestro: read the current pack and dossier first, chang
 2. Pick the candidate that matches the user's description. Record every other candidate with the same name as a namesake in `identity.namesakes`, with the reason it is ruled out (e.g. "Q123: Belgian cyclist").
 3. If two candidates could both be the maestro, stop and ask the user before going on.
 4. Collect name variants: spellings, transliterations, native scripts, stage names. These feed `identity.variants` and later the lexicon.
+5. Fill every external ID the sources below key on, from Wikidata where it holds them (Discogs P1953, DAHR P4457) or from the site itself (`ids.hfgk`: the person.php?id= on hamraaz.org; `ids.hindigeetmala`: the /singer/<name>.php page). Wikimedia often answers 429 from cloud IPs: retry later rather than guess.
+6. Record `identity.died` and, for a maestro whose work kept coming out after death or retirement, `identity.reissues_after`: the last year a genuinely new release is plausible (Rafi died 1980; his last new film songs came out in 1986). Later release dates are reissues and never date a song.
 
 ## Stage 2: Research the dossier
 
@@ -34,6 +36,7 @@ Run these as parallel subagents, one per topic. Each must return facts with sour
 - **Attribution risks:** known disputes, soundalikes, misattributions, namesakes.
 - **Vocabulary:** the tradition's own terms (raga, country subgenre, classical form) for `taxonomies`.
 - **Popularity signals:** historic charts or countdowns, awards, and modern listening data that exist for this maestro.
+- **Expert voices:** blogs, books and critics who write about individual songs, and for each list they publish, its intent (see Stage 4).
 
 Fetch the pages you cite; a search snippet is not a source. Never fill a gap with a guess: write it as an open question.
 
@@ -48,7 +51,22 @@ For each candidate source record, in the dossier's source table:
 - **Structure:** `structured`, `semi` or `prose` (decides deterministic parser vs LLM extraction).
 - **Publishable:** whether facts taken from it may go into the eventual FOSS release.
 
-Look specifically for a *register*: a source that claims to list everything for some tier (a song encyclopedia, a session discography, a catalogue of works). If none exists, say so; the completeness engine will rely on estimates for that tier.
+Look specifically for a *register*: a source that claims to list everything for some tier (a song encyclopedia, a session discography, a catalogue of works). If none exists, say so; the completeness engine will rely on estimates for that tier, which needs at least two independent lineages per tier (Rafi's non-Hindi and non-film songs had no register and were built from a Wikipedia list, MusicBrainz, Discogs, saved fan-site pages and Atul's Song A Day). Note each register's year span: a register that stops before the maestro's career ends (HFGK stops at 1985) leaves the later years to other sources and to their own estimate.
+
+Lineage rules the pilots taught:
+
+- A site that mostly copies the register is the same lineage, not a second sighting. Test it on a scratch copy against the register before deciding (Hindi Geetmala missed 1,254 of 4,278 HFGK songs it seemed to copy, and as a full source queued ~1,000 near-match reviews). Run such a source with `unit_mode: enrich`: it adds details and a gap list, never units or lineage.
+- Release databases (Discogs) treat every compilation as its own container. For a singer they are `unit_mode: enrich` (catalogue numbers, issue years). For a composer, release-level credits over-attribute works: leave the sweep out (Jean Wiener).
+- MusicBrainz release-group dates are often a reissue's; `reissues_after` keeps them from dating songs, and a later film reusing an old recording is the old song, not a new one.
+
+Access rules (never get around them):
+
+- Check robots.txt. A site that blocks crawlers (mohdrafi.com, Songs of Yore for AI agents, countrydiscography.blogspot.com) or serves a bot challenge (Atul's Song A Day, DAHR's CloudFront WAF) is `access: unavailable`: the user saves pages by hand into `/mnt/project-files/maestro/manual-imports/<slug>/` and they are loaded with `maestro-import`.
+- Public APIs are `access: api` with the API's own `api_rps`; personal keys go in `.env` and the pack names only the variable (`api_auth`). Known keys: `DISCOGS_TOKEN` (optional), `LASTFM_API_KEY`, `YOUTUBE_API_KEY` (label channel uploads only, never search).
+- Do not propose Spotify: it needs a Premium-owned developer app and its terms bar ML use (tried and dropped, Nov 2026).
+- A register whose owner has not given permission (HFGK) may be crawled for development; note the permission as an open question before going live.
+
+Reuse before you build: check `src/maestro/extractors/` and other packs first. Every Hindi film maestro shares the core `hamraaz`, `hindigeetmala`, `hindigeetmala_binaca`, `binaca`, `filmfare`, `wikipedia_list`, `songsofyore` and `atul` extractors, the film register (`maestros/hindi-films`, whose `check-canon` validates the canon's films) and the shared name tables in `maestros/hindi-films/lexicon/`.
 
 ## Stage 4: Ask the user
 
@@ -59,8 +77,17 @@ Ask only what is the user's to decide or what research could not settle. Every q
 - Which registers can the user access (owned books, library access)?
 - Which audio can be used lawfully?
 - Budget: crawl volume, model spend, review hours.
+- Posthumous and reissue years: confirm `reissues_after`.
+- Which fields quote lyrics (`legal.lyric_fields`): titles that are the song's opening words (Hindi film songs) must keep only the first line publishable.
+- Expert lists: show the user each list's intent as you read it from its title and introduction (`gem_list`: claims its songs are good and overlooked; `best_of`; `themed`) and record it in the pack's `popularity_signals.lists` TSV. Only `gem_list` lists with at least 90% low-popularity songs ever make gems. Ask for the user's trusted experts and 10-15 calibration picks (they can tag gems in the explorer).
 
-Project-wide decisions already made (do not ask again): personal use now with eventual FOSS release, so `legal.purpose: personal_then_foss`; audio from whatever can be legally sourced, derived features only; review time is ample for now.
+Project-wide decisions already made (do not ask again):
+
+- Personal use now with eventual FOSS release, so `legal.purpose: personal_then_foss`, `legal.lyrics: first_line_only`; audio from whatever can be legally sourced, derived features only; review time is ample for now.
+- Music contributions only (acting is out of scope).
+- A rare gem is a good unit that never became popular: low popularity is the hard first filter, quality comes only from `gem_list` expert lists or the user's own gem tags. Metadata and crude audio features do not find quality (tested on Rafi); use them as leads only.
+- A song reused in a later film (or reissued) is not a new work and is not counted again.
+- Canon stores live in Postgres on the user's PC; canon runs go through Remote Control there, with a backup before anything writes to a live store. Give the user times in IST.
 
 ## Stage 5: Propose the pack
 
@@ -77,6 +104,8 @@ The user approves by saying so; then set `status: approved`.
 ## Stage 6: Dry run
 
 Only after approval. Take one slice (one decade, or 5 to 10 containers): build the spine from structured sources, queue and run its crawl jobs, resolve, then call `coverage_report` and `find_gaps`. Report what broke (missing sources, failing extractors, unexpected unit types, checksum mismatches), revise the pack, and repeat until the slice passes.
+
+Use a fresh database (`MAESTRO_DSN_<SLUG>`, created `ENCODING 'UTF8' TEMPLATE template0`). Add each further source on a scratch copy first and compare tiers before and after; `maestro-run --dry-run` shows what the next round would do. Before asking the user to review merges, export them `--grouped`: one question per cluster, never chained pairwise "same" answers (A=B and A=C silently makes B=C). Add each name the user corrects to a lexicon (the shared Hindi film one unless it holds for this maestro only).
 
 ## Quality bar before asking for approval
 

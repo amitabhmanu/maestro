@@ -1,7 +1,7 @@
-"""Wikipedia's "List of songs recorded by Mohammed Rafi": the songs editors chose to list.
+"""Wikipedia's "List of songs recorded by <maestro>": the songs editors chose to list.
 
-Seed: https://en.wikipedia.org/wiki/List_of_songs_recorded_by_Mohammed_Rafi (robots.txt allows
-/wiki/ pages). The list holds a few hundred of his several thousand songs, in tables of year, film,
+Seed: e.g. https://en.wikipedia.org/wiki/List_of_songs_recorded_by_Mohammed_Rafi (robots.txt allows
+/wiki/ pages). Rafi's list holds a few hundred of his several thousand songs, in tables of year, film,
 song, composer, singer and writer: a selection of the songs people remember. Each row becomes a
 `wikipedia_list` mention with the film (strength 1, capped at 0.8: a choice, not a ranking).
 """
@@ -39,4 +39,4 @@ def extract(ctx) -> None:
             continue
         seen.add((r["song"], r["film"]))
         record_mention(ctx, SOURCE, "wikipedia_list", r["song"], strength=1, year=r["year"], container=r["film"],
-                       cap=0.8, note="in Wikipedia's list of songs recorded by Mohammed Rafi", extractor="wikipedia_list")
+                       cap=0.8, note=f"in Wikipedia's list of songs recorded by {ctx.store.pack.data['identity']['name']}", extractor="wikipedia_list")

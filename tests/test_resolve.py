@@ -131,8 +131,8 @@ def test_export_gives_each_subject_its_label_sources_and_credits(store_for):
 
 def test_distinct_decision_is_not_queued_again(store_for):
     s = store_for("rafi")
-    a = person(s, "hfgk_online", "30", "Ravi")
-    b = person(s, "hfgk_online", "31", "Ravi Shankar Sharma")
+    a = person(s, "hfgk_online", "30", "Roshan")
+    b = person(s, "hfgk_online", "31", "Roshan Lal")
     f = film(s, "hfgk_online", "300", "Film", 1960)
     song(s, "hfgk_online", "301", "One", f, a)
     song(s, "hfgk_online", "302", "Two", f, b)
@@ -551,3 +551,17 @@ def test_credits_to_a_chorus_become_unlinked_credits(store_for):
     assert unlink_non_people(s) == 1
     assert s.conn.execute("SELECT count(*) AS n FROM claim WHERE entity_id = %s AND field = 'credit_unlinked'"
                           " AND status = 'active'", (a,)).fetchone()["n"] == 1
+
+
+def test_shared_hindi_film_lexicon_applies_after_the_packs_own(store_for):
+    # Rafi's pack lists ../hindi-films/lexicon/people.tsv after its own table: "Ravi Shankar Sharma"
+    # is Ravi there, so the two HFGK records merge without a review.
+    s = store_for("rafi")
+    a = person(s, "hfgk_online", "30", "Ravi")
+    b = person(s, "hfgk_online", "31", "Ravi Shankar Sharma")
+    f = film(s, "hfgk_online", "300", "Film", 1960)
+    song(s, "hfgk_online", "301", "One", f, a)
+    song(s, "hfgk_online", "302", "Two", f, b)
+    resolve(s)
+    assert open_reviews(s) == []
+    assert Normaliser.for_store(s).person("Manna De") == Normaliser.for_store(s).person("Manna Dey")

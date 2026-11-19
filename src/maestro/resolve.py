@@ -73,31 +73,40 @@ def fold(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def load_lexicon(pack_dir: Path, rel: str | None) -> dict[str, str]:
-    """A `variant<TAB>canonical` table, keyed by the folded variant. Missing files give an empty table."""
-    if not rel:
-        return {}
-    path = Path(pack_dir) / rel
-    if not path.is_file():
-        return {}
-    table = {}
+def _lexicon_paths(pack_dir: Path, rel: str | list[str] | None) -> list[Path]:
+    """The lexicon files a pack names, in reverse order of precedence (so later reads win).
+
+    A lexicon entry is one path or a list of paths relative to the pack folder; with a list the
+    earlier files win, so a pack lists its own table first and a shared one (e.g. the Hindi film
+    register's `../hindi-films/lexicon/people.tsv`) after it. Missing files are skipped."""
+    rels = [rel] if isinstance(rel, str) else list(rel or [])
+    return [p for p in (Path(pack_dir) / r for r in reversed(rels)) if p.is_file()]
+
+
+def _rows(path: Path):
     with path.open(encoding="utf-8") as fh:
         for row in csv.reader(fh, delimiter="\t"):
             if len(row) >= 2 and row[0].strip() and not row[0].startswith("#"):
-                table[fold(row[0])] = fold(row[1])
+                yield row
+
+
+def load_lexicon(pack_dir: Path, rel: str | list[str] | None) -> dict[str, str]:
+    """A `variant<TAB>canonical` table (or several, see `_lexicon_paths`), keyed by the folded variant.
+    Missing files give an empty table."""
+    table = {}
+    for path in _lexicon_paths(pack_dir, rel):
+        for row in _rows(path):
+            table[fold(row[0])] = fold(row[1])
     return table
 
 
-def load_display_names(pack_dir: Path, rel: str | None) -> dict[str, str]:
+def load_display_names(pack_dir: Path, rel: str | list[str] | None) -> dict[str, str]:
     """The canonical spellings of a `variant<TAB>canonical` table as written, keyed by the folded
     variant and by the folded canonical name."""
-    if not rel or not (Path(pack_dir) / rel).is_file():
-        return {}
     names = {}
-    with (Path(pack_dir) / rel).open(encoding="utf-8") as fh:
-        for row in csv.reader(fh, delimiter="\t"):
-            if len(row) >= 2 and row[0].strip() and not row[0].startswith("#"):
-                names[fold(row[0])] = names[fold(row[1])] = row[1].strip()
+    for path in _lexicon_paths(pack_dir, rel):
+        for row in _rows(path):
+            names[fold(row[0])] = names[fold(row[1])] = row[1].strip()
     return names
 
 

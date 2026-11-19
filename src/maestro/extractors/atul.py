@@ -2,8 +2,9 @@
 
 The site blocks automated clients, so the page is saved in a browser and loaded with maestro-import.
 Each year section lists every song posted on the blog as `Title (Film)`, linking to its post. Singers
-are not given, so these records never credit Rafi: they are matched to HFGK's film song lists, which
-checks those lists from outside (a song from a Rafi film that matches no HFGK song is a listing gap).
+are not given, so these records never credit the maestro: they are matched to HFGK's film song lists, which
+checks those lists from outside (a song from one of the maestro's films that matches no HFGK song is a
+listing gap). The page lists every song on the blog, so any Hindi film maestro can import the same file.
 Non-film songs (`(Singer NFS)`) are recorded without a film.
 """
 
