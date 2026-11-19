@@ -134,12 +134,14 @@ def test_song_roles_and_reuse():
         2: [song(2, 2, "Yaad Aa Raha Hai Dil Ko Bhula Hua", ["Husnlal-Bhagatram"], ["Suraiya"]),
             song(3, 2, "Yad A Raha Hai Dil Ko, Other Words", ["Naushad"], ["Suraiya"])],
         3: [song(4, 3, "Tamma Tamma Again", ["Tanishk Bagchi"], ["Badshah"], src="wikipedia",
-                 ver="recreated")],
+                 ver="recreated"),
+            song(5, 3, "Challa (Remix)", ["Vishal Bhardwaj"], ["Rabbi"], src="wikipedia", ver="remix")],
     }
     n = filmsongs.mark_reuse(by, {1: 1949, 2: 1955, 3: 2017}, {1: "Amar Kahani", 2: "Kanchan", 3: "Badrinath"})
     assert by[2][0]["reuse"]["kind"] == "reused" and by[2][0]["reuse"]["title"] == "Amar Kahani"
     assert "reuse" not in by[2][1]  # another music director: a new song
     assert by[3][0]["reuse"]["kind"] == "recreated"
+    assert "reuse" not in by[3][1] and not filmsongs.is_new_composition(by[3][1])  # a remix of the film's own song
     assert n == 2 and not filmsongs.is_new_composition(by[2][0]) and filmsongs.is_new_composition(by[1][0])
 
 
