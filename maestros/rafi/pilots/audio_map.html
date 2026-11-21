@@ -198,7 +198,7 @@ function verdict() {
   card("Cluster separation", v.silhouette.toFixed(2), "silhouette, -1 to 1", v.silhouette > .25 ? "good" : v.silhouette > .1 ? "weak" : "none", v.silhouette > .25 ? "clear" : v.silhouette > .1 ? "blurred" : "a continuum");
   card("2D map faithfulness", v.trustworthiness.toFixed(2), "1 = keeps all neighbours", v.trustworthiness > .9 ? "good" : "weak", v.trustworthiness > .9 ? "faithful" : "approximate");
   const art = v.same_upload / Math.max(v.same_upload_chance, 1e-3);
-  card("Neighbours from the same upload", pct(v.same_upload), `vs ${pct(v.same_upload_chance)} by chance`, art > 3 ? "weak" : "good", art > 3 ? "hears the transfer" : "little transfer effect");
+  card("Neighbours from the same upload", pct(v.same_upload), `vs ${pct(v.same_upload_chance)} by chance`, art > 2 ? "weak" : "good", art > 2 ? "partly hears the transfer" : "little transfer effect");
 }
 
 function seg(id, opts, cur, on) {
