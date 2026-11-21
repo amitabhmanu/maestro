@@ -347,8 +347,9 @@ def map_(args):
     # blind listening test: for each anchor, its nearest neighbour under both models versus a far recording
     rng = random.Random(14)
     trials = []
-    if "mert" in nn and "clap" in nn:
-        S = views["mert"][1] @ views["mert"][1].T + views["clap"][1] @ views["clap"][1].T
+    used = [v for v in ("mert", "clap") if v in nn]
+    if used:
+        S = sum(views[v][1] @ views[v][1].T for v in used)
         for i in rng.sample(range(n), min(args.trials, n)):
             order = [j for j in np.argsort(-S[i]) if j != i]
             near, far = order[0], rng.choice(order[n // 2:])
