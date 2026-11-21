@@ -135,10 +135,12 @@ function isoBand(k) { const v = maps[model].iso[k], all = Object.values(maps[mod
 const colourings = {
   cluster: { label: "Sound cluster", get: k => "Cluster " + (maps[model].cluster[k] + 1) },
   iso: { label: "Isolation", get: isoBand },
+  gem: { label: "Your gems", get: k => recs[k].gem ? "Your gem" : "Not tagged" },
   agree: { label: "Models agree", get: k => { const o = other(); if (!o) return null;
     const a = new Set(maps[model].nn[k].map(x => x[0])), n = maps[o].nn[k].filter(x => a.has(x[0])).length;
     return n >= 3 ? "3+ shared neighbours" : n >= 1 ? "1-2 shared" : "None shared"; } },
 };
+if (!Object.values(recs).some(r => r.gem)) delete colourings.gem;
 let C;
 function cats() {
   const get = colourings[colourBy].get, n = {};
@@ -248,14 +250,14 @@ const listen = k => `<a href="${recs[k].listen}" target="_blank" rel="noopener">
 function select(k) {
   sel = k; const panel = document.getElementById("panel"), o = other();
   const inOther = o ? new Set(maps[o].nn[k].map(x => x[0])) : new Set();
-  panel.innerHTML = `<h2>Recording #${recs[k].n}</h2>
+  panel.innerHTML = `<h2>Recording #${recs[k].n}${recs[k].gem ? ' <span class="chip">your gem</span>' : ""}</h2>
     <dl class="meta"><dt>Listen</dt><dd><a href="${recs[k].listen}" target="_blank" rel="noopener">Play from the Internet Archive</a></dd>
     <dt>${colourings.cluster.label}</dt><dd>${colourings.cluster.get(k)} (${MODEL_NAMES[model]})</dd>
     <dt>Isolation</dt><dd>${isoBand(k)}</dd></dl>
     <div style="display:grid;gap:4px"><span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Its vector, first 24 axes</span>${strip(k)}</div>
     <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Sounds most like (${MODEL_NAMES[model]})</div>
     <div class="nbs">${maps[model].nn[k].map(([n, sim]) => `<div class="nb"><span class="s">${sim.toFixed(2)}</span>
-      <span style="display:grid;gap:3px;min-width:0">${strip(n)}<span class="t">${listen(n)} <button type="button" class="chip" data-k="${n}" style="border:0;cursor:pointer">show</button>${inOther.has(n) && o ? `<span class="chip">also in ${MODEL_NAMES[o]}</span>` : ""}${recs[n].upload === recs[k].upload ? '<span class="chip">same upload</span>' : ""}</span></span></div>`).join("")}</div>
+      <span style="display:grid;gap:3px;min-width:0">${strip(n)}<span class="t">${listen(n)} <button type="button" class="chip" data-k="${n}" style="border:0;cursor:pointer">show</button>${inOther.has(n) && o ? `<span class="chip">also in ${MODEL_NAMES[o]}</span>` : ""}${recs[n].upload === recs[k].upload ? '<span class="chip">same upload</span>' : ""}${recs[n].gem ? '<span class="chip">your gem</span>' : ""}</span></span></div>`).join("")}</div>
     <p class="empty" style="margin:0">The file names on the Internet Archive often carry titles. Listen before reading them if you want a blind check.</p>`;
   panel.querySelectorAll("button[data-k]").forEach(b => b.onclick = () => select(b.dataset.k));
   draw(); heat();

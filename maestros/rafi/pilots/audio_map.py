@@ -143,11 +143,18 @@ def embed(args):
             files.append((k, m))
         units_of[k].append(m["unit"])
     files = files[:args.max]
+    # keep recordings embedded by earlier runs (files.csv is the union of every run)
+    old = {}
+    if (out / "files.csv").exists():
+        old = {r["key"]: r for r in csv.DictReader(open(out / "files.csv", encoding="utf-8"))}
+    rows = dict(old)
+    for k, m in files:
+        units = sorted(set((old.get(k, {}).get("units") or "").split()) | set(units_of[k]))
+        rows[k] = {"key": k, "identifier": m["identifier"], "file": m["file"], "units": " ".join(units)}
     with open(out / "files.csv", "w", newline="", encoding="utf-8") as fh:
-        w = csv.writer(fh)
-        w.writerow(["key", "identifier", "file", "units"])
-        for k, m in files:
-            w.writerow([k, m["identifier"], m["file"], " ".join(units_of[k])])
+        w = csv.DictWriter(fh, ["key", "identifier", "file", "units"])
+        w.writeheader()
+        w.writerows(rows.values())
 
     todo = [(k, m) for k, m in files if not all((out / "emb" / mm / f"{k}.npy").exists() for mm in models)]
     print(f"{len(files)} recordings, {len(todo)} to embed with {', '.join(models)}", file=sys.stderr)
@@ -180,13 +187,13 @@ def embed(args):
 
 # ---------------------------------------------------------------- map
 
-def load_views(out: Path, craft_csv: str | None):
+def load_views(out: Path, craft_csv: str | None, models=tuple(MODELS)):
     """Return {view: (keys, matrix)}; each row L2-normalised. Views are audio-only."""
     import numpy as np
 
     views = {}
     files = {r["key"]: r for r in csv.DictReader(open(out / "files.csv", encoding="utf-8"))}
-    for name in MODELS:
+    for name in models:
         d = out / "emb" / name
         if not d.exists():
             continue
@@ -287,7 +294,7 @@ def map_(args):
     from sklearn.metrics import adjusted_rand_score
 
     out = Path(args.out)
-    views, files = load_views(out, args.craft)
+    views, files = load_views(out, args.craft, [m.strip() for m in args.models.split(",") if m.strip()])
     if not views:
         sys.exit("no embeddings found")
     common = sorted(set.intersection(*(set(keys) for keys, _ in views.values())))
@@ -377,9 +384,122 @@ def map_(args):
     recs = {key: {"n": num[key], "listen": f"https://archive.org/download/{files[key]['identifier']}/"
                                            f"{urllib.parse.quote(files[key]['file'])}",
                   "upload": files[key]["identifier"]} for key in common}
+    if args.gems and Path(args.gems).exists():  # Amitabh's own gem tags, shown on the map at his request
+        gem_keys = {r["key"] for r in csv.DictReader(open(args.gems, encoding="utf-8")) if r.get("key")}
+        for key in common:
+            recs[key]["gem"] = key in gem_keys
+        is_gem = [key in gem_keys for key in common]
+        g = sum(is_gem)
+        if g >= 3:
+            report += ["", f"## Your tagged gems ({g} of {n} recordings)", "",
+                       "| view | gem neighbours of gems | chance | gems more isolated (AUC, 0.5 = chance) |", "|---|---|---|---|"]
+            for v in maps:
+                idx, sims = nn[v]
+                share = sum(sum(is_gem[j] for j in idx[i]) / k for i in range(n) if is_gem[i]) / g
+                iso = 1 - sims.mean(axis=1)
+                pos, neg = [iso[i] for i in range(n) if is_gem[i]], [iso[i] for i in range(n) if not is_gem[i]]
+                auc = sum((p > q) + 0.5 * (p == q) for p in pos for q in neg) / (len(pos) * len(neg))
+                summary["gems_" + v] = {"neighbour_share": share, "chance": (g - 1) / (n - 1), "isolation_auc": auc}
+                report.append(f"| {v} | {share:.2f} | {(g - 1) / (n - 1):.2f} | {auc:.2f} |")
+            text = "\n".join(report) + "\n"
+            (out / "map-report.md").write_text(text, encoding="utf-8")
+            (out / "map-summary.json").write_text(json.dumps(summary, indent=1), encoding="utf-8")
+            print("\n".join(report[-len(maps) - 4:]))
     (out / "map.json").write_text(json.dumps({"recordings": recs, "maps": maps, "k": k, "summary": summary,
                                               "trials": trials}), encoding="utf-8")
     print(text)
+
+
+def find_gems(args):
+    """Find recordings for the gems Amitabh tagged in the canon explorer.
+
+    Only gems published in 1965 or earlier (public domain in India). Each is looked up first in the
+    earlier pilot's matches, then by a title search on the Internet Archive. Writes gems.csv (one row
+    per tagged gem, with the recording found, if any) and gem-matches.csv (new recordings, in the
+    matches.csv format, for ``embed --matches``).
+    """
+    from audio_gems import norm, sim
+
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    ledger = json.load(open(args.ledger, encoding="utf-8"))
+    tags = [t for t in ledger["tags"] if t.get("maestro") == "rafi" and not t.get("untagged_seen_at")]
+    known = list(csv.DictReader(open(args.matches, encoding="utf-8"))) if Path(args.matches).exists() else []
+    by_unit = {m["unit"]: m for m in known}
+    http = Http(args.rps)
+    rows, new = [], []
+    for n, t in enumerate(sorted(tags, key=lambda t: (t.get("year") or 0, t["unit"])), 1):
+        year = t.get("year")
+        row = {"unit": t["unit"], "year": year or "", "title": t["title"], "film": t.get("container") or "",
+               "status": "", "key": "", "identifier": "", "file": "", "sim": ""}
+        rows.append(row)
+        if not year or year > LAST_PD_YEAR:
+            row["status"] = "after 1965 (not public domain)"
+            continue
+        k = norm(t["title"])
+        hit = by_unit.get(str(t["unit"]))
+        if hit and sim(k, norm(hit["canon_title"])) < 0.6:  # unit ids can shift between canon rebuilds
+            hit = None
+        if not hit:
+            cand = [(sim(k, norm(m["canon_title"])), m) for m in known if abs(int(m["year"]) - year) <= 1]
+            cand = [c for c in cand if c[0] >= args.min_sim]
+            hit = max(cand, key=lambda c: c[0])[1] if cand else None
+        if hit:
+            row.update(status="already matched", identifier=hit["identifier"], file=hit["file"], sim=hit.get("sim", ""))
+            row["key"] = file_key(hit["identifier"], hit["file"])
+            continue
+        found = _search_archive(http, t, k, year, args.min_sim)
+        if found:
+            ident, f, s = found
+            row.update(status="found", identifier=ident, file=f, sim=round(s, 3), key=file_key(ident, f))
+            new.append({"unit": t["unit"], "group": "gem", "year": year, "canon_title": t["title"], "identifier": ident,
+                        "file": f, "format": "", "archive_title": "", "archive_year": "", "sim": round(s, 3)})
+        else:
+            row["status"] = "no recording found"
+        print(f"{n}/{len(tags)} {row['status']}", file=sys.stderr)
+    with open(out / "gems.csv", "w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+    with open(out / "gem-matches.csv", "w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, ["unit", "group", "year", "canon_title", "identifier", "file", "format",
+                                "archive_title", "archive_year", "sim"])
+        w.writeheader()
+        w.writerows(new)
+    print(json.dumps(collections.Counter(r["status"] for r in rows), indent=1))
+
+
+def _search_archive(http, tag, k, year, min_sim):
+    """Search the Internet Archive for one song by the first words of its title."""
+    from audio_gems import AUDIO_FORMATS, _fmt_rank, _year, norm, sim
+
+    words = [w for w in k.split() if len(w) > 1][:4]
+    if len(words) < 2:
+        return None
+    q = f'({" ".join(words)}) AND (rafi) AND mediatype:(audio)'
+    url = "https://archive.org/advancedsearch.php?" + urllib.parse.urlencode(
+        {"q": q, "fl[]": ["identifier", "year", "date", "title"], "rows": 25, "output": "json"}, doseq=True)
+    try:
+        docs = json.loads(http.get(url))["response"]["docs"]
+    except Exception as e:  # noqa: BLE001
+        print(f"search failed for {tag['unit']}: {e}", file=sys.stderr)
+        return None
+    best = None
+    for it in docs:
+        iy = _year(it.get("year") or it.get("date"))
+        if iy and iy > LAST_PD_YEAR:
+            continue
+        try:
+            meta = json.loads(http.get(f"https://archive.org/metadata/{it['identifier']}"))
+        except Exception:  # noqa: BLE001
+            continue
+        files = [f for f in meta.get("files", []) if f.get("format") in AUDIO_FORMATS]
+        for f in files:
+            title = f.get("title") or (it.get("title") if len(files) <= 3 else None) or Path(f["name"]).stem
+            s = sim(k, norm(str(title)))
+            if s >= min_sim and (best is None or (s, _fmt_rank(f.get("format"))) > best[0]):
+                best = ((s, _fmt_rank(f.get("format"))), it["identifier"], f["name"])
+    return (best[1], best[2], best[0][0]) if best else None
 
 
 def page(args):
@@ -405,14 +525,22 @@ def main():
     m.add_argument("--out", default="data/pilots/audio-map")
     m.add_argument("--craft", default="data/pilots/audio/features.csv", help="the earlier pilot's 20 features")
     m.add_argument("--k", type=int, default=10)
+    m.add_argument("--models", default="mert,clap", help="views to map; recordings must be in all of them")
+    m.add_argument("--gems", help="gems.csv from find-gems: mark Amitabh's tagged gems on the map")
     m.add_argument("--trials", type=int, default=30)
     m.add_argument("--pcs", type=int, default=24, help="principal axes kept for the latent views")
     m.add_argument("--dup", type=float, default=0.985)
+    g = sub.add_parser("find-gems")
+    g.add_argument("--ledger", required=True, help="gem-tags-ledger.json from the canon explorer")
+    g.add_argument("--matches", default="data/pilots/audio/matches.csv")
+    g.add_argument("--out", default="data/pilots/audio-map")
+    g.add_argument("--min-sim", type=float, default=0.82)
+    g.add_argument("--rps", type=float, default=1.0)
     p = sub.add_parser("page")
     p.add_argument("--out", default="data/pilots/audio-map")
     p.add_argument("--page", help="where to write the page (default: OUT/rafi-sound-map.html)")
     args = ap.parse_args()
-    {"embed": embed, "map": map_, "page": page}[args.step](args)
+    {"embed": embed, "map": map_, "page": page, "find-gems": find_gems}[args.step](args)
 
 
 if __name__ == "__main__":
