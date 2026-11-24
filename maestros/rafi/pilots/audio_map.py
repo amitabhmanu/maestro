@@ -1,4 +1,4 @@
-"""Pilot: a map of Rafi's songs built from the audio alone.
+"""Pilot: a map of a maestro's songs built from the audio alone (Rafi first, then Lata).
 
 Each recording becomes a vector computed only from its sound by an open, pretrained music model.
 No song metadata (title, film, composer, year, popularity) is used anywhere: not in the vectors,
@@ -15,6 +15,13 @@ Two steps:
     # anywhere, from the saved vectors:
     python maestros/rafi/pilots/audio_map.py map --out data/pilots/audio-map [--craft data/pilots/audio/features.csv]
     python maestros/rafi/pilots/audio_map.py page --out data/pilots/audio-map
+
+Another maestro (Lata, 24 Nov 2026) runs the same steps on her own reduced canon, with
+``audio_gems.py discover ... --search lata`` and ``find-gems --maestro lata``; one page then holds
+every maestro's map behind a switch:
+
+    python maestros/rafi/pilots/audio_map.py page --map rafi=data/pilots/audio-map \
+        --map lata=data/pilots/lata-audio-map --page data/pilots/sound-map.html
 
 ``matches.csv`` comes from ``audio_gems.py discover``: canon songs published by 1965 matched to
 Internet Archive recordings. Legal posture as in that pilot (Amitabh's approval, 14 Nov 2026):
@@ -423,19 +430,31 @@ def find_gems(args):
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    ledger = json.load(open(args.ledger, encoding="utf-8"))
-    tags = [t for t in ledger["tags"] if t.get("maestro") == "rafi" and not t.get("untagged_seen_at")]
+    if args.ledger:
+        ledger = json.load(open(args.ledger, encoding="utf-8"))
+        tags = [t for t in ledger["tags"] if t.get("maestro") == args.maestro and not t.get("untagged_seen_at")]
+    else:  # tagged unit ids, with titles and years from a reduced canon (a machine without the ledger)
+        from audio_gems import load_canon
+
+        byid = {u["id"]: u for u in load_canon(args.canon)[0]}
+        ids = [int(x) for x in args.units.replace(",", " ").split()]
+        tags = [{"unit": i, "title": byid[i]["title"], "year": byid[i]["year"]} if i in byid
+                else {"unit": i, "title": "(not in the reduced canon)", "year": None} for i in ids]
     known = list(csv.DictReader(open(args.matches, encoding="utf-8"))) if Path(args.matches).exists() else []
     by_unit = {m["unit"]: m for m in known}
     http = Http(args.rps)
     rows, new = [], []
+    def as_match(t, ident, f, s):
+        return {"unit": t["unit"], "group": "gem", "year": t["year"], "canon_title": t["title"], "identifier": ident,
+                "file": f, "format": "", "archive_title": "", "archive_year": "", "sim": s}
+
     for n, t in enumerate(sorted(tags, key=lambda t: (t.get("year") or 0, t["unit"])), 1):
         year = t.get("year")
         row = {"unit": t["unit"], "year": year or "", "title": t["title"], "film": t.get("container") or "",
                "status": "", "key": "", "identifier": "", "file": "", "sim": ""}
         rows.append(row)
         if not year or year > LAST_PD_YEAR:
-            row["status"] = "after 1965 (not public domain)"
+            row["status"] = "after 1965 (not public domain)" if year else "no year, or not tier A by 1965"
             continue
         k = norm(t["title"])
         hit = by_unit.get(str(t["unit"]))
@@ -448,13 +467,14 @@ def find_gems(args):
         if hit:
             row.update(status="already matched", identifier=hit["identifier"], file=hit["file"], sim=hit.get("sim", ""))
             row["key"] = file_key(hit["identifier"], hit["file"])
+            # listed too, so that embed covers it even when the earlier random sample left it out
+            new.append(as_match(t, hit["identifier"], hit["file"], hit.get("sim", "")))
             continue
-        found = _search_archive(http, t, k, year, args.min_sim)
+        found = _search_archive(http, t, k, year, args.min_sim, args.search or args.maestro)
         if found:
             ident, f, s = found
             row.update(status="found", identifier=ident, file=f, sim=round(s, 3), key=file_key(ident, f))
-            new.append({"unit": t["unit"], "group": "gem", "year": year, "canon_title": t["title"], "identifier": ident,
-                        "file": f, "format": "", "archive_title": "", "archive_year": "", "sim": round(s, 3)})
+            new.append(as_match(t, ident, f, round(s, 3)))
         else:
             row["status"] = "no recording found"
         print(f"{n}/{len(tags)} {row['status']}", file=sys.stderr)
@@ -470,14 +490,14 @@ def find_gems(args):
     print(json.dumps(collections.Counter(r["status"] for r in rows), indent=1))
 
 
-def _search_archive(http, tag, k, year, min_sim):
+def _search_archive(http, tag, k, year, min_sim, term="rafi"):
     """Search the Internet Archive for one song by the first words of its title."""
     from audio_gems import AUDIO_FORMATS, _fmt_rank, _year, norm, sim
 
     words = [w for w in k.split() if len(w) > 1][:4]
     if len(words) < 2:
         return None
-    q = f'({" ".join(words)}) AND (rafi) AND mediatype:(audio)'
+    q = f'({" ".join(words)}) AND ({term}) AND mediatype:(audio)'
     url = "https://archive.org/advancedsearch.php?" + urllib.parse.urlencode(
         {"q": q, "fl[]": ["identifier", "year", "date", "title"], "rows": 25, "output": "json"}, doseq=True)
     try:
@@ -503,13 +523,48 @@ def _search_archive(http, tag, k, year, min_sim):
     return (best[1], best[2], best[0][0]) if best else None
 
 
+NAMES = {"rafi": ("Mohammed Rafi", "Rafi"), "lata": ("Lata Mangeshkar", "Lata")}  # full name, short name
+
+
+def load_map(path: str, slug: str | None = None) -> dict:
+    """A map.json, a folder holding one, a gzipped copy, or an earlier page that embeds one."""
+    p = Path(path)
+    if p.is_dir():
+        p = p / "map.json"
+    raw = p.read_bytes()
+    if p.suffix == ".gz":
+        import gzip
+
+        raw = gzip.decompress(raw)
+    text = raw.decode("utf-8")
+    if p.suffix in (".html", ".htm"):
+        mark = "const ALL = " if "const ALL = " in text else "const DATA = "
+        d = json.JSONDecoder().raw_decode(text, text.index(mark) + len(mark))[0]  # json reads "<\\/" as "</"
+        if "maestros" in d:  # a page with a switch: that maestro's map
+            return d["maestros"][slug if slug in d["maestros"] else next(iter(d["maestros"]))]
+        return d
+    return json.loads(text)
+
+
 def page(args):
-    """Write a self-contained explorer page from map.json (no audio, no song metadata)."""
-    d = json.load(open(Path(args.out) / "map.json", encoding="utf-8"))
+    """Write a self-contained explorer page from map.json (no audio, no song metadata).
+
+    With several ``--map SLUG=PATH`` the page holds each maestro's map behind a switch.
+    """
+    specs = [m.split("=", 1) for m in args.map] if args.map else [[args.maestro, args.out]]
+    book = {}
+    for slug, path in specs:
+        d = load_map(path, slug)
+        d["name"], d["short"] = NAMES.get(slug, (slug.replace("-", " ").title(),) * 2)
+        book[slug] = d
     html = Path(__file__).with_name("audio_map.html").read_text(encoding="utf-8")
-    html = html.replace("/*MAP_DATA*/null", json.dumps(d, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/"))
-    dest = Path(args.page or Path(args.out) / "rafi-sound-map.html")
+    data = json.dumps({"maestros": book}, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+    html = html.replace("/*MAP_DATA*/null", data)
+    dest = Path(args.page or Path(args.out) / ("sound-map.html" if len(book) > 1 else f"{specs[0][0]}-sound-map.html"))
     dest.write_text(html, encoding="utf-8")
+    for slug, d in book.items():
+        print(f"{slug}: {len(d['recordings'])} recordings, {sum(1 for r in d['recordings'].values() if r.get('gem'))} gems",
+              file=sys.stderr)
     print(dest)
 
 
@@ -532,14 +587,21 @@ def main():
     m.add_argument("--pcs", type=int, default=24, help="principal axes kept for the latent views")
     m.add_argument("--dup", type=float, default=0.985)
     g = sub.add_parser("find-gems")
-    g.add_argument("--ledger", required=True, help="gem-tags-ledger.json from the canon explorer")
+    g.add_argument("--ledger", help="gem-tags-ledger.json from the canon explorer")
+    g.add_argument("--canon", help="without --ledger: reduced canon (audio-pilot-canon.json.gz) to read tagged units from")
+    g.add_argument("--units", help="without --ledger: the tagged unit ids, comma separated")
     g.add_argument("--matches", default="data/pilots/audio/matches.csv")
     g.add_argument("--out", default="data/pilots/audio-map")
     g.add_argument("--min-sim", type=float, default=0.82)
+    g.add_argument("--maestro", default="rafi", help="whose tags to read from the ledger")
+    g.add_argument("--search", help="name archive.org items must mention (default: the maestro slug)")
     g.add_argument("--rps", type=float, default=1.0)
     p = sub.add_parser("page")
     p.add_argument("--out", default="data/pilots/audio-map")
-    p.add_argument("--page", help="where to write the page (default: OUT/rafi-sound-map.html)")
+    p.add_argument("--page", help="where to write the page (default: OUT/<maestro>-sound-map.html)")
+    p.add_argument("--maestro", default="rafi", help="slug of the single map in --out")
+    p.add_argument("--map", action="append", metavar="SLUG=PATH",
+                   help="a maestro's map (map.json, its folder, .json.gz or an earlier page); repeat for a switch")
     args = ap.parse_args()
     {"embed": embed, "map": map_, "page": page, "find-gems": find_gems}[args.step](args)
 

@@ -1,4 +1,4 @@
-<title>Rafi Sound Map</title>
+<title>Sound Map</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -84,7 +84,8 @@ textarea { font-family: var(--mono); font-size: 12px; width: 100%; min-height: 6
 
 <div class="wrap">
   <header>
-    <h1>Rafi Sound Map</h1>
+    <h1 id="h1">Sound Map</h1>
+    <div class="controls" id="whobox" hidden style="margin-top:8px"><span><span class="lab">Maestro</span><span class="seg" id="who"></span></span></div>
     <p class="lede" id="lede"></p>
   </header>
   <section class="verdict" id="verdict" aria-label="Audio-only checks"></section>
@@ -121,18 +122,17 @@ textarea { font-family: var(--mono); font-size: 12px; width: 100%; min-height: 6
 </div>
 
 <script>
-const DATA = /*MAP_DATA*/null;
+const ALL = /*MAP_DATA*/null;
+const BOOK = ALL.maestros || { rafi: Object.assign({ name: "Mohammed Rafi", short: "Rafi" }, ALL) };
 const MODEL_NAMES = { mert: "MERT", clap: "CLAP", craft: "20 features" };
 const PALETTE = ["#4269d0", "#efb118", "#ff725c", "#6cc5b0", "#3ca951", "#ff8ab7", "#a463f2", "#97bbf5", "#9c6b4e", "#e45756"];
-const recs = DATA.recordings, maps = DATA.maps, S = DATA.summary;
-const models = Object.keys(maps);
-let model = models[0], colourBy = "cluster", sel = null, hover = null, query = "", hidden = new Set();
-const byNum = Object.fromEntries(Object.entries(recs).map(([k, r]) => [r.n, k]));
+let who, DATA, recs, maps, S, models, byNum;
+let model, colourBy = "cluster", sel = null, hover = null, query = "", hidden = new Set();
 const other = () => models.find(m => m !== model && m !== "craft");
 
 function isoBand(k) { const v = maps[model].iso[k], all = Object.values(maps[model].iso).sort((a, b) => a - b);
   return v >= all[Math.floor(all.length * .9)] ? "Most isolated 10%" : v <= all[Math.floor(all.length * .5)] ? "Dense half" : "In between"; }
-const colourings = {
+const ALL_COLOURINGS = {
   cluster: { label: "Sound cluster", get: k => "Cluster " + (maps[model].cluster[k] + 1) },
   iso: { label: "Isolation", get: isoBand },
   gem: { label: "Your gems", get: k => recs[k].gem ? "Your gem" : "Not tagged" },
@@ -140,7 +140,7 @@ const colourings = {
     const a = new Set(maps[model].nn[k].map(x => x[0])), n = maps[o].nn[k].filter(x => a.has(x[0])).length;
     return n >= 3 ? "3+ shared neighbours" : n >= 1 ? "1-2 shared" : "None shared"; } },
 };
-if (!Object.values(recs).some(r => r.gem)) delete colourings.gem;
+let colourings = ALL_COLOURINGS;
 let C;
 function cats() {
   const get = colourings[colourBy].get, n = {};
@@ -269,7 +269,8 @@ function legend() {
     sp.onclick = () => { hidden.has(k) ? hidden.delete(k) : hidden.add(k); legend(); draw(); }; el.appendChild(sp); });
 }
 // listening test
-let picks = {}; try { picks = JSON.parse(localStorage.getItem("rafi-sound-test") || "{}"); } catch (e) {}
+let picks = {};
+const testKey = () => `${who}-sound-test`;
 function trials() {
   const el = document.getElementById("trials"); el.innerHTML = "";
   DATA.trials.forEach((t, i) => {
@@ -279,27 +280,45 @@ function trials() {
       <label><input type="radio" name="t${i}" id="t${i}b" value="b" ${picks[i] === "b" ? "checked" : ""}> B is closer</label></div></div>`);
   });
   el.querySelectorAll("input").forEach(inp => inp.onchange = () => { picks[inp.name.slice(1)] = inp.value;
-    try { localStorage.setItem("rafi-sound-test", JSON.stringify(picks)); } catch (e) {} score(); });
+    try { localStorage.setItem(testKey(), JSON.stringify(picks)); } catch (e) {} score(); });
   score();
 }
 function score() {
   const done = Object.keys(picks).length, agree = Object.entries(picks).filter(([i, v]) => DATA.trials[i] && DATA.trials[i].near === v).length;
   document.getElementById("score").textContent = done ? `You agree with the map on ${agree} of ${done} answered (${pct(agree / done)}). Chance is 50%.` : `${DATA.trials.length} trials. Nothing answered yet.`;
-  document.getElementById("answers").value = "rafi-sound-test " + DATA.trials.map((t, i) => `${i + 1}${picks[i] || "-"}`).join(" ");
+  document.getElementById("answers").value = testKey() + " " + DATA.trials.map((t, i) => `${i + 1}${picks[i] || "-"}`).join(" ");
 }
 document.getElementById("copy").onclick = () => { const t = document.getElementById("answers");
   navigator.clipboard.writeText(t.value).catch(() => { t.select(); }); };
 
-seg("model", models.map(m => [m, MODEL_NAMES[m] || m]), model, m => { model = m; hidden.clear(); C = cats(); verdict(); legend(); axisOpts(); axes(); layout(); heat(); if (sel) select(sel); });
+function useMaestro(slug) {
+  who = slug; DATA = BOOK[slug]; recs = DATA.recordings; maps = DATA.maps; S = DATA.summary; models = Object.keys(maps);
+  byNum = Object.fromEntries(Object.entries(recs).map(([k, r]) => [r.n, k]));
+  const gems = Object.values(recs).filter(r => r.gem).length;
+  colourings = Object.fromEntries(Object.entries(ALL_COLOURINGS).filter(([k]) => k !== "gem" || gems));
+  model = models[0]; colourBy = gems ? "gem" : "cluster"; sel = null; query = ""; hidden.clear();
+  document.getElementById("q").value = "";
+  try { picks = JSON.parse(localStorage.getItem(testKey()) || "{}"); } catch (e) { picks = {}; }
+  try { localStorage.setItem("sound-map-maestro", slug); } catch (e) {}
+  document.getElementById("h1").textContent = `${DATA.short || DATA.name} Sound Map`;
+  document.title = document.getElementById("h1").textContent;
+  document.getElementById("panel").innerHTML = '<p class="empty">Click a dot to hear a recording and the eight recordings that sound most like it. Recordings are numbered only: no title, film, composer or year is used or shown, so your ear is the judge.</p>';
+  seg("model", models.map(m => [m, MODEL_NAMES[m] || m]), model, m => { model = m; hidden.clear(); C = cats(); verdict(); legend(); axisOpts(); axes(); layout(); heat(); if (sel) select(sel); });
+  seg("colour", Object.entries(colourings).map(([k, v]) => [k, v.label]), colourBy, c => { colourBy = c; hidden.clear(); C = cats(); legend(); draw(); });
+  C = cats();
+  document.getElementById("lede").textContent = `${Object.keys(recs).length} ${DATA.name} recordings published by 1965, placed only by how they sound${gems ? `, ${gems} of them songs you tagged as gems` : ""}. Nearby dots are recordings a pretrained music model hears as similar. No title, film, composer, year or popularity is used to place them or to judge the map.`;
+  document.getElementById("foot").textContent = `Neighbours are the ${DATA.k} closest recordings in the model's full vector space. The Map layout (${maps[model].how.toUpperCase()}) squeezes that space into 2D and only approximates it; the Axes layout plots two of its principal axes directly. Clusters are k-means on the vectors. The upload check uses only which Internet Archive upload a file came from, to warn when neighbours are the same transfer. No audio is stored here: listen links play from the Internet Archive.`;
+  verdict(); legend(); trials(); axisOpts(); axes(); layout(); heat();
+}
 seg("lay", [["map", "Map"], ["pcs", "Axes"]], lay, v => { lay = v; document.getElementById("axsel").hidden = v !== "pcs"; layout(); });
 document.getElementById("ax").onchange = e => { ax = +e.target.value; layout(); };
 document.getElementById("ay").onchange = e => { ay = +e.target.value; layout(); };
-seg("colour", Object.entries(colourings).map(([k, v]) => [k, v.label]), colourBy, c => { colourBy = c; hidden.clear(); C = cats(); legend(); draw(); });
 document.getElementById("q").addEventListener("input", e => { query = e.target.value.trim().replace("#", ""); if (byNum[query]) select(byNum[query]); draw(); });
-C = cats();
-document.getElementById("lede").textContent = `${Object.keys(recs).length} Rafi recordings published by 1965, placed only by how they sound. Nearby dots are recordings a pretrained music model hears as similar. No title, film, composer, year or popularity is used to place them or to judge the map.`;
-document.getElementById("foot").textContent = `Neighbours are the ${DATA.k} closest recordings in the model's full vector space. The Map layout (${maps[model].how.toUpperCase()}) squeezes that space into 2D and only approximates it; the Axes layout plots two of its principal axes directly. Clusters are k-means on the vectors. The upload check uses only which Internet Archive upload a file came from, to warn when neighbours are the same transfer. No audio is stored here: listen links play from the Internet Archive.`;
-verdict(); legend(); trials(); axisOpts(); axes();
+const slugs = Object.keys(BOOK);
+let first = slugs[0]; try { const saved = localStorage.getItem("sound-map-maestro"); if (BOOK[saved]) first = saved; } catch (e) {}
+if (slugs.length > 1) { document.getElementById("whobox").hidden = false;
+  seg("who", slugs.map(k => [k, BOOK[k].name]), first, useMaestro); }
+useMaestro(first);
 new ResizeObserver(layout).observe(cv);
 new ResizeObserver(heat).observe(document.getElementById("heat"));
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { draw(); heat(); axes(); if (sel) select(sel); });

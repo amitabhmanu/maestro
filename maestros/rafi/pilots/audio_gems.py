@@ -2,7 +2,7 @@
 
 Three steps, run on a machine that can reach archive.org:
 
-    python maestros/rafi/pilots/audio_gems.py discover SNAPSHOT.json --out DIR
+    python maestros/rafi/pilots/audio_gems.py discover SNAPSHOT.json --out DIR [--search rafi]
     python maestros/rafi/pilots/audio_gems.py extract  SNAPSHOT.json --out DIR [--max 300]
     python maestros/rafi/pilots/audio_gems.py evaluate SNAPSHOT.json --out DIR
 
@@ -138,7 +138,11 @@ def sim(a: str, b: str) -> float:
 # ---------------------------------------------------------------- discover
 
 SEARCH = "https://archive.org/advancedsearch.php"
-QUERY = ('(creator:(rafi) OR title:(rafi) OR description:("rafi")) AND mediatype:(audio)')
+
+
+def archive_query(term: str) -> str:
+    """Internet Archive items that name the maestro (``--search``: rafi, lata, ...)."""
+    return f'(creator:({term}) OR title:({term}) OR description:("{term}")) AND mediatype:(audio)'
 
 
 def discover(args):
@@ -154,14 +158,14 @@ def discover(args):
 
     items, page = [], 1
     while True:
-        q = urllib.parse.urlencode({"q": QUERY, "fl[]": ["identifier", "title", "date", "year", "creator"],
+        q = urllib.parse.urlencode({"q": archive_query(args.search), "fl[]": ["identifier", "title", "date", "year", "creator"],
                                     "rows": 500, "page": page, "output": "json"}, doseq=True)
         docs = json.loads(http.get(f"{SEARCH}?{q}"))["response"]["docs"]
         items += docs
         if len(docs) < 500:
             break
         page += 1
-    print(f"{len(items)} archive.org items mention Rafi", file=sys.stderr)
+    print(f"{len(items)} archive.org items mention {args.search}", file=sys.stderr)
 
     rows = []
     for n, it in enumerate(items, 1):
@@ -501,6 +505,7 @@ def main():
     ap.add_argument("--rps", type=float, default=1.0)
     ap.add_argument("--min-sim", type=float, default=0.82)
     ap.add_argument("--max", type=int, default=300)
+    ap.add_argument("--search", default="rafi", help="discover: the name archive.org items must mention")
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     args = ap.parse_args()
     {"discover": discover, "extract": extract, "evaluate": evaluate}[args.step](args)
