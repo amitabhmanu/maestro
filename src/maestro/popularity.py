@@ -47,7 +47,8 @@ from typing import Any
 
 from maestro.completeness import Unit, load_units
 from maestro.pack import load_pack
-from maestro.resolve import (Groups, Normaliser, WholeTitleIndex, _squash, catalogue_key, fold, skeleton,
+from maestro.resolve import (TITLE_LETTERS, Groups, Normaliser, WholeTitleIndex, _prefix_similarity, _squash,
+                             catalogue_key, fold, skeleton,
                              title_similarity, whole_title_similarity)
 from maestro.store import Store
 
@@ -308,8 +309,10 @@ class MentionMatcher:
             for a in _keys(self.norm, title):
                 if len(_squash(a.replace(" ", ""))) < OPENING_ALONE_LETTERS:
                     continue
+                sa = _squash(a.replace(" ", ""))[:TITLE_LETTERS]
                 for uid in self.by_opening.get(skeleton(a)[:4], ()):
-                    sim = max(title_similarity(a, b, OPENING_ALONE) for b in self.ukeys[uid])
+                    # Openings only: with no film to vouch for it, a later line is too weak a match.
+                    sim = max(_prefix_similarity(sa, _squash(b.replace(" ", "")), OPENING_ALONE) for b in self.ukeys[uid])
                     if sim >= OPENING_ALONE and sim > best.get(uid, 0.0):
                         best[uid] = sim
         if not best:
