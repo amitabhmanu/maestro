@@ -246,6 +246,8 @@
         "penetration": {"type": "array", "items": {"type": "string"}},
         "esteem": {"type": "array", "items": {"type": "string"}},
         "lists": {"type": "string", "description": "Pack-relative TSV of expert lists: url, intent (gem_list, best_of or themed), note. Only gem_list lists can make gems."},
+        "popular_at": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0},
+                       "description": "Count at which a unit is popular on a count signal (youtube views, lastfm listeners), when lower than the top 10% of the units the signal names. Core defaults: youtube 1000000, lastfm 100."},
         "weights": {"type": "object", "additionalProperties": false,
                     "description": "Facet weights for the popularity score (defaults 0.35, 0.3, 0.2, 0.15).",
                     "properties": {
