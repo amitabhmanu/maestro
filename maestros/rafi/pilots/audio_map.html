@@ -1,0 +1,325 @@
+<title>Sound Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a map canvas beside a song panel; verdict strip above. Stacks to one column on phones. */
+:root {
+  --bg: #f3f4f7; --surface: #ffffff; --fg: #1b1f2a; --muted: #5d6475; --line: #dde1e9;
+  --accent: #2f5bd3; --accent-soft: #e5ecfd; --good: #1d7a4d; --weak: #9a6a10; --none: #8a8f9c;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12151c; --surface: #1a1e28; --fg: #e7e9ef; --muted: #9aa1b2; --line: #2b3140;
+  --accent: #7ea2ff; --accent-soft: #1f2a48; --good: #5fcf96; --weak: #e0b25a; --none: #7d8394; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #12151c; --surface: #1a1e28; --fg: #e7e9ef; --muted: #9aa1b2; --line: #2b3140;
+  --accent: #7ea2ff; --accent-soft: #1f2a48; --good: #5fcf96; --weak: #e0b25a; --none: #7d8394; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 32px }
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 16px }
+h1 { font-family: var(--display); font-weight: 700; font-size: 28px; margin: 0; letter-spacing: -0.01em; text-wrap: balance }
+.lede { color: var(--muted); max-width: 72ch; margin: 4px 0 0 }
+.verdict { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px }
+.v { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 4px; align-content: start }
+.v .k { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted) }
+.v .n { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 18px }
+.v .n small { font-size: 12px; color: var(--muted) }
+.v .why { font-size: 12px; color: var(--muted) }
+.pill { display: inline-block; font-size: 11px; padding: 0 7px; border-radius: 99px; font-weight: 600; width: fit-content; justify-self: start; align-self: end; line-height: 18px }
+.pill.good { color: var(--good); border: 1px solid var(--good) } .pill.weak { color: var(--weak); border: 1px solid var(--weak) } .pill.none { color: var(--none); border: 1px solid var(--none) }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface) }
+.seg button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--fg); padding: 5px 10px; cursor: pointer }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface) }
+.seg button:focus-visible, input:focus-visible, a:focus-visible, .nb:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+label.lab { font-size: 12px; color: var(--muted); margin-right: 4px }
+input[type=search] { font: inherit; padding: 5px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); min-width: 0; width: 220px; max-width: 100% }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start }
+@media (max-width: 860px) { .main { grid-template-columns: minmax(0, 1fr) } }
+.mapbox { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; position: relative; aspect-ratio: 4 / 3; max-width: 100%; overflow: hidden }
+canvas { width: 100%; height: 100%; display: block; cursor: crosshair }
+.tip { position: absolute; pointer-events: none; background: var(--fg); color: var(--bg); font-size: 12px; padding: 4px 8px; border-radius: 6px; max-width: 260px }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted) }
+.legend span { display: inline-flex; align-items: center; gap: 5px; cursor: pointer }
+.legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block }
+.legend span.off { opacity: .35 }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; min-width: 0 }
+.panel h2 { font-family: var(--display); font-weight: 500; font-size: 18px; margin: 0; text-wrap: balance }
+.meta { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 13px }
+.meta dt { color: var(--muted) } .meta dd { margin: 0; min-width: 0 }
+.nbs { display: grid; gap: 4px }
+.nb { display: grid; grid-template-columns: 44px 1fr; gap: 8px; padding: 6px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; background: none; text-align: left; font: inherit; color: inherit }
+.nb:hover { background: var(--accent-soft) }
+.nb .s { font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums }
+.nb .t { font-size: 13px } .nb .c { font-size: 11px; color: var(--muted) }
+.chip { font-size: 10px; padding: 0 5px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); margin-left: 4px; white-space: nowrap }
+.empty { color: var(--muted); font-size: 13px }
+a { color: var(--accent) }
+.foot { color: var(--muted); font-size: 12px; max-width: 80ch }
+.latent { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; min-width: 0 }
+.latent h2 { font-family: var(--display); font-weight: 500; font-size: 18px; margin: 0 }
+.heatwrap { overflow-x: auto } #heat { display: block; width: 100%; height: 420px; cursor: pointer }
+.scale { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted) }
+.scale i { width: 140px; height: 10px; border-radius: 3px; display: inline-block }
+.axes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px }
+.axis { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 13px; display: grid; gap: 4px }
+.axis b { font-family: var(--mono); font-weight: 500 }
+.strip { display: grid; grid-template-columns: repeat(24, 1fr); gap: 1px; height: 14px; border-radius: 3px; overflow: hidden; min-width: 0 }
+.strip span { display: block }
+select { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg) }
+.test { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px }
+.test h2 { font-family: var(--display); font-weight: 500; font-size: 18px; margin: 0 }
+.trial { display: grid; grid-template-columns: 2.2em 1fr; gap: 8px; align-items: center; padding-block: 6px; border-top: 1px solid var(--line) }
+.trial .no { font-family: var(--mono); color: var(--muted); font-size: 12px }
+.trial .row { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 13px }
+.trial label { display: inline-flex; gap: 4px; align-items: center; cursor: pointer }
+.score { font-family: var(--mono); font-size: 13px }
+button.copy { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent); cursor: pointer; width: fit-content }
+textarea { font-family: var(--mono); font-size: 12px; width: 100%; min-height: 60px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1 id="h1">Sound Map</h1>
+    <div class="controls" id="whobox" hidden style="margin-top:8px"><span><span class="lab">Maestro</span><span class="seg" id="who"></span></span></div>
+    <p class="lede" id="lede"></p>
+  </header>
+  <section class="verdict" id="verdict" aria-label="Audio-only checks"></section>
+  <div class="controls">
+    <span><span class="lab">Model</span><span class="seg" id="model"></span></span>
+    <span><span class="lab">Colour by</span><span class="seg" id="colour"></span></span>
+    <span><span class="lab">Layout</span><span class="seg" id="lay"></span></span>
+    <span id="axsel" hidden><label class="lab" for="ax">Across</label><select id="ax"></select> <label class="lab" for="ay">Up</label><select id="ay"></select></span>
+    <input type="search" id="q" inputmode="numeric" placeholder="Go to recording #" aria-label="Go to recording number">
+  </div>
+  <div class="main">
+    <div style="display:grid;gap:8px;min-width:0">
+      <div class="mapbox"><canvas id="cv" aria-label="Map of recordings placed by sound"></canvas><div class="tip" id="tip" hidden></div></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <aside class="panel" id="panel"><p class="empty">Click a dot to hear a recording and the eight recordings that sound most like it. Recordings are numbered only: no title, film, composer or year is used or shown, so your ear is the judge.</p></aside>
+  </div>
+  <section class="latent" aria-label="Inside the vectors">
+    <h2>Inside the vectors</h2>
+    <p class="lede" style="margin:0" id="latentlede"></p>
+    <div class="scale"><span>lower</span><i id="scalebar"></i><span>higher on the axis</span></div>
+    <div class="heatwrap"><canvas id="heat" aria-label="Every recording's vector as a row of colour"></canvas></div>
+    <div class="axes" id="axes"></div>
+  </section>
+  <section class="test" id="test">
+    <h2>Blind listening test</h2>
+    <p class="lede" style="margin:0">For each row, listen to the anchor, then to A and B, and pick the one that sounds more like it. One of them is the anchor's closest recording under the map's model(s), the other is a far one, in random order. If the map hears music, you should agree with it far more often than half the time.</p>
+    <div id="trials"></div>
+    <div class="score" id="score"></div>
+    <button class="copy" id="copy" type="button">Copy my answers</button>
+    <textarea id="answers" readonly aria-label="Your answers, to paste back"></textarea>
+  </section>
+  <p class="foot" id="foot"></p>
+</div>
+
+<script>
+const ALL = /*MAP_DATA*/null;
+const BOOK = ALL.maestros || { rafi: Object.assign({ name: "Mohammed Rafi", short: "Rafi" }, ALL) };
+const MODEL_NAMES = { mert: "MERT", clap: "CLAP", craft: "20 features" };
+const PALETTE = ["#4269d0", "#efb118", "#ff725c", "#6cc5b0", "#3ca951", "#ff8ab7", "#a463f2", "#97bbf5", "#9c6b4e", "#e45756"];
+let who, DATA, recs, maps, S, models, byNum;
+let model, colourBy = "cluster", sel = null, hover = null, query = "", hidden = new Set();
+const other = () => models.find(m => m !== model && m !== "craft");
+
+function isoBand(k) { const v = maps[model].iso[k], all = Object.values(maps[model].iso).sort((a, b) => a - b);
+  return v >= all[Math.floor(all.length * .9)] ? "Most isolated 10%" : v <= all[Math.floor(all.length * .5)] ? "Dense half" : "In between"; }
+const ALL_COLOURINGS = {
+  cluster: { label: "Sound cluster", get: k => "Cluster " + (maps[model].cluster[k] + 1) },
+  iso: { label: "Isolation", get: isoBand },
+  gem: { label: "Your gems", get: k => recs[k].gem ? "Your gem" : "Not tagged" },
+  agree: { label: "Models agree", get: k => { const o = other(); if (!o) return null;
+    const a = new Set(maps[model].nn[k].map(x => x[0])), n = maps[o].nn[k].filter(x => a.has(x[0])).length;
+    return n >= 3 ? "3+ shared neighbours" : n >= 1 ? "1-2 shared" : "None shared"; } },
+};
+let colourings = ALL_COLOURINGS;
+let C;
+function cats() {
+  const get = colourings[colourBy].get, n = {};
+  Object.keys(recs).forEach(k => { const v = get(k); if (v) n[v] = (n[v] || 0) + 1; });
+  const keys = Object.keys(n).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const col = {}; keys.slice(0, 10).forEach((k, i) => col[k] = PALETTE[i]);
+  return { col, top: keys.slice(0, 10), n };
+}
+const colOf = k => C.col[colourings[colourBy].get(k)] || null;
+const catOf = k => colourings[colourBy].get(k);
+
+function div(z) { // diverging colour for a standardised axis value, theme-aware ends
+  const t = Math.max(-1, Math.min(1, z / 2.5)), dark = matchMedia("(prefers-color-scheme: dark)").matches && document.documentElement.dataset.theme !== "light" || document.documentElement.dataset.theme === "dark";
+  const mid = dark ? [40, 44, 56] : [238, 240, 245], lo = [47, 91, 211], hi = [214, 96, 44];
+  const e = t < 0 ? lo : hi, a = Math.abs(t);
+  return `rgb(${mid.map((m, i) => Math.round(m + (e[i] - m) * a)).join(",")})`;
+}
+const strip = k => `<div class="strip" title="Recording #${recs[k].n}: its first 24 axes">${maps[model].pc[k].slice(0, 24).map(z => `<span style="background:${div(z)}"></span>`).join("")}</div>`;
+let lay = "map", ax = 0, ay = 1;
+const axisName = i => `Axis ${i + 1} (${(maps[model].pcvar[i] * 100).toFixed(0)}%)`;
+function axisOpts() { ["ax", "ay"].forEach((id, j) => { const el = document.getElementById(id);
+  el.innerHTML = maps[model].pcvar.map((_, i) => `<option value="${i}">${axisName(i)}</option>`).join(""); el.value = j ? ay : ax; }); }
+function heat() {
+  const c = document.getElementById("heat"), r = c.getBoundingClientRect(), d = devicePixelRatio || 1, h = c.getContext("2d");
+  c.width = r.width * d; c.height = r.height * d; h.setTransform(d, 0, 0, d, 0, 0);
+  const keys = Object.keys(maps[model].pc).sort((a, b) => maps[model].cluster[a] - maps[model].cluster[b] || maps[model].pc[a][0] - maps[model].pc[b][0]);
+  const cols = maps[model].pcvar.length, lab = 26, cw = (r.width - lab) / keys.length, rh = (r.height - 18) / cols;
+  heatKeys = keys; heatGeom = { lab, cw };
+  h.fillStyle = css("--muted"); h.font = "10px " + css("--mono");
+  for (let j = 0; j < cols; j++) h.fillText(j + 1, 2, 18 + j * rh + rh * .7);
+  keys.forEach((k, i) => maps[model].pc[k].forEach((z, j) => { h.fillStyle = div(z); h.fillRect(lab + i * cw, 18 + j * rh, Math.ceil(cw), Math.ceil(rh)); }));
+  let prev = null; keys.forEach((k, i) => { const cl = maps[model].cluster[k]; if (cl !== prev) { h.fillStyle = PALETTE[cl % 10]; h.fillRect(lab + i * cw, 4, 2, 10);
+    h.fillStyle = css("--muted"); h.fillText("C" + (cl + 1), lab + i * cw + 4, 13); prev = cl; } });
+  if (sel) { const i = keys.indexOf(sel); h.strokeStyle = css("--fg"); h.lineWidth = 1.5; h.strokeRect(lab + i * cw, 17, Math.max(cw, 2), r.height - 18); }
+}
+let heatKeys = [], heatGeom = {};
+document.getElementById("heat").addEventListener("click", e => { const r = e.currentTarget.getBoundingClientRect(), i = Math.floor((e.clientX - r.left - heatGeom.lab) / heatGeom.cw);
+  if (heatKeys[i]) select(heatKeys[i]); });
+function axes() {
+  const el = document.getElementById("axes"), m = maps[model]; el.innerHTML = "";
+  m.pcends.slice(0, 6).forEach((e, i) => el.insertAdjacentHTML("beforeend", `<div class="axis"><b>${axisName(i)}</b>
+    <span>Low end: ${e.low.map(listen).join(" ")}</span><span>High end: ${e.high.map(listen).join(" ")}</span></div>`));
+  const tot = m.pcvar.reduce((a, b) => a + b, 0);
+  document.getElementById("latentlede").textContent = `Each column is one recording and each row one axis of the ${MODEL_NAMES[model]} space, ordered by how much of the variation it carries; the ${m.pcvar.length} axes shown hold ${(tot * 100).toFixed(0)}% of it. Columns are grouped by sound cluster. Axes have no names: listen to the recordings at each end to hear what one measures. Click a column to open that recording.`;
+  document.getElementById("scalebar").style.background = `linear-gradient(90deg, ${div(-2.5)}, ${div(0)}, ${div(2.5)})`;
+}
+const pct = x => (x * 100).toFixed(0) + "%";
+function verdict() {
+  const el = document.getElementById("verdict"), v = S.views[model]; el.innerHTML = "";
+  const card = (k, n, small, cls, word) => el.insertAdjacentHTML("beforeend",
+    `<div class="v"><span class="k">${k}</span><span class="n">${n} <small>${small}</small></span><span class="pill ${cls}">${word}</span></div>`);
+  const o = other();
+  if (o) { const key = [model, o].join("~"), x = S.neighbour_overlap[key] ?? S.neighbour_overlap[[o, model].join("~")];
+    const lift = x / S.chance;
+    card(`Same neighbours in ${MODEL_NAMES[o]}`, pct(x), `vs ${pct(S.chance)} by chance`, lift > 3 ? "good" : lift > 1.5 ? "weak" : "none", lift > 3 ? "strong" : lift > 1.5 ? "some" : "none"); }
+  card("Cluster stability", v.stability_ari.toFixed(2), `${v.k} clusters, 0 to 1`, v.stability_ari > .7 ? "good" : v.stability_ari > .4 ? "weak" : "none", v.stability_ari > .7 ? "stable" : v.stability_ari > .4 ? "shaky" : "unstable");
+  card("Cluster separation", v.silhouette.toFixed(2), "silhouette, -1 to 1", v.silhouette > .25 ? "good" : v.silhouette > .1 ? "weak" : "none", v.silhouette > .25 ? "clear" : v.silhouette > .1 ? "blurred" : "a continuum");
+  card("2D map faithfulness", v.trustworthiness.toFixed(2), "1 = keeps all neighbours", v.trustworthiness > .9 ? "good" : "weak", v.trustworthiness > .9 ? "faithful" : "approximate");
+  const art = v.same_upload / Math.max(v.same_upload_chance, 1e-3);
+  card("Neighbours from the same upload", pct(v.same_upload), `vs ${pct(v.same_upload_chance)} by chance`, art > 2 ? "weak" : "good", art > 2 ? "partly hears the transfer" : "little transfer effect");
+}
+
+function seg(id, opts, cur, on) {
+  const el = document.getElementById(id); el.innerHTML = "";
+  opts.forEach(([k, label]) => { const b = document.createElement("button"); b.type = "button"; b.textContent = label; b.setAttribute("aria-pressed", k === cur);
+    b.onclick = () => { on(k); seg(id, opts, k, on); }; el.appendChild(b); });
+}
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d"), tip = document.getElementById("tip");
+let pts = [];
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function layout() {
+  const r = cv.getBoundingClientRect(), d = devicePixelRatio || 1;
+  cv.width = r.width * d; cv.height = r.height * d; ctx.setTransform(d, 0, 0, d, 0, 0);
+  const pad = 18, m = maps[model];
+  let xy = m.xy;
+  if (lay === "pcs") { const ks = Object.keys(m.pc), xs = ks.map(k => m.pc[k][ax]), ys = ks.map(k => m.pc[k][ay]);
+    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    xy = Object.fromEntries(ks.map(k => [k, [(m.pc[k][ax] - x0) / (x1 - x0 || 1), (m.pc[k][ay] - y0) / (y1 - y0 || 1)]])); }
+  pts = Object.keys(xy).map(k => ({ k, x: pad + xy[k][0] * (r.width - 2 * pad), y: pad + (1 - xy[k][1]) * (r.height - 2 * pad) }));
+  draw();
+}
+function draw() {
+  const r = cv.getBoundingClientRect(); ctx.clearRect(0, 0, r.width, r.height);
+  const none = css("--none"), fg = css("--fg"), accent = css("--accent");
+  const nbs = sel ? new Set(maps[model].nn[sel].map(x => x[0])) : null;
+  const P = Object.fromEntries(pts.map(p => [p.k, p]));
+  if (sel && P[sel]) { ctx.strokeStyle = accent; ctx.globalAlpha = .45; ctx.lineWidth = 1;
+    maps[model].nn[sel].forEach(([k]) => { const p = P[k]; if (!p) return; ctx.beginPath(); ctx.moveTo(P[sel].x, P[sel].y); ctx.lineTo(p.x, p.y); ctx.stroke(); }); }
+  pts.forEach(p => {
+    let a = hidden.has(catOf(p.k)) ? .08 : .85;
+    if (query && String(recs[p.k].n) !== query) a = .08;
+    if (nbs && !nbs.has(p.k) && p.k !== sel) a = Math.min(a, .25);
+    ctx.globalAlpha = a; ctx.fillStyle = colOf(p.k) || none;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.k === sel ? 7 : 4.5, 0, 7); ctx.fill();
+    if (p.k === sel || p.k === hover) { ctx.globalAlpha = 1; ctx.strokeStyle = fg; ctx.lineWidth = 2; ctx.stroke(); }
+  });
+  ctx.globalAlpha = 1;
+}
+function nearest(e) { const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  let best = null, bd = 144; pts.forEach(p => { const d = (p.x - x) ** 2 + (p.y - y) ** 2; if (d < bd) { bd = d; best = p; } }); return best; }
+cv.addEventListener("mousemove", e => { const p = nearest(e); hover = p ? p.k : null;
+  if (p) { tip.hidden = false; tip.textContent = `Recording #${recs[p.k].n} · ${catOf(p.k) || ""}`; const r = cv.getBoundingClientRect();
+    tip.style.left = Math.min(p.x + 10, r.width - 200) + "px"; tip.style.top = (p.y + 10) + "px"; } else tip.hidden = true; draw(); });
+cv.addEventListener("mouseleave", () => { hover = null; tip.hidden = true; draw(); });
+cv.addEventListener("click", e => { const p = nearest(e); if (p) select(p.k); });
+const listen = k => `<a href="${recs[k].listen}" target="_blank" rel="noopener">#${recs[k].n}</a>`;
+function select(k) {
+  sel = k; const panel = document.getElementById("panel"), o = other();
+  const inOther = o ? new Set(maps[o].nn[k].map(x => x[0])) : new Set();
+  panel.innerHTML = `<h2>Recording #${recs[k].n}${recs[k].gem ? ' <span class="chip">your gem</span>' : ""}</h2>
+    <dl class="meta"><dt>Listen</dt><dd><a href="${recs[k].listen}" target="_blank" rel="noopener">Play from the Internet Archive</a></dd>
+    <dt>${colourings.cluster.label}</dt><dd>${colourings.cluster.get(k)} (${MODEL_NAMES[model]})</dd>
+    <dt>Isolation</dt><dd>${isoBand(k)}</dd></dl>
+    <div style="display:grid;gap:4px"><span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Its vector, first 24 axes</span>${strip(k)}</div>
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Sounds most like (${MODEL_NAMES[model]})</div>
+    <div class="nbs">${maps[model].nn[k].map(([n, sim]) => `<div class="nb"><span class="s">${sim.toFixed(2)}</span>
+      <span style="display:grid;gap:3px;min-width:0">${strip(n)}<span class="t">${listen(n)} <button type="button" class="chip" data-k="${n}" style="border:0;cursor:pointer">show</button>${inOther.has(n) && o ? `<span class="chip">also in ${MODEL_NAMES[o]}</span>` : ""}${recs[n].upload === recs[k].upload ? '<span class="chip">same upload</span>' : ""}${recs[n].gem ? '<span class="chip">your gem</span>' : ""}</span></span></div>`).join("")}</div>
+    <p class="empty" style="margin:0">The file names on the Internet Archive often carry titles. Listen before reading them if you want a blind check.</p>`;
+  panel.querySelectorAll("button[data-k]").forEach(b => b.onclick = () => select(b.dataset.k));
+  draw(); heat();
+}
+function legend() {
+  const el = document.getElementById("legend"); el.innerHTML = "";
+  C.top.forEach(k => { const sp = document.createElement("span"); sp.className = hidden.has(k) ? "off" : "";
+    sp.innerHTML = `<i style="background:${C.col[k]}"></i>${k} (${C.n[k]})`;
+    sp.onclick = () => { hidden.has(k) ? hidden.delete(k) : hidden.add(k); legend(); draw(); }; el.appendChild(sp); });
+}
+// listening test
+let picks = {};
+const testKey = () => `${who}-sound-test`;
+function trials() {
+  const el = document.getElementById("trials"); el.innerHTML = "";
+  DATA.trials.forEach((t, i) => {
+    el.insertAdjacentHTML("beforeend", `<div class="trial"><span class="no">${i + 1}</span><div class="row">
+      <span>Anchor ${listen(t.anchor)}</span><span>A ${listen(t.a)}</span><span>B ${listen(t.b)}</span>
+      <label><input type="radio" name="t${i}" id="t${i}a" value="a" ${picks[i] === "a" ? "checked" : ""}> A is closer</label>
+      <label><input type="radio" name="t${i}" id="t${i}b" value="b" ${picks[i] === "b" ? "checked" : ""}> B is closer</label></div></div>`);
+  });
+  el.querySelectorAll("input").forEach(inp => inp.onchange = () => { picks[inp.name.slice(1)] = inp.value;
+    try { localStorage.setItem(testKey(), JSON.stringify(picks)); } catch (e) {} score(); });
+  score();
+}
+function score() {
+  const done = Object.keys(picks).length, agree = Object.entries(picks).filter(([i, v]) => DATA.trials[i] && DATA.trials[i].near === v).length;
+  document.getElementById("score").textContent = done ? `You agree with the map on ${agree} of ${done} answered (${pct(agree / done)}). Chance is 50%.` : `${DATA.trials.length} trials. Nothing answered yet.`;
+  document.getElementById("answers").value = testKey() + " " + DATA.trials.map((t, i) => `${i + 1}${picks[i] || "-"}`).join(" ");
+}
+document.getElementById("copy").onclick = () => { const t = document.getElementById("answers");
+  navigator.clipboard.writeText(t.value).catch(() => { t.select(); }); };
+
+function useMaestro(slug) {
+  who = slug; DATA = BOOK[slug]; recs = DATA.recordings; maps = DATA.maps; S = DATA.summary; models = Object.keys(maps);
+  byNum = Object.fromEntries(Object.entries(recs).map(([k, r]) => [r.n, k]));
+  const gems = Object.values(recs).filter(r => r.gem).length;
+  colourings = Object.fromEntries(Object.entries(ALL_COLOURINGS).filter(([k]) => k !== "gem" || gems));
+  model = models[0]; colourBy = gems ? "gem" : "cluster"; sel = null; query = ""; hidden.clear();
+  document.getElementById("q").value = "";
+  try { picks = JSON.parse(localStorage.getItem(testKey()) || "{}"); } catch (e) { picks = {}; }
+  try { localStorage.setItem("sound-map-maestro", slug); } catch (e) {}
+  document.getElementById("h1").textContent = `${DATA.short || DATA.name} Sound Map`;
+  document.title = document.getElementById("h1").textContent;
+  document.getElementById("panel").innerHTML = '<p class="empty">Click a dot to hear a recording and the eight recordings that sound most like it. Recordings are numbered only: no title, film, composer or year is used or shown, so your ear is the judge.</p>';
+  seg("model", models.map(m => [m, MODEL_NAMES[m] || m]), model, m => { model = m; hidden.clear(); C = cats(); verdict(); legend(); axisOpts(); axes(); layout(); heat(); if (sel) select(sel); });
+  seg("colour", Object.entries(colourings).map(([k, v]) => [k, v.label]), colourBy, c => { colourBy = c; hidden.clear(); C = cats(); legend(); draw(); });
+  C = cats();
+  document.getElementById("lede").textContent = `${Object.keys(recs).length} ${DATA.name} recordings published by 1965, placed only by how they sound${gems ? `, ${gems} of them songs you tagged as gems` : ""}. Nearby dots are recordings a pretrained music model hears as similar. No title, film, composer, year or popularity is used to place them or to judge the map.`;
+  document.getElementById("foot").textContent = `Neighbours are the ${DATA.k} closest recordings in the model's full vector space. The Map layout (${maps[model].how.toUpperCase()}) squeezes that space into 2D and only approximates it; the Axes layout plots two of its principal axes directly. Clusters are k-means on the vectors. The upload check uses only which Internet Archive upload a file came from, to warn when neighbours are the same transfer. No audio is stored here: listen links play from the Internet Archive.`;
+  verdict(); legend(); trials(); axisOpts(); axes(); layout(); heat();
+}
+seg("lay", [["map", "Map"], ["pcs", "Axes"]], lay, v => { lay = v; document.getElementById("axsel").hidden = v !== "pcs"; layout(); });
+document.getElementById("ax").onchange = e => { ax = +e.target.value; layout(); };
+document.getElementById("ay").onchange = e => { ay = +e.target.value; layout(); };
+document.getElementById("q").addEventListener("input", e => { query = e.target.value.trim().replace("#", ""); if (byNum[query]) select(byNum[query]); draw(); });
+const slugs = Object.keys(BOOK);
+let first = slugs[0]; try { const saved = localStorage.getItem("sound-map-maestro"); if (BOOK[saved]) first = saved; } catch (e) {}
+if (slugs.length > 1) { document.getElementById("whobox").hidden = false;
+  seg("who", slugs.map(k => [k, BOOK[k].name]), first, useMaestro); }
+useMaestro(first);
+new ResizeObserver(layout).observe(cv);
+new ResizeObserver(heat).observe(document.getElementById("heat"));
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { draw(); heat(); axes(); if (sel) select(sel); });
+</script>
