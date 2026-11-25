@@ -1222,13 +1222,29 @@ function lowWhy(u, d) {
   return why.length ? why.map(w => "popular: " + w) : [`popular (${u._reach} of 100)`];
 }
 
-const TAGS = { map: new Map(), mode: "local", db: null, dl: null, ready: true, readOnly: false, msg: null };
+const TAGS = { map: new Map(), seed: new Map(), mode: "local", db: null, dl: null, ready: true, readOnly: false, msg: null };
 const tagDocId = (slug, id) => `${slug}~${id}`;
+// Outside claude.ai (Netlify, maestro-explore --serve) the page shows the published seed tags
+// (canon/gem-tags.json, written by `maestro-gem-tags site`) with this browser's own changes on top:
+// localStorage "gemTags" holds tags added here, "gemTagsOff" the seed tags removed here.
 function loadLocalTags() {
-  try { const a = JSON.parse(lsGet("gemTags") || "[]"); TAGS.map = new Map(a.filter(t => t && t.maestro && t.unit != null).map(t => [tagDocId(t.maestro, t.unit), t])); }
-  catch { TAGS.map = new Map(); }
+  let own = [], off = [];
+  try { own = JSON.parse(lsGet("gemTags") || "[]"); off = JSON.parse(lsGet("gemTagsOff") || "[]"); } catch {}
+  const hidden = new Set(Array.isArray(off) ? off : []);
+  TAGS.map = new Map([...TAGS.seed].filter(([id]) => !hidden.has(id)));
+  for (const t of Array.isArray(own) ? own : []) if (t && t.maestro && t.unit != null) TAGS.map.set(tagDocId(t.maestro, t.unit), t);
 }
-function saveLocalTags() { lsSet("gemTags", JSON.stringify([...TAGS.map.values()])); }
+function saveLocalTags() {
+  lsSet("gemTags", JSON.stringify([...TAGS.map].filter(([id, t]) => TAGS.seed.get(id) !== t).map(([, t]) => t)));
+  lsSet("gemTagsOff", JSON.stringify([...TAGS.seed.keys()].filter(id => !TAGS.map.has(id))));
+}
+async function loadSeedTags() {
+  try {
+    const r = await fetch("canon/gem-tags.json"); if (!r.ok) return;
+    const x = await r.json(); if (!x || x.format !== "maestro-gem-tags/1" || !Array.isArray(x.tags)) return;
+    TAGS.seed = new Map(x.tags.filter(t => t && t.maestro && t.unit != null).map(t => [tagDocId(t.maestro, t.unit), t]));
+  } catch {}
+}
 // Attach tags to units; a tag whose unit id changed (a rebuilt canon) is found again by title and year.
 function bindTags(d) {
   const slug = d.maestro.slug; let n = 0;
@@ -1245,7 +1261,8 @@ function bindTags(d) {
 }
 function onTagsChanged() { for (const d of Object.values(S.snaps)) bindTags(d); if (S.d || S.view === "films") render(); }
 const tagRank = u => u._tag ? (u._tag.rare ? 2 : 1) : 0;
-function tagBadge(u) { return u._tag ? `<span class="gem${u._tag.rare ? " rare" : ""}" title="Tagged by you${u._tag.rare ? ", with low popularity" : ""}">${u._tag.rare ? "rare gem" : "gem"}</span>` : ""; }
+const taggedBy = () => TAGS.seed.size ? "Tagged" : "Tagged by you";
+function tagBadge(u) { return u._tag ? `<span class="gem${u._tag.rare ? " rare" : ""}" title="${taggedBy()}${u._tag.rare ? ", with low popularity" : ""}">${u._tag.rare ? "rare gem" : "gem"}</span>` : ""; }
 function tagRecord(u, d) { return { maestro: d.maestro.slug, unit: u.id, title: u.title, year: u.year || null, container: u._c ? u._c.title : null, tagged_at: new Date().toISOString() }; }
 async function setTag(u, on) {
   const d = S.d, id = u._tag ? u._tag.id : tagDocId(d.maestro.slug, u.id);
@@ -1267,14 +1284,16 @@ async function writeTag(id, rec) {
 }
 function tagStoreNote() {
   if (TAGS.mode === "pending") return "Loading your tags…";
-  return TAGS.mode === "db" ? "Tags are saved with this page, so they follow you to any device." : "Tags are saved in this browser only: export them to keep a copy.";
+  if (TAGS.mode === "db") return "Tags are saved with this page, so they follow you to any device.";
+  return TAGS.seed.size ? `Showing ${plural(TAGS.seed.size, "curated gem tag")}. Your own changes are saved in this browser only: export them to keep a copy.`
+    : "Tags are saved in this browser only: export them to keep a copy.";
 }
 function tagBox(u, d) {
   const low = isLow(u, d), why = popularBecause(u, d).slice(0, 2);
   const line = low ? (d.hasPop ? "Popularity is low, so a gem tag makes this a rare gem." : "No popularity evidence, so a gem tag makes this a rare gem.")
     : `Popular${why.length ? ` (${why.join("; ")})` : ""}, so a gem tag makes this a gem, not a rare gem.`;
   const off = TAGS.mode === "pending" || TAGS.readOnly;
-  return `<div class="tagbox">${u._tag ? `<div>${tagBadge(u)} <span class="muted">tagged by you</span></div>` : ""}
+  return `<div class="tagbox">${u._tag ? `<div>${tagBadge(u)} <span class="muted">${taggedBy().toLowerCase()}</span></div>` : ""}
     <div class="muted">${esc(line)}</div>
     <button class="btn${u._tag ? "" : " primary"}" type="button" data-tag="${u.id}"${off ? " disabled" : ""}>${u._tag ? "Remove gem tag" : "☆ Tag as gem"}</button>
     ${TAGS.msg ? `<div class="muted">${esc(TAGS.msg)}</div>` : ""}</div>`;
@@ -1320,7 +1339,11 @@ async function importTags(text) {
 }
 async function initTags() {
   loadLocalTags();
-  if (!(window.claude && typeof window.claude.use === "function")) return;
+  if (!(window.claude && typeof window.claude.use === "function")) {
+    await loadSeedTags();
+    if (TAGS.seed.size && TAGS.mode !== "db") { loadLocalTags(); onTagsChanged(); }
+    return;
+  }
   window.claude.use("downloads").then(x => { TAGS.dl = x; }).catch(() => {});
   TAGS.mode = "pending";
   let db = null; try { db = await window.claude.use("db"); } catch {}
@@ -1385,7 +1408,7 @@ function renderMap(res) {
       <div class="mapbox" id="mapbox"><canvas id="map" role="img" aria-label="Scatter of ${esc(d.unitWord)}s: popularity across, gemness up"></canvas></div>
       <div class="legend">${Object.entries(BASIS).map(([b, [lbl, v]]) => `<span><i class="dot${b === "lead" ? " ring" : ""}" style="background:var(${v});border-color:var(${v})"></i>${esc(lbl)} · <span class="mono">${byBasis(b).toLocaleString()}</span></span>`).join("")}
         <span><i class="dot" style="background:var(--t-none);width:6px;height:6px"></i>Unrated (no gemness evidence yet) · <span class="mono">${unrated.toLocaleString()}</span></span>
-        <span><i class="dot ring" style="border-color:var(--warn)"></i>Tagged by you · <span class="mono">${res.filter(u => u._tag).length.toLocaleString()}</span></span></div>
+        <span><i class="dot ring" style="border-color:var(--warn)"></i>${taggedBy()} · <span class="mono">${res.filter(u => u._tag).length.toLocaleString()}</span></span></div>
       <div class="sub" style="margin:10px 0 0">${esc(M.about)}</div></div>
     <div class="panel"><h2>Top left: good and overlooked</h2><div class="sub">Highest gemness with the least popularity, in ${scope}.</div>
       <div class="ledger">${rated.sort((a, b) => (gemOf(b, model).score - b._reach) - (gemOf(a, model).score - a._reach)).slice(0, 15).map(u => { const g = gemOf(u, model); return `<div class="row${S.sel === u.id ? " sel" : ""}" data-u="${u.id}" tabindex="0" role="button"><div class="yr">${u.year || "—"}</div>

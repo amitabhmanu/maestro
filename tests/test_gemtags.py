@@ -51,3 +51,17 @@ def test_record_picks_checks_titles(store_for):
     merge(ledger, [], complete_for={"rafi"})
     assert record(s, ledger, "rafi")["unpicked"] == 1
     assert not s.conn.execute("SELECT 1 FROM claim WHERE field = 'pick' AND status = 'active'").fetchall()
+
+
+def test_cli_site_writes_active_tags_only(tmp_path):
+    led = tmp_path / "ledger.json"
+    ledger = {}
+    merge(ledger, [tag(1, "A"), tag(2, "B")], complete_for={"rafi"}, now="t1")
+    merge(ledger, [tag(1, "A")], complete_for={"rafi"}, now="t2")  # B untagged
+    from maestro.gemtags import write_ledger
+    write_ledger(led, ledger)
+    out = tmp_path / "gem-tags.json"
+    assert main(["site", "--ledger", str(led), "--out", str(out)]) == 0
+    x = json.loads(out.read_text())
+    assert x["format"] == FORMAT and [t["title"] for t in x["tags"]] == ["A"]
+    assert set(x["tags"][0]) <= {"maestro", "unit", "title", "year", "container", "tagged_at", "film", "singers"}
