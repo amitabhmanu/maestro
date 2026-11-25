@@ -1,0 +1,14 @@
+# Netlify deploy of the canon explorer (static page only; no Python, no database).
+# The page comes from src/maestro/explorer; canon snapshots, when committed, from web/canon.
+[build]
+  command = "bash scripts/netlify-build.sh"
+  publish = "site"
+
+[build.environment]
+  # Stop Netlify from installing the Python package: the explorer needs none of it.
+  SKIP_PYTHON_INSTALL = "true"
+
+[[headers]]
+  for = "/canon/*"
+  [headers.values]
+    Cache-Control = "public, max-age=300"

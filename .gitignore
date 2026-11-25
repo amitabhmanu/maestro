@@ -9,3 +9,6 @@ data/
 maestros/*/cache/
 maestros/*/private/
 maestros/*/runs/
+
+# Netlify build output (scripts/netlify-build.sh)
+site/
