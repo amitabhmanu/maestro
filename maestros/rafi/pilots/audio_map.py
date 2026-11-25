@@ -364,7 +364,7 @@ def map_(args):
             trials.append({"anchor": common[i], "a": common[a], "b": common[b], "near": "a" if a == near else "b"})
 
     fx = lambda x: f"{x:.2f}"
-    report = ["# Audio-only map of Rafi's songs: pilot report", "",
+    report = [f"# Audio-only map of {args.maestro_name}'s songs: pilot report", "",
               "Built and judged from the audio alone: no title, film, composer, year or popularity is used.",
               f"{n} recordings. Neighbours = the {k} closest recordings by cosine similarity in the full vector space.", "",
               "## Do the models hear the same thing?", "",
@@ -586,6 +586,7 @@ def main():
     m.add_argument("--trials", type=int, default=30)
     m.add_argument("--pcs", type=int, default=24, help="principal axes kept for the latent views")
     m.add_argument("--dup", type=float, default=0.985)
+    m.add_argument("--maestro-name", default="Rafi", help="name in the report heading")
     g = sub.add_parser("find-gems")
     g.add_argument("--ledger", help="gem-tags-ledger.json from the canon explorer")
     g.add_argument("--canon", help="without --ledger: reduced canon (audio-pilot-canon.json.gz) to read tagged units from")
