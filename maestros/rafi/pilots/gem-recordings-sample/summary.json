@@ -1,0 +1,20 @@
+{
+ "rafi": {
+  "gems": 10,
+  "public_domain": 10,
+  "had_recording_before": 7,
+  "has_candidate_now": 7,
+  "new": 2,
+  "lossless": 0,
+  "better_than_before": 4
+ },
+ "lata": {
+  "gems": 10,
+  "public_domain": 10,
+  "had_recording_before": 7,
+  "has_candidate_now": 4,
+  "new": 2,
+  "lossless": 0,
+  "better_than_before": 0
+ }
+}

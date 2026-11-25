@@ -111,7 +111,7 @@ BEST_FIELDS = ["source", "identifier", "file", "download", "page", "match_title"
 def _before(paths):
     out = {}
     for p in paths:
-        maestro = None
+        maestro = "rafi"  # the Rafi pilot's folders (audio-map/) carry no maestro prefix
         for part in Path(p).parts:  # lata-audio... -> lata
             for m in NAMES:
                 if part.lower().startswith(m):
