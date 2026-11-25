@@ -18,6 +18,10 @@ title as `container` and its id as `film`, so they sit beside canon tags and nev
   so a rebuilt canon never gets a pick on the wrong song. Untagged units have their tag pick
   superseded, never deleted.
 
+- `maestro-gem-tags site --ledger FILE --out web/canon/gem-tags.json` writes the ledger's active tags
+  as the public site's seed tags: the explorer shows them to every visitor when it has no Artifact
+  tag store (Netlify, `maestro-explore --serve`), with each visitor's own browser tags on top.
+
 The ledger is a valid `--picks-file` for `maestro-score` too.
 """
 
@@ -197,6 +201,18 @@ def record(store, ledger: dict[str, dict[str, Any]], slug: str, *, dry_run: bool
     return out
 
 
+SITE_FIELDS = ("maestro", "unit", "title", "year", "container", "tagged_at", "film", "singers")
+
+
+def site_tags(ledger: dict[str, dict[str, Any]], now: str | None = None) -> str:
+    """The ledger's active tags as a `maestro-gem-tags/1` file for the public site (no ledger bookkeeping)."""
+    tags = [{k: t[k] for k in SITE_FIELDS if t.get(k) is not None}
+            for t in sorted(ledger.values(), key=lambda t: (t["maestro"], int(t["unit"]))) if is_active(t)]
+    return json.dumps({"format": FORMAT, "kind": "site", "exported_at": now or _now(),
+                       "about": "Gem tags shown to every visitor of the public explorer site (from the ledger).",
+                       "tags": tags}, ensure_ascii=False, indent=1) + "\n"
+
+
 # ---- CLI --------------------------------------------------------------------------------
 
 def main(argv: list[str] | None = None) -> int:
@@ -213,7 +229,16 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--dsn", help="default $MAESTRO_DSN_<SLUG>, then $MAESTRO_DSN (.env is read)")
     r.add_argument("--ledger", required=True)
     r.add_argument("--dry-run", action="store_true")
+    w = sub.add_parser("site", help="write a ledger's active tags as the public site's seed tags")
+    w.add_argument("--ledger", required=True)
+    w.add_argument("--out", required=True, help="e.g. web/canon/gem-tags.json")
     args = p.parse_args(argv)
+
+    if args.cmd == "site":
+        ledger = load_ledger(args.ledger)
+        Path(args.out).write_text(site_tags(ledger), encoding="utf-8")
+        print(f"{args.out}: {sum(1 for t in ledger.values() if is_active(t))} tag(s)")
+        return 0
 
     if args.cmd == "merge":
         ledger = load_ledger(args.ledger)
