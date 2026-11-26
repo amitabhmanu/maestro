@@ -294,6 +294,9 @@ def test_api_key_as_query_parameter(monkeypatch):
                 sleep=lambda s: None)
     f._get("https://ws.audioscrobbler.com/2.0/?method=x")
     assert seen[0][0].endswith("&api_key=secret") and not any("secret" in v for v in seen[0][1].values())
+    # An error that quotes the request URL never stores the key (a seed with a stray "\r" did).
+    assert f.redact("InvalidURL: URL can't contain control characters. '/2.0/?x=1\r&api_key=secret'") == \
+        "InvalidURL: URL can't contain control characters. '/2.0/?x=1\r&api_key=***'"
 
 
 def test_count_signal_popular_only_at_the_top():

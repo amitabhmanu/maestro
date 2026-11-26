@@ -9,7 +9,7 @@ import urllib.robotparser
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import quote, quote_plus, urlencode, urlsplit
 
 from maestro.rawstore import RawStore
 
@@ -116,6 +116,16 @@ class Fetcher:
             if gap > 0:
                 self._sleep(gap)
         self._last[host] = self._clock()
+
+    def redact(self, text: str) -> str:
+        """`text` with every API credential this fetcher sends replaced by "***": an error raised on a
+        request (a bad URL, a timeout) quotes the URL, query-string key included, and errors are stored."""
+        for creds in self.api_headers.values():
+            for v in creds.values():
+                if v and len(v) >= 6:
+                    for form in {v, quote_plus(v), quote(v, safe="")}:
+                        text = text.replace(form, "***")
+        return text
 
     RETRY_STATUS = (429, 503)  # the server asks us to slow down (MusicBrainz answers 503 when busy)
     RETRIES = 3
