@@ -24,12 +24,12 @@ def song_page(singer: str = "mohammed_rafi", lyrics: str | None = INVENTED) -> b
     """A song page shaped like the site's: navigation menu (which links every big singer), the song's own
     row, then the lyrics block."""
     nav = "".join(f'<a href="/singer/{s}.php">{s}</a>' for s in ("lata_mangeshkar", "mohammed_rafi", "mukesh"))
-    row = ('<table class="w760"><tr itemprop="track" itemscope itemtype="https://schema.org/MusicRecording">'
+    row = ('<div itemscope itemtype="http://schema.org/MusicRecording"><table class="w760"><tr>'
            '<td class="w760"><table class="b1 w760 bgff pad2 allef"><tr><td rowspan="2">'
            '<a href="/song/chanda_ki_naav.htm" itemprop="url"><span itemprop="name">Chanda Ki Naav</span></a></td>'
            '<td class="w150"><span itemprop="byArtist" itemscope itemtype="http://schema.org/MusicGroup">'
            f'<a itemprop="url" href="/singer/{singer}.php"><span itemprop="name">Someone</span></a></span></td>'
-           '</tr></table></td></tr></table>')
+           '</tr></table></td></tr></table></div>')
     block = ""
     if lyrics is not None:
         body = "<br />\n".join(lyrics.split("\n"))

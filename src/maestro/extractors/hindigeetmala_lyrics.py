@@ -79,10 +79,19 @@ def lyrics_text(page: str) -> str | None:
     return text or None
 
 
+SONG_ROW = re.compile(r'itemtype="https?://schema\.org/MusicRecording"|<tr itemprop="track"')
+BY_ARTIST = re.compile(r'itemprop="byArtist"[^>]*>\s*<a[^>]*href="(/singer/[^"]+)"')
+
+
 def song_singers(page: str) -> list[str]:
-    """Singer page paths in the page's own song row (not the site's navigation menu)."""
-    row = hgm.TRACK.search(page)
-    return [path for path, _name in hgm._people(row.group(0), "singer")] if row else []
+    """Singer page paths credited (schema.org byArtist) in the page's own song row, which runs from its
+    MusicRecording markup to the lyrics heading; the site's navigation menu links singers too."""
+    start = SONG_ROW.search(page)
+    if not start:
+        return []
+    end = min([i for i in (page.find("<h2", start.end()), page.find('itemprop="lyrics"', start.end())) if i >= 0]
+              or [len(page)])
+    return BY_ARTIST.findall(page[start.start():end])
 
 
 # ---- list pages -------------------------------------------------------------------------------------------
