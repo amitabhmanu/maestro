@@ -35,6 +35,7 @@ from maestro.popularity import resolve_reasons, score_canon, unit_summary
 from maestro.pack import load_pack
 from maestro.resolve import Groups, Normaliser, fix_lookalikes
 from maestro.store import Store
+from maestro.styles import add_style
 
 FORMAT = 1
 
@@ -230,6 +231,8 @@ def snapshot(store: Store, include_private: bool = False, draft: bool | str = Fa
             _add(d, "titles", v)
         elif f in UNIT_TEXT_FIELDS:
             _add(d, UNIT_TEXT_FIELDS[f], v)
+            if f == "raga" and isinstance(v, str):  # who says which raga: the Ragas view shows each tag's source
+                _add(d.setdefault("raga_src", {}), v, src)
         elif f == "credit_unlinked" and isinstance(v, dict):
             _add(d, "credits_unlinked", {"role": v.get("role"), "name": v.get("name")})
         elif f == "on_screen" and r["ref_entity_id"]:
@@ -412,7 +415,7 @@ def snapshot(store: Store, include_private: bool = False, draft: bool | str = Fa
     if draft:  # published before review is done: the picker and overview say so
         snap["draft"] = {"note": draft if isinstance(draft, str) else "",
                          "open_reviews": sum((report or {}).get("open_reviews", {}).values())}
-    return add_media(snap, pack.data)
+    return add_style(add_media(snap, pack.data), pack.data, pack.path.parent)
 
 
 # ---- CLI ---------------------------------------------------------------------------
@@ -498,7 +501,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", type=Path, default=Path("data/explorer"), help="site folder (default data/explorer)")
     p.add_argument("--include-private", action="store_true", help="also include private claims (never publish these)")
     p.add_argument("--relink", action="store_true",
-                   help="refresh the watch, listen and lyrics links of the snapshots already in --out from their "
+                   help="refresh the watch, listen and lyrics links and the raga table of the snapshots already in --out from their "
                         "packs (maestros/<slug>), without a database")
     p.add_argument("--draft", nargs="?", const=True, metavar="NOTE",
                    help="mark the snapshots as drafts (review items still open), with an optional note")
@@ -532,10 +535,13 @@ def main(argv: list[str] | None = None) -> int:
             if path.name == "index.json":
                 continue
             snap = json.loads(path.read_text("utf-8"))
+            if "maestro" not in snap or "units" not in snap:  # gem-tags.json and other files beside the snapshots
+                continue
             if any(x["maestro"]["slug"] == snap["maestro"]["slug"] for x in snaps):
                 continue
             pack = load_pack(Path("maestros") / snap["maestro"]["slug"])
             add_media(snap, pack.data)
+            add_style(snap, pack.data, pack.path.parent)
             path.write_text(json.dumps(snap, ensure_ascii=False, separators=(",", ":"), default=str), "utf-8")
             n = sum(1 for u in snap["units"] if u.get("media"))
             print(f"{snap['maestro']['name']}: links for {n} of {len(snap['units'])} {snap['maestro']['unit']}s")
