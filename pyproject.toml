@@ -35,6 +35,7 @@ maestro-raw = "maestro.rawstore:main"
 maestro-lyrics = "maestro.lyrics:main"
 maestro-films = "maestro.films:main"
 maestro-gem-tags = "maestro.gemtags:main"
+maestro-words = "maestro.lyricwords:main"
 
 [build-system]
 requires = ["hatchling>=1.25"]

@@ -85,6 +85,10 @@ lexicon:
   # Rafi's own table first, then the name spellings every Hindi film canon shares.
   people_aliases: [lexicon/people.tsv, ../hindi-films/lexicon/people.tsv]
   not_people: ../hindi-films/lexicon/not_people.tsv
+  # Lyric words over time (maestro-words): shared Hindi film word lists.
+  lyric_stopwords: ../hindi-films/lexicon/lyric_stopwords.tsv
+  lyric_concepts: ../hindi-films/lexicon/lyric_concepts.tsv
+  lyric_variants: ../hindi-films/lexicon/lyric_variants.tsv
 collaborators:
   composers: [Laxmikant-Pyarelal, Shankar-Jaikishan, O. P. Nayyar, Kalyanji-Anandji, Naushad, S. D. Burman, Ravi, Madan Mohan]
   co_singers: [Lata Mangeshkar, Asha Bhosle, Geeta Dutt, Shamshad Begum]
