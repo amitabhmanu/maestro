@@ -1,0 +1,80 @@
+# Hindustani ragas for the explorer's Ragas view (any Hindi film canon). Columns: raga<TAB>other names, | separated
+# (Carnatic names too; folded on load)<TAB>thaat<TAB>time<TAB>season<TAB>light<TAB>mood.
+# time: the traditional prahar (Bhatkhande's time theory as Wikipedia's raga articles give it): d1 6-9 am, d2 9-12,
+# d3 12-3 pm, d4 3-6 pm, n1 6-9 pm, n2 9-12, n3 12-3 am, n4 3-6 am; blank = no fixed time (light, folk-based or
+# Carnatic-born ragas, and the Malhars, sung in the monsoon). light: yes for light-classical ragas that film songs
+# use loosely, mixing in other notes. mood: the conventional feeling (rasa), a guide only: composers use any raga for any mood.
+# Edit here, not in src/: a song's raga label from a source is mapped through these names (the first match wins).
+Bhairav	Bhairava|Mayamalavagowla	Bhairav	d1			devotional, serious
+Ahir Bhairav	Ahir Bhairava|Chakravakam	Bhairav	d1			devotional, tender
+Basant Mukhari	Vasanta Mukhari	Bhairav	d1			devotional, longing
+Jogiya	Jogia	Bhairav	d1			renunciation, pathos
+Vibhas	Bibhas	Bhairav	d1			devotional
+Kalingada	Kalingara	Bhairav	n4			devotional
+Bhatiyar	Bhatiar	Marwa	n4			longing
+Lalit		Marwa	n4			longing, devotional
+Sohni	Sohani|Hamsanandi	Marwa	n4			romantic, restless
+Bhairavi	Bhairvi|Sindhu Bhairavi	Bhairavi	d1		yes	devotional, pathos; also sung to close a concert at any hour
+Bilawal	Alaiya Bilawal|(Alaiya) Bilawal|Alhaiya Bilawal|Shankarabharanam	Bilawal	d1			cheerful
+Deshkar		Bilawal	d2			cheerful
+Todi	Miyan Ki Todi|Hanumatodi|Hanuma Todi|Shubhapantuvarali	Todi	d2			pathos, longing
+Gurjari Todi		Todi	d2			pathos
+Bilaskhani Todi		Bhairavi	d2			pathos
+Asavari	Natabhairavi|Komal Rishabh Asavari	Asavari	d2			renunciation, pathos
+Jaunpuri		Asavari	d2			longing, pathos
+Devgandhari	Devagandhari|Dev Gandhari	Asavari	d2			devotional
+Desi	Deshi	Asavari	d2			pathos
+Sarang	Brindavani Sarang|Vrindavani Sarang|Madhyamavati|Madhmad Sarang	Kafi	d3			serene, joyous
+Gaud Sarang	Gour Sarang|Goud Sarang|Gour Sarang (Goud Sarang)	Kalyan	d3			romantic
+Bhimpalasi	Bhimpalas|Bhimpalasri|Abheri|Bheempalasi	Kafi	d3			longing, romantic
+Dhani	Shuddha Dhanyasi|Raag Dhani	Kafi	d3			longing, playful
+Pilu	Piloo|Peelu|Kapi	Kafi	d3		yes	romantic, pathos
+Patdeep	Gourimanohari|Patdip	Kafi	d4			longing
+Madhuvanti		Todi	d4			romantic
+Multani		Todi	d4			serious
+Shree	Shri|Sri	Poorvi	d4			serious, devotional
+Marwa	Marva	Marwa	d4			restless, longing
+Puriya Dhanashree	Puria Dhanshri|Puria Dhanashri|Puriya Dhanashri|Pantuvarali	Poorvi	d4			longing, devotional
+Deepak		Poorvi	d4			passionate
+Yaman	Yaman Kalyan|Kalyani|Iman	Kalyan	n1			romantic, devotional
+Shuddh Kalyan	Shuddha Kalyan|Mohana Kalyani	Kalyan	n1			serene
+Bhupali	Bhoopali|Bhoop|Bhupali Todi|Mohanam	Kalyan	n1			serene, devotional
+Kedar	Hamir Kalyani|Hamirkalyani	Kalyan	n1			romantic, devotional
+Hameer	Hamir	Kalyan	n1			heroic, romantic
+Chhayanat	Chayanat|Chhaya Nat	Kalyan	n1			romantic
+Hemant		Bilawal	n1			romantic
+Hamsadhwani	Hamsadhvani|Hansadhwani	Bilawal	n1			joyous
+Durga	Shuddha Saveri|Arabhi	Bilawal	n2			joyous, devotional
+Bihag		Bilawal	n2			romantic
+Maru Bihag		Kalyan	n2			romantic, longing
+Khamaj	Harikambhoji	Khamaj	n2		yes	romantic, playful
+Manj Khamaj	Maanj Khamaj	Khamaj	n2		yes	romantic
+Desh	Des|Desh or Des	Khamaj	n2	monsoon		romantic, monsoon
+Tilak Kamod		Khamaj	n2			romantic, playful
+Tilang		Khamaj	n2			romantic
+Jhinjhoti	Jhinjoti	Khamaj	n2		yes	romantic
+Kalavati	Kalawati|Valaji	Khamaj	n2			romantic, joyous
+Rageshri	Rageshree	Khamaj	n2			romantic, longing
+Gara	Gaara	Khamaj	n2		yes	romantic, pathos
+Jaijaiwanti	Jaijaivanti|Jaijaiwanti|Dwijavanthi|Jaijawanti	Khamaj	n2			romantic, longing
+Malgunji	Malagunji	Khamaj	n2			romantic
+Abhogi	Abhogi Kanada	Kafi	n2			devotional, longing
+Kafi		Kafi	n2	spring	yes	romantic, playful (Holi)
+Bageshri	Bageshree|Bhageshri	Kafi	n3			longing
+Bahar		Kafi	n3	spring		joyous, spring
+Darbari	Darbari Kanada|Darbari Kanhada|Kanada	Asavari	n3			grave, pathos
+Adana	Adana Kanada	Asavari	n3			heroic
+Malkauns	Malkaus|Hindolam	Bhairavi	n3			serene, meditative
+Chandrakauns			n3			serious, longing
+Shivranjani	Shivaranjani|Shiv Ranjani				yes	pathos
+Kirwani	Keeravani|Kiravani				yes	pathos, romantic
+Charukeshi	Charukesi				yes	romantic, longing
+Anandabhairavi	Ananda Bhairavi				yes	devotional, pathos
+Pahadi	Pahari	Bilawal			yes	romantic, playful; from hill folk song
+Mand	Maand	Bilawal			yes	romantic; from Rajasthani folk song
+Megh Malhar	Megh	Kafi		monsoon		monsoon
+Miyan Ki Malhar	Mian Ki Malhar|Malhar	Kafi		monsoon		monsoon, longing
+Gaud Malhar	Gour Malhar|Goud Malhar|Soor Malhar|Sur Malhar	Khamaj		monsoon		monsoon, romantic
+Desh Malhar		Khamaj		monsoon		monsoon
+Basant	Vasant	Poorvi		spring		joyous, spring
+Hindol		Kalyan	d1	spring		joyous, spring

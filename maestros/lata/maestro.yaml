@@ -66,6 +66,7 @@ registers:
 sources:
   - {id: hfgk_online, kind: structured, lineage: hfgk, reliability: 0.95, access: crawlable, url: "https://hamraaz.org/filmssite/public/", sweep: {url: "https://hamraaz.org/filmssite/public/person.php?id=17375", extractor: hamraaz, purpose: spine}, container_url: "https://hamraaz.org/filmssite/public/film.php?id={xref}"}
   - {id: hindigeetmala, kind: semi, lineage: hindigeetmala, reliability: 0.85, access: crawlable, url: "https://www.hindigeetmala.net", unit_mode: enrich, enrich_until: 1985, extractor: hindigeetmala, sweep: {url: "https://www.hindigeetmala.net/singer/lata_mangeshkar.php", extractor: hindigeetmala, purpose: spine}, _why: {reason: "5,700+ Lata songs over 571 pages (19 Nov 2026), all years. Details only to 1985, where it mostly copies HFGK (and adds no lineage); from 1986, where HFGK stops, it creates her Hindi film songs (Amitabh, 19 Nov 2026), so its lineage is its own."}}
+  - {id: wikipedia_ragas, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable, url: "https://en.wikipedia.org/wiki/List_of_film_songs_based_on_ragas", unit_mode: enrich, extractor: wikipedia_ragas, sweep: {url: "https://en.wikipedia.org/wiki/List_of_film_songs_based_on_ragas", extractor: wikipedia_ragas, purpose: enrich}, _why: {reason: "Ragas only (Amitabh, 26 Nov 2026: raga-wise exploring): the list names the raga of ~600 Hindi film songs, about 120 Rafi and 250 Lata. Details only, no lineage; rows the canon cannot place become listing_gap claims."}}
   - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.8, access: api, api_rps: 1, distinct_ids: false, url: "https://musicbrainz.org/ws/2/", sweep: {url: "https://musicbrainz.org/ws/2/release?track_artist=aeb71bd8-447d-4415-8ea1-2b7d664f67e1&limit=100&offset=0&fmt=json&inc=recordings+release-groups+artist-credits", purpose: spine}}
   - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api, api_rps: 0.4, api_auth: {env: DISCOGS_TOKEN, format: "Discogs token={token}", rps: 0.9}, distinct_ids: false, unit_mode: enrich, url: "https://api.discogs.com/", extractor: discogs, sweep: {url: "https://api.discogs.com/artists/342906/releases?sort=year&per_page=100&page=1", extractor: discogs, purpose: spine}, _why: {reason: "Details only, as for Rafi and Arnold: compilations would become their own containers."}}
   - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api, api_rps: 1, url: "https://query.wikidata.org/sparql"}
@@ -77,6 +78,7 @@ sources:
 lexicon:
   people_aliases: [lexicon/people.tsv, ../hindi-films/lexicon/people.tsv]
   not_people: ../hindi-films/lexicon/not_people.tsv
+  styles: ../hindi-films/lexicon/ragas.tsv  # raga names, thaat, time of day and mood, for the explorer's Ragas view
 collaborators:
   composers: [Laxmikant-Pyarelal, Shankar-Jaikishan, S. D. Burman, R. D. Burman, Madan Mohan, C. Ramchandra, Naushad, Salil Chowdhury, Kalyanji-Anandji, Hridaynath Mangeshkar]
   co_singers: [Mohammed Rafi, Kishore Kumar, Mukesh, Manna Dey, Hemant Kumar, Talat Mahmood, Asha Bhosle]
