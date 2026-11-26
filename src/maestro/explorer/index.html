@@ -20,6 +20,7 @@
   --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --g-expert: #9a6a12; --g-lead: #4f3fd0;
   --r: 8px; --dock-h: 0px;
+  --c1: #257de0; --c2: #f47230; --c3: #00b894; --c4: #f2a600; --c5: #ee7fac; --c6: #008a17; --c7: #6a4ce2; --c8: #ec4647;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0e0c16; --panel: #17141f; --ink: #ece9f5; --ink-2: #bdb7d0; --muted: #8d87a3; --line: #2a2638;
@@ -29,6 +30,7 @@
   --t-A: #3987e5; --t-B: #d95926; --t-C: #199e70; --t-D: #c98500; --t-none: #6b6880;
   --seq-0: #1b1828; --seq-1: #2f2766; --seq-2: #43389a; --seq-3: #6656d0; --seq-4: #8f80f0; --seq-5: #c4baff;
   --g-expert: #e2b45a; --g-lead: #a99cff;
+  --c1: #338ced; --c2: #e76624; --c3: #00a888; --c4: #d28e05; --c5: #e24d8b; --c6: #0aac23; --c7: #9887ef; --c8: #eb6263;
   color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #0e0c16; --panel: #17141f; --ink: #ece9f5; --ink-2: #bdb7d0; --muted: #8d87a3; --line: #2a2638;
@@ -38,7 +40,8 @@
   --t-A: #3987e5; --t-B: #d95926; --t-C: #199e70; --t-D: #c98500; --t-none: #6b6880;
   --seq-0: #1b1828; --seq-1: #2f2766; --seq-2: #43389a; --seq-3: #6656d0; --seq-4: #8f80f0; --seq-5: #c4baff;
   --g-expert: #e2b45a; --g-lead: #a99cff;
-  color-scheme: dark; }
+  color-scheme: dark;   --c1: #338ced; --c2: #e76624; --c3: #00a888; --c4: #d28e05; --c5: #e24d8b; --c6: #0aac23; --c7: #9887ef; --c8: #eb6263;
+}
 
 * { box-sizing: border-box; }
 html, body { height: 100%; }
@@ -232,6 +235,17 @@ td.n, th.n { text-align: right; font-family: var(--f-mono); }
 .provisional { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--warn); border: 1px dashed currentColor; border-radius: 999px; padding: 1px 8px; }
 .legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
 .legend .dot.ring { background: transparent !important; border: 2px solid; }
+.waves { display: grid; grid-template-columns: minmax(90px, 140px) 1fr; gap: 3px 10px; align-items: center; font-size: 13px; }
+.waves .w { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.waves .track { position: relative; height: 14px; }
+.waves .span { position: absolute; top: 2px; height: 10px; border-radius: 4px; background: var(--accent); opacity: .85; }
+.waves .span.on { background: var(--brass); opacity: 1; }
+.waves .axis { position: relative; height: 16px; color: var(--muted); font: 10.5px var(--f-mono); }
+.waves .axis span { position: absolute; transform: translateX(-50%); }
+.wordchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+.wordchips button { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 2px 10px; font: inherit; font-size: 12.5px; cursor: pointer; }
+.wordchips button i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.wordchips button:hover { background: var(--hover); }
 .dropzone { max-width: 560px; margin: 60px auto; text-align: center; }
 .dropzone h1 { font-size: 30px; margin-bottom: 8px; }
 .dropzone p { color: var(--ink-2); }
@@ -432,6 +446,7 @@ body.fdrag, body.fdrag * { cursor: col-resize !important; user-select: none !imp
       <a href="#gems" id="v-gems">Gems &amp; hits</a>
       <a href="#map" id="v-map">Map</a>
       <a href="#insights" id="v-insights">Collaborators</a>
+      <a href="#words" id="v-words">Words</a>
       <a href="#coverage" id="v-coverage">Coverage</a>
       <span class="sep" id="sep2" aria-hidden="true"></span>
       <a href="#films" id="v-films" hidden>Films</a>
@@ -473,7 +488,7 @@ const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 // ---------------------------------------------------------------- state
 const S = { index: [], registers: [], cat: [], snaps: {}, slug: null, d: null, f: blank(), view: "home", limit: 150, sel: null, group: "none", answer: null, sample: null, busy: null,
   loading: null, qsets: {}, home: { q: "", role: "", region: "", open: null } };
-const MAESTRO_VIEWS = ["overview", "browse", "gems", "map", "insights", "coverage"];
+const MAESTRO_VIEWS = ["overview", "browse", "gems", "map", "insights", "words", "coverage"];
 function blank() { return { text: "", yFrom: null, yTo: null, tiers: [], people: [], containers: [], langs: [], perf: null, minLin: null, maxLin: null, live: false, noTier: false, noYear: false, gems: false, sort: "year" }; }
 
 // ---------------------------------------------------------------- loading
@@ -890,6 +905,7 @@ function render() {
   else if (S.view === "gems") renderGems(res);
   else if (S.view === "map") renderMap(res);
   else if (S.view === "insights") renderInsights(res);
+  else if (S.view === "words") renderWords();
   else renderCoverage();
   wireAnswer();
   document.getElementById("backdrop").classList.toggle("on", ["browse", "map"].includes(S.view) && !!S.sel && innerWidth <= 1180);
@@ -2359,6 +2375,141 @@ S.group = lsGet("group") || "none";
 
 if (window.claude && typeof window.claude.use === "function") {
   window.claude.use("sample").then(s => { if (s) { S.sample = s; document.getElementById("askbtn").hidden = false; } }).catch(() => {});
+}
+
+// ---- Words view: lyric words over time (maestro-words). Counts only: no lyric text reaches the page.
+const WCOL = ["--c1", "--c2", "--c3", "--c4", "--c5", "--c6", "--c7", "--c8"];
+const W = { data: {}, picked: {}, concept: {} };
+async function loadWords(m) {
+  if (W.data[m.slug] !== undefined) return W.data[m.slug];
+  W.data[m.slug] = null;
+  try { const r = await fetch(m.words); if (!r.ok) throw new Error(r.status); W.data[m.slug] = await r.json(); }
+  catch (e) { W.data[m.slug] = { error: e.message }; }
+  return W.data[m.slug];
+}
+function wordLookup(wd) {
+  if (wd._look) return wd._look;
+  const look = {};
+  for (const [k, w] of Object.entries(wd.words)) { look[k] = k; look[w.label.toLowerCase()] = k; for (const sp of w.spellings) look[sp.toLowerCase()] ||= k; }
+  return (wd._look = look);
+}
+// Share of songs per year that use a word, pooled over a window of years around each year (thin years borrow from neighbours).
+function wordSeries(wd, counts, half) {
+  const ys = Object.keys(wd.years).map(Number).sort((a, b) => a - b), out = [];
+  for (const y of ys) {
+    let n = 0, c = 0;
+    for (let k = y - half; k <= y + half; k++) { n += wd.years[k] || 0; c += counts[k] || 0; }
+    out.push({ y, n, c, v: n >= 40 ? c / n : null });
+  }
+  return out;
+}
+function lineChart(el, series, opts) {
+  const all = series.flatMap(s => s.pts.filter(p => p.v != null));
+  if (!all.length) { el.innerHTML = `<div class="empty">Not enough songs to draw this.</div>`; return; }
+  const lo = Math.min(...all.map(p => p.y)), hi = Math.max(...all.map(p => p.y));
+  const max = Math.max(...all.map(p => p.v)) || 1;
+  const step = [0.005, 0.01, 0.02, 0.025, 0.05, 0.1, 0.2, 0.25].find(s => max / s <= 5) || 0.5, top = Math.ceil(max / step) * step;
+  const Wd = Math.max(320, Math.min(el.clientWidth || 800, 1100)), H = 240, L = 44, R = 70, B = 24, T = 10;
+  const sx = y => L + (hi === lo ? 0 : (y - lo) / (hi - lo)) * (Wd - L - R), sy = v => H - B - (v / top) * (H - B - T);
+  let svg = `<svg width="${Wd}" height="${H}" viewBox="0 0 ${Wd} ${H}" role="img" aria-label="${esc(opts.label)}">`;
+  for (let v = 0; v <= top + 1e-9; v += step) svg += `<line class="gl" x1="${L}" x2="${Wd - R}" y1="${sy(v)}" y2="${sy(v)}" /><text x="${L - 6}" y="${sy(v) + 3}" text-anchor="end">${(v * 100).toFixed(step < 0.01 ? 1 : 0)}%</text>`;
+  const every = hi - lo > 40 ? 10 : 5;
+  for (let y = Math.ceil(lo / every) * every; y <= hi; y += every) svg += `<text x="${sx(y)}" y="${H - 8}" text-anchor="middle">${y}</text>`;
+  svg += `<line x1="${L}" x2="${Wd - R}" y1="${H - B}" y2="${H - B}" stroke="var(--muted)" />`;
+  series.forEach((s, i) => {
+    let d = "", pen = false;
+    for (const p of s.pts) { if (p.v == null) { pen = false; continue; } d += `${pen ? "L" : "M"}${sx(p.y).toFixed(1)},${sy(p.v).toFixed(1)}`; pen = true; }
+    svg += `<path d="${d}" fill="none" stroke="var(${WCOL[i % 8]})" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />`;
+    const last = [...s.pts].reverse().find(p => p.v != null);
+    if (last && series.length <= 4) svg += `<text x="${sx(last.y) + 6}" y="${sy(last.v) + 3}" style="fill:var(--ink-2);font:12px var(--f-body)">${esc(s.name)}</text>`;
+  });
+  svg += `<line id="wx" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="var(--muted)" stroke-dasharray="3 3" visibility="hidden" /><rect id="whit" x="${L}" y="${T}" width="${Wd - L - R}" height="${H - B - T}" fill="transparent" /></svg>`;
+  el.innerHTML = svg;
+  const hit = el.querySelector("#whit"), wx = el.querySelector("#wx");
+  hit.onmousemove = e => {
+    const r = hit.getBoundingClientRect(), y = Math.round(lo + (e.clientX - r.left) / r.width * (hi - lo));
+    wx.setAttribute("x1", sx(y)); wx.setAttribute("x2", sx(y)); wx.setAttribute("visibility", "visible");
+    showTip(e, `<b>${y}</b>${opts.window ? ` <span class="muted">(${y - opts.window}–${y + opts.window})</span>` : ""}<br>` + series.map((s, i) => { const p = s.pts.find(q => q.y === y); return `<i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(${WCOL[i % 8]});margin-right:5px"></i>${esc(s.name)}: ${p && p.v != null ? `${(p.v * 100).toFixed(1)}% · ${p.c} of ${p.n} ${esc(opts.of)}` : "too few songs"}`; }).join("<br>"));
+  };
+  hit.onmouseleave = () => { wx.setAttribute("visibility", "hidden"); hideTip(); };
+}
+function renderWords() {
+  const d = S.d, main = document.getElementById("main"), m = S.index.find(x => x.slug === S.slug);
+  if (!m || !m.words) { main.innerHTML = `<div class="stack"><div class="panel"><h2>Words over time</h2><div class="empty">No word counts for ${esc(d.maestro.name)} yet. Run <span class="mono">maestro-words --site</span> to add them.</div></div></div>`; return; }
+  const wd = W.data[m.slug];
+  if (wd === undefined || wd === null) { main.innerHTML = `<div class="empty">Loading word counts…</div>`; loadWords(m).then(() => { if (S.view === "words" && S.slug === m.slug) render(); }); return; }
+  if (wd.error) { main.innerHTML = `<div class="empty">Could not load ${esc(m.words)} (${esc(wd.error)}).</div>`; return; }
+  const look = wordLookup(wd), label = k => (wd.words[k] || {}).label || k;
+  const waves = wd.waves.filter(w => wd.words[w.word]).slice(0, 40).sort((a, b) => a.from - b.from || b.score - a.score);
+  let picked = W.picked[m.slug] || (W.picked[m.slug] = waves.slice().sort((a, b) => b.score - a.score).slice(0, 3).map(w => w.word));
+  const ys = Object.keys(wd.years).map(Number), lo = Math.min(...ys), hi = Math.max(...ys);
+  const lyr = wd.text.lyrics, op = wd.text.opening, total = lyr + op;
+  const basis = lyr ? `${plural(total, "song")}: full lyrics for ${lyr.toLocaleString()}, the opening line for the other ${op.toLocaleString()}` : `the opening lines of ${plural(total, "song")} (full lyrics not collected yet)`;
+  const concepts = Object.entries(wd.concepts);
+  const cid = W.concept[m.slug] && wd.concepts[W.concept[m.slug]] ? W.concept[m.slug] : (concepts[0] || [null])[0];
+  const pos = y => ((y - lo) / Math.max(1, hi - lo) * 100).toFixed(2);
+  main.innerHTML = `<div class="stack">
+    <div class="panel"><h2>Words that came and went</h2><div class="sub">Words more than half of whose ${esc(d.unitWord)}s fall in one stretch of years, and that are clearly rarer before and after it. Counted from ${esc(basis)}. Click a word to add it to the chart below.</div>
+      <div class="waves">${waves.map(w => `<button class="linklike w" data-word="${esc(w.word)}" title="${esc(label(w.word))}: ${w.inside} of ${w.total} ${esc(d.unitWord)}s in ${w.from}–${w.to}">${esc(label(w.word))}</button><div class="track"><span class="span${picked.includes(w.word) ? " on" : ""}" style="left:${pos(w.from)}%;width:${Math.max(1, pos(w.to + 1) - pos(w.from))}%" title="${w.from}–${w.to}: ${w.inside} of ${w.total} ${esc(d.unitWord)}s"></span></div>`).join("") || `<span class="muted">No word stands out yet.</span>`}
+      <span></span><div class="axis">${Array.from({ length: Math.floor(hi / 10) - Math.ceil(lo / 10) + 1 }, (_, i) => (Math.ceil(lo / 10) + i) * 10).map(y => `<span style="left:${pos(y)}%">${y}</span>`).join("")}</div></div></div>
+    <div class="panel"><h2>A word over time</h2><div class="sub">Share of ${esc(d.unitWord)}s each year that use the word, pooled over three years. Spellings count as one word. Years with fewer than 40 ${esc(d.unitWord)}s are left blank.</div>
+      <form id="wform" autocomplete="off" style="display:flex;gap:8px;flex-wrap:wrap"><input id="wq" type="search" placeholder="Add a word: dil, pyaar, zulfen…" aria-label="Add a word" style="flex:1;min-width:180px"><button class="btn" type="submit">Add</button></form>
+      <div class="wordchips">${picked.map((k, i) => `<button data-drop="${esc(k)}" title="Remove"><i style="background:var(${WCOL[i % 8]})"></i>${esc(label(k))} ×</button>`).join("")}</div>
+      <div class="chart" id="wchart"></div><div class="sub" id="wmiss" style="margin:6px 0 0"></div></div>
+    ${cid ? `<div class="panel"><h2>One idea, many words</h2><div class="sub">Which word ${esc(d.unitWord)}s used for an idea, as a share of all the words for it, pooled over five years. Words are a draft list; some carry other meanings.</div>
+      <div style="margin-bottom:10px"><label class="muted" for="wconcept">Idea </label><select id="wconcept">${concepts.map(([k, c]) => `<option value="${esc(k)}"${k === cid ? " selected" : ""}>${esc(c.label)}</option>`).join("")}</select> <span class="muted" style="font-size:12.5px">${esc(wd.concepts[cid].note || "")}</span></div>
+      <div class="chart" id="wconc"></div><div class="legend" id="wclegend"></div></div>` : ""}
+  </div>`;
+  const draw = () => lineChart(document.getElementById("wchart"), picked.filter(k => wd.words[k]).map(k => ({ name: label(k), pts: wordSeries(wd, wd.words[k].years, 1) })), { label: "Share of songs using each word", window: 1, of: d.unitWord + "s" });
+  draw();
+  if (cid) drawConcept(wd, wd.concepts[cid], d.unitWord);
+  main.querySelectorAll("[data-word]").forEach(b => b.onclick = () => { const k = b.dataset.word; if (!picked.includes(k)) picked.push(k); if (picked.length > 8) picked.shift(); render(); });
+  main.querySelectorAll("[data-drop]").forEach(b => b.onclick = () => { W.picked[m.slug] = picked.filter(k => k !== b.dataset.drop); render(); });
+  document.getElementById("wform").onsubmit = e => {
+    e.preventDefault();
+    const miss = [];
+    for (const raw of document.getElementById("wq").value.split(/[,\s]+/).filter(Boolean)) {
+      const k = look[raw.toLowerCase()];
+      if (!k) miss.push(raw); else if (!picked.includes(k)) picked.push(k);
+    }
+    while (picked.length > 8) picked.shift();
+    render();
+    if (miss.length) document.getElementById("wmiss").textContent = `Not counted: ${miss.join(", ")} (fewer than ${wd.min_songs} ${d.unitWord}s use it, or it is spelt differently).`;
+  };
+  const sel = document.getElementById("wconcept"); if (sel) sel.onchange = e => { W.concept[m.slug] = e.target.value; render(); };
+}
+function drawConcept(wd, c, unitWord) {
+  const el = document.getElementById("wconc"), lg = document.getElementById("wclegend");
+  let words = Object.entries(c.words).map(([w, x]) => ({ w, years: x.years, t: Object.values(x.years).reduce((a, b) => a + b, 0) })).sort((a, b) => b.t - a.t);
+  if (words.length > 7) { const rest = words.slice(6), other = {}; for (const r of rest) for (const [y, n] of Object.entries(r.years)) other[y] = (other[y] || 0) + n; words = [...words.slice(0, 6), { w: "other words", years: other, t: rest.reduce((a, r) => a + r.t, 0) }]; }
+  const ys = Object.keys(wd.years).map(Number).sort((a, b) => a - b);
+  const pts = ys.map(y => { const v = words.map(x => { let n = 0; for (let k = y - 2; k <= y + 2; k++) n += x.years[k] || 0; return n; }); return { y, v, t: v.reduce((a, b) => a + b, 0) }; }).filter(p => p.t >= 10);
+  lg.innerHTML = words.map((x, i) => `<span><i style="background:var(${WCOL[i]})"></i>${esc(x.w)} (${x.t})</span>`).join("");
+  if (pts.length < 2) { el.innerHTML = `<div class="empty">Too few ${esc(unitWord)}s use these words to chart them.</div>`; return; }
+  const lo = pts[0].y, hi = pts[pts.length - 1].y, Wd = Math.max(320, Math.min(el.clientWidth || 800, 1100)), H = 240, L = 44, R = 12, B = 24, T = 10;
+  const sx = y => L + (hi === lo ? 0 : (y - lo) / (hi - lo)) * (Wd - L - R), sy = v => H - B - v * (H - B - T);
+  let svg = `<svg width="${Wd}" height="${H}" viewBox="0 0 ${Wd} ${H}" role="img" aria-label="Words for ${esc(c.label)} over time">`;
+  for (const v of [0, 0.25, 0.5, 0.75, 1]) svg += `<text x="${L - 6}" y="${sy(v) + 3}" text-anchor="end">${v * 100}%</text>`;
+  let acc = pts.map(() => 0);
+  words.forEach((x, i) => {
+    const lower = acc.slice(), upper = pts.map((p, j) => acc[j] + p.v[i] / p.t);
+    let d = pts.map((p, j) => `${j ? "L" : "M"}${sx(p.y).toFixed(1)},${sy(upper[j]).toFixed(1)}`).join("");
+    for (let j = pts.length - 1; j >= 0; j--) d += `L${sx(pts[j].y).toFixed(1)},${sy(lower[j]).toFixed(1)}`;
+    svg += `<path d="${d}Z" fill="var(${WCOL[i]})" stroke="var(--panel)" stroke-width="1.5" />`;
+    acc = upper;
+  });
+  const every = hi - lo > 40 ? 10 : 5;
+  for (let y = Math.ceil(lo / every) * every; y <= hi; y += every) svg += `<text x="${sx(y)}" y="${H - 8}" text-anchor="middle">${y}</text>`;
+  svg += `<line id="cx" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="var(--ink)" stroke-dasharray="3 3" visibility="hidden" /><rect id="chit" x="${L}" y="${T}" width="${Wd - L - R}" height="${H - B - T}" fill="transparent" /></svg>`;
+  el.innerHTML = svg;
+  const hit = el.querySelector("#chit"), cx = el.querySelector("#cx");
+  hit.onmousemove = e => {
+    const r = hit.getBoundingClientRect(), y = Math.round(lo + (e.clientX - r.left) / r.width * (hi - lo)), p = pts.find(q => q.y === y);
+    if (!p) return;
+    cx.setAttribute("x1", sx(y)); cx.setAttribute("x2", sx(y)); cx.setAttribute("visibility", "visible");
+    showTip(e, `<b>${y}</b> <span class="muted">(${y - 2}–${y + 2}, ${p.t} uses)</span><br>` + words.map((x, i) => `<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(${WCOL[i]});margin-right:5px"></i>${esc(x.w)}: ${Math.round(p.v[i] / p.t * 100)}% (${p.v[i]})`).join("<br>"));
+  };
+  hit.onmouseleave = () => { cx.setAttribute("visibility", "hidden"); hideTip(); };
 }
 initTags();
 boot();
