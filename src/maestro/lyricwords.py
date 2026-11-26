@@ -437,7 +437,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{idx_path} lists no maestro {slug!r}: write its snapshot with maestro-explore first", file=sys.stderr)
             return 1
         entry["words"] = f"canon/words/{slug}.json"
-        idx_path.write_text(json.dumps(index, ensure_ascii=False, indent=1), "utf-8")
+        compact = idx_path.is_file() and "\n" not in idx_path.read_text("utf-8").strip()  # keep the file's style
+        idx_path.write_text(json.dumps(index, ensure_ascii=False, **({"separators": (",", ":")} if compact else {"indent": 1})),
+                            "utf-8")
     return 0
 
 
