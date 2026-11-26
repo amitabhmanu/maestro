@@ -446,6 +446,9 @@ def write_site(out: Path, snaps: list[dict[str, Any]], registers: list[dict[str,
         path = out / "canon" / f"{m['slug']}.json"
         path.write_text(json.dumps(snap, ensure_ascii=False, separators=(",", ":"), default=str), "utf-8")
         written.append(path)
+        words = next((x.get("words") for x in index["maestros"] if x["slug"] == m["slug"]), None)
+        if words and not (out / words).is_file():
+            words = None
         index["maestros"] = [x for x in index["maestros"] if x["slug"] != m["slug"]] + [{
             "slug": m["slug"], "name": m["name"], "unit": m["unit"], "units": len(snap["units"]),
             "file": f"canon/{m['slug']}.json", "generated_at": snap["generated_at"],
@@ -453,6 +456,7 @@ def write_site(out: Path, snaps: list[dict[str, Any]], registers: list[dict[str,
             "wikidata": (m.get("ids") or {}).get("wikidata"), "active": m.get("active"),
             "roles": [r for r in [(m.get("roles") or {}).get("primary")] if r],
             **({"draft": True} if snap.get("draft") else {}),
+            **({"words": words} if words else {}),  # lyric word counts (maestro-words --site)
         }]
     index["maestros"].sort(key=lambda x: x["name"])
     for reg in registers or []:
