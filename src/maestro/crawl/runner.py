@@ -116,8 +116,12 @@ def run_jobs(store: Store, fetcher: Fetcher, *, max_jobs: int, options: dict[str
             store.finish_job(job["id"], status="skipped", error="disallowed by robots.txt")
             stats.skipped += 1
         except Exception as exc:  # keep the run going; the job records why it failed
-            log.exception("job %s failed", job["id"])
-            store.finish_job(job["id"], status="failed", error=f"{type(exc).__name__}: {exc}")
+            redact = getattr(fetcher, "redact", None)
+            msg = f"{type(exc).__name__}: {exc}"
+            msg = redact(msg) if redact else msg
+            # No traceback: its frames show the request URL, API key included.
+            log.error("job %s failed: %s", job["id"], msg)
+            store.finish_job(job["id"], status="failed", error=msg)
             stats.failed += 1
     return stats
 
