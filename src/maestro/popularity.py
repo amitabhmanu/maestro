@@ -17,10 +17,15 @@ The pack's `popularity_signals` puts each signal in one of four facets: contempo
 awards at the time), enduring (reissues, articles, streams), penetration (covers, reuse) and
 esteem (critics, curated lists, awards for quality). A signal not listed in the pack is ignored.
 
-Scores are ranks within this maestro's canon, from 0 to 1 (shown as 0-100): a signal's score for a
-unit is the share of the canon's units it beats on that signal (units without the signal score 0).
-A facet takes its best signal. Popularity is 0.7 x the best facet plus 0.3 x the weighted mean of
-the facets this canon has any data for, so one strong kind of evidence counts and agreement adds.
+Reach (popularity without expert esteem, 0 to 1, shown as 0-100) and the low-popularity label are
+one measure: a unit is popular (reach 0.5 or more) when any signal says so (a chart, award, cover or
+article; a count such as YouTube views, Last.fm listeners or releases above its cut-off, see
+`count_thresholds`), else low (reach under 0.5). Within each half, a signal's score is the unit's
+rank among the units that have that signal in the same half, so a unit without a signal is unknown
+for it, not beaten. Counts add up over a unit's evidence (views over its uploads, listeners over
+its Last.fm tracks; each upload or track once). A facet takes its best signal; reach is 0.7 x the
+best facet plus 0.3 x the weighted mean of the facets this canon has any data for, kept in its half.
+Popularity (with esteem) adds the experts' word the same way, for ordering leads.
 
 A **gem** (rare gem) is a good unit that never became popular. Low popularity is the first, hard
 filter (`low_popularity`); within that set, quality comes only from expert gem lists that pass
@@ -42,8 +47,9 @@ from typing import Any
 
 from maestro.completeness import Unit, load_units
 from maestro.pack import load_pack
-from maestro.resolve import (Groups, Normaliser, WholeTitleIndex, catalogue_key, fold, title_similarity,
-                             whole_title_similarity)
+from maestro.resolve import (TITLE_LETTERS, Groups, Normaliser, WholeTitleIndex, _prefix_similarity, _squash,
+                             catalogue_key, fold, skeleton,
+                             title_similarity, whole_title_similarity)
 from maestro.store import Store
 
 FACETS = ("contemporary", "enduring", "penetration", "esteem")
@@ -58,6 +64,10 @@ LOW_POP_REISSUES = 2  # a unit on at most this many releases or catalogue number
 COUNT_SIGNAL_SHARE = 0.2  # an enduring signal naming more of the canon than this is a count (see count_thresholds)
 COUNT_MIN_DISTINCT = 20  # ... as is one whose strengths take at least this many values (listeners, views)
 COUNT_POPULAR_QUANTILE = 0.9  # on a count signal, a unit is popular in the top 10% of the units it names
+# ... or at these counts, whichever is lower: a source that only holds the well-known uploads (label
+# channels) makes its own top 10% far too high. A pack sets its own in `popularity_signals.popular_at`.
+POPULAR_AT = {"youtube": 1_000_000, "lastfm": 100}
+LOW_BAND = 0.5  # reach under this is low popularity, at or over it popular (see `_banded`)
 LIST_PURITY_MIN = 0.9  # a gem list counts only if this share of its units are low-popularity
 LIST_INTENTS = ("gem_list", "best_of", "themed")
 SELECTIVE_SHARE = 0.01  # a voice naming this share of the canon or less has its full say
@@ -131,6 +141,7 @@ class Scored:
     lead: float = 0.0  # worth a listen, no expert word yet
     lead_reasons: list[str] = field(default_factory=list)
     low: bool = True  # low popularity (`low_popularity`): the user's gem tags show as rare gems
+    parts: dict[str, int] = field(default_factory=dict)  # count signal -> uploads or tracks added up
     facet_of: dict[str, str] = field(default_factory=dict, repr=False)
 
 
@@ -194,8 +205,49 @@ def _mentions(store: Store, include_private: bool) -> list[dict[str, Any]]:
 # ---- matching mentions to units ---------------------------------------------------------
 
 TITLE_MATCH = 0.9       # whole-title likeness needed when the mention names no film or album
+OPENING_ALONE = 0.92    # opening-line likeness needed when it names none and no whole title matches
+OPENING_ALONE_LETTERS = 12  # ... for a mention title at least this long (squashed letters)
+OPENING_ALONE_LEAD = 0.05   # ... and ahead of any candidate in another film or album by this much
 OPENING_MATCH = 0.82    # opening-line likeness needed inside a matched container
 CONTAINER_MATCH = 0.85
+
+
+_FROM_TAIL = re.compile(r"""\s*(?:[,\-–—:]\s*)?[\(\[\{]?\s*From\s+(?:the\s+(?:film|movie)\s+)?['"“”‘’]{0,2}"""
+                        r"""([^'"“”‘’\)\]\}]+?)['"“”‘’]{0,2}\s*[\)\]\}]?\s*$""", re.I)
+_VERSION_TAIL = re.compile(r"\s*(?:[-–—]\s*|[\(\[]\s*)?(?:revival|remaster(?:ed)?|version\s*\d*|pt\.?\s*\d+|part\s*\d+"
+                           r"|(?:male|female)(?:\s+vocals?)?|sad|happy|jhankar)\s*[\)\]]?\s*$", re.I)
+
+
+def mention_titles(title: str, container: str | None) -> list[tuple[str, str | None]]:
+    """The ways a stream or upload title may name a song, best first, as (title, film or album).
+
+    Uploads and stream tracks wrap the song's opening line in their own words: 'Title - From "Film"',
+    "Title, From ''Film''", 'Title {From Film}', 'Title -- Singer -- Film', 'Film: Title', a site's
+    '::www.site::' tag, or a version note ('Pt. 2', '(Male Vocals)', '- Revival'). Older mention
+    claims were stored before the extractors learnt some of these, so they are read again here."""
+    t = re.sub(r"::\s*www\.[^:]*::|\bwww\.\S+", " ", title or "").strip()
+    out: list[tuple[str, str | None]] = []
+    m = _FROM_TAIL.search(t)
+    if m and m.start() > 0:
+        container = container or m.group(1).strip()
+        t = t[:m.start()].strip(" -,")
+    for _ in range(2):
+        t = _VERSION_TAIL.sub("", t).strip(" -,")
+    parts = [p.strip() for p in re.split(r"\s+--\s+", t) if p.strip()]
+    if len(parts) >= 2:
+        out.append((parts[0], container or parts[-1]))
+    out.append((t, container))
+    m = re.match(r"^([^:]{3,40})\s*::?\s*(.{8,})$", t)
+    if m:
+        out.append((m.group(2).strip(), container or m.group(1).strip()))
+    if t != (title or "").strip() or container:
+        out.append((title, None))
+    seen, uniq = set(), []
+    for x in out:
+        if x[0] and x not in seen:
+            seen.add(x)
+            uniq.append(x)
+    return uniq
 
 
 def _keys(norm: Normaliser, title: str) -> set[str]:
@@ -220,6 +272,11 @@ class MentionMatcher:
             if s.unit.container is not None:
                 self.by_container[s.unit.container].append(uid)
         self._cunits: dict[str, list[int]] = {}
+        self.by_opening: dict[str, list[int]] = defaultdict(list)  # first consonants -> units
+        for uid, ks in self.ukeys.items():
+            for k in {skeleton(k)[:4] for k in ks}:
+                if len(k) == 4:
+                    self.by_opening[k].append(uid)
 
     def _container_units(self, ckey: str) -> list[int]:
         if ckey not in self._cunits:
@@ -236,6 +293,39 @@ class MentionMatcher:
         return self._cmatch[k]
 
     def match(self, m: dict[str, Any]) -> int | None:
+        """The unit a mention names: its title as given, then the readings `mention_titles` finds, and
+        last the opening line alone (no film named, no whole title alike)."""
+        for title, container in mention_titles(m["title"], m.get("container")):
+            uid = self._match({**m, "title": title, "container": container})
+            if uid is None and container:
+                uid = self._match({**m, "title": title, "container": None})
+            if uid is not None:
+                return uid
+        return self._match_opening(m)
+
+    def _match_opening(self, m: dict[str, Any]) -> int | None:
+        best: dict[int, float] = {}
+        for title, _c in mention_titles(m["title"], m.get("container")):
+            for a in _keys(self.norm, title):
+                if len(_squash(a.replace(" ", ""))) < OPENING_ALONE_LETTERS:
+                    continue
+                sa = _squash(a.replace(" ", ""))[:TITLE_LETTERS]
+                for uid in self.by_opening.get(skeleton(a)[:4], ()):
+                    # Openings only: with no film to vouch for it, a later line is too weak a match.
+                    sim = max(_prefix_similarity(sa, _squash(b.replace(" ", "")), OPENING_ALONE) for b in self.ukeys[uid])
+                    if sim >= OPENING_ALONE and sim > best.get(uid, 0.0):
+                        best[uid] = sim
+        if not best:
+            return None
+        ranked = sorted(best.items(), key=lambda kv: (-kv[1], self.scored[kv[0]].unit.tier or "Z", kv[0]))
+        top, sim = ranked[0]
+        where = self.scored[top].unit.container
+        for uid, other in ranked[1:]:
+            if (where is None or self.scored[uid].unit.container != where) and sim - other < OPENING_ALONE_LEAD:
+                return None  # two films' songs open alike: say nothing rather than guess
+        return top
+
+    def _match(self, m: dict[str, Any]) -> int | None:
         mkeys = _keys(self.norm, m["title"])
         if not mkeys:
             return None
@@ -293,6 +383,125 @@ def _combine(facets: dict[str, float], present: list[str], weights: dict[str, fl
     wsum = sum(weights.get(f, 0.0) for f in present) or 1.0
     mean = sum(facets.get(f, 0.0) * weights.get(f, 0.0) for f in present) / wsum
     return 0.7 * max(vals) + 0.3 * mean
+
+
+def _popular_at(pack_data: dict[str, Any]) -> dict[str, float]:
+    out = dict(POPULAR_AT)
+    out.update((pack_data.get("popularity_signals") or {}).get("popular_at") or {})
+    return out
+
+
+def _count_signals(scored: dict[int, Scored], facet_of: dict[str, str]) -> set[str]:
+    """Enduring signals that are counts, not lists (see `count_thresholds`); reissues always are."""
+    n = max(1, len(scored))
+    out = set()
+    for sig in {x for s in scored.values() for x in s.signals}:
+        if facet_of.get(sig) != "enduring":
+            continue
+        vals = [s.signals[sig] for s in scored.values() if sig in s.signals]
+        if sig == "reissues" or len(vals) / n > COUNT_SIGNAL_SHARE or len(set(vals)) >= COUNT_MIN_DISTINCT:
+            out.add(sig)
+    return out
+
+
+def _sum_counts(scored: dict[int, Scored], facet_of: dict[str, str]) -> set[str]:
+    """Add up each count signal over a unit's evidence: a song uploaded twice, or listed by Last.fm under
+    three spellings, has the views or listeners of all of them. Each upload or track counts once (by
+    its url, else its note). Reissues are already a count of distinct releases. Returns the count
+    signals."""
+    counts = _count_signals(scored, facet_of)
+    for s in scored.values():
+        for sig in counts - {"reissues"}:
+            if sig not in s.signals:
+                continue
+            seen: dict[str, float] = {}
+            for e in s.evidence:
+                if e.signal == sig:
+                    k = e.url or e.note
+                    seen[k] = max(seen.get(k, 0.0), e.strength)
+            s.signals[sig] = sum(seen.values())
+            s.parts[sig] = len(seen)
+    return counts
+
+
+def _popular_by(s: Scored, sig: str, thresholds: dict[str, float]) -> bool:
+    """Whether this one signal makes the unit popular (the rule `low_popularity` applies)."""
+    if sig not in s.signals:
+        return False
+    if sig in thresholds:
+        return s.signals[sig] > thresholds[sig]
+    if sig == "reissues":
+        return s.signals[sig] > LOW_POP_REISSUES
+    return s.facet_of.get(sig) in ("contemporary", "penetration", "enduring")
+
+
+def _banded(scored: dict[int, Scored], signals: list[str], facet_of: dict[str, str],
+            thresholds: dict[str, float]) -> None:
+    """Each signal's score for each unit, in the unit's half: units the signal makes popular score
+    0.5-1 by their rank among those units; other units that have the signal score 0-0.5 by their rank
+    among those. Units without the signal get nothing for it (unknown, not beaten). Esteem (expert
+    word) is no reach: it scores the share of the whole canon a unit beats, as before."""
+    universe = list(scored)
+    caps = {sig: min((e.cap for s in scored.values() for e in s.evidence if e.signal == sig), default=1.0)
+            for sig in signals}
+    for sig in signals:
+        if facet_of.get(sig) == "esteem":
+            for u, x in _rank_scores({u: s.signals.get(sig, 0.0) for u, s in scored.items()}, universe).items():
+                if x:
+                    scored[u].signal_scores[sig] = x * caps[sig]
+            continue
+        holders = [u for u, s in scored.items() if sig in s.signals]
+        high = [u for u in holders if _popular_by(scored[u], sig, thresholds)]
+        hs = set(high)
+        for group, base in ((high, LOW_BAND), ([u for u in holders if u not in hs], 0.0)):
+            for u, x in _rank_among({u: scored[u].signals[sig] for u in group}).items():
+                scored[u].signal_scores[sig] = base + ((1 - LOW_BAND) * x if base else LOW_BAND * 0.999 * x) * caps[sig]
+
+
+def _rank_among(values: dict[int, float]) -> dict[int, float]:
+    """Each unit's rank among these units only: the share of them it equals or beats (the strongest 1)."""
+    import bisect
+    vals = sorted(values.values())
+    n = len(vals)
+    return {u: bisect.bisect_right(vals, v) / n for u, v in values.items()}
+
+
+def _band_combine(s: Scored, facets: list[str], weights: dict[str, float]) -> float:
+    """Combine facets (as `_combine`) within the unit's half, so a low unit's reach stays under 0.5 and
+    a popular one's at 0.5 or over: the label and the number never disagree."""
+    if not facets:
+        return 0.0
+    local = {}
+    for f in facets:
+        v = s.facets.get(f, 0.0)
+        if f == "esteem":
+            local[f] = v
+        elif s.low:
+            local[f] = v / LOW_BAND
+        else:
+            local[f] = max(0.0, (v - LOW_BAND) / (1 - LOW_BAND))
+    x = min(_combine(local, facets, weights), 0.999)
+    return x * LOW_BAND if s.low else LOW_BAND + (1 - LOW_BAND) * x
+
+
+def popular_because(s: Scored, thresholds: dict[str, float]) -> list[str]:
+    """In plain words, the signals that make a unit popular (empty for a low-popularity unit)."""
+    out = []
+    for sig in sorted(s.signals, key=lambda g: FACETS.index(s.facet_of[g]) if s.facet_of.get(g) in FACETS else 9):
+        if not _popular_by(s, sig, thresholds):
+            continue
+        if sig in thresholds and sig != "reissues":
+            n = s.parts.get(sig, 1)
+            out.append(f"{s.signals[sig]:,.0f} {sig.replace('_', ' ')}"
+                       + (f" over {n} uploads or tracks" if n > 1 else "")
+                       + f" (popular above {thresholds[sig]:,.0f})")
+        elif sig == "reissues":
+            out.append(f"on {s.signals[sig]:.0f} releases or catalogue numbers "
+                       f"(popular above {thresholds.get(sig, LOW_POP_REISSUES):.0f})")
+        else:
+            best = max((e for e in s.evidence if e.signal == sig), key=lambda e: e.strength, default=None)
+            out.append(best.note if best else sig)
+    return out
 
 
 def score_canon(store: Store, include_private: bool = False) -> dict[str, Any]:
@@ -385,31 +594,25 @@ def score_canon(store: Store, include_private: bool = False) -> dict[str, Any]:
                           m["source_id"], v.get("url") or m["page"], float(v.get("cap") or 1.0),
                           v.get("expert"), v.get("framing")))
 
-    universe = list(scored)
     signals = sorted({sig for s in scored.values() for sig in s.signals})
-    caps = {sig: min((e.cap for s in scored.values() for e in s.evidence if e.signal == sig), default=1.0)
-            for sig in signals}
-    for sig in signals:
-        ranks = _rank_scores({u: s.signals.get(sig, 0.0) for u, s in scored.items()}, universe)
-        for u, x in ranks.items():
-            if x:
-                scored[u].signal_scores[sig] = x * caps[sig]
+    counts = _sum_counts(scored, facet_of)
+    thresholds = count_thresholds(scored, facet_of, _popular_at(pack.data), counts)
+    for s in scored.values():
+        s.facet_of = facet_of
+        s.low = low_popularity(s, thresholds)
+        s.picked = s.unit.id in picks
     present = [f for f in FACETS if any(facet_of.get(sig) == f for sig in signals)]
     reach_facets = [f for f in present if f != "esteem"]
+    _banded(scored, signals, facet_of, thresholds)
     for s in scored.values():
         for sig, x in s.signal_scores.items():
             f = facet_of[sig]
             s.facets[f] = max(s.facets.get(f, 0.0), x)
-        s.popularity = _combine(s.facets, present, weights)
-        s.reach = _combine(s.facets, reach_facets, weights)
-        s.picked = s.unit.id in picks
-        s.facet_of = facet_of
+        s.reach = _band_combine(s, reach_facets, weights)
+        s.popularity = _band_combine(s, present, weights)
 
     gems = _score_gems(scored, maestro, present, pack.container, set(pack.data["roles"]["in_scope"]),
-                       facet_of, picks, not_gems, load_lists(pack))
-    thresholds = count_thresholds(scored, facet_of)
-    for s in scored.values():
-        s.low = low_popularity(s, thresholds)
+                       facet_of, picks, not_gems, load_lists(pack), thresholds)
 
     return {
         "maestro": pack.slug,
@@ -422,14 +625,67 @@ def score_canon(store: Store, include_private: bool = False) -> dict[str, Any]:
                  "expert gem lists (lists that claim their units are good and overlooked, with at least "
                  f"{LIST_PURITY_MIN:.0%} low-popularity units), or your own picks of low-popularity units"},
         "low_rule": {"count_thresholds": thresholds, "low": sum(1 for s in scored.values() if s.low),
-                     "rule": "no chart, award or hit list, no cover or reuse, no article, and outside the top "
-                             f"{1 - COUNT_POPULAR_QUANTILE:.0%} of each count (releases: never popular at "
-                             f"{LOW_POP_REISSUES} or fewer)"},
+                     "rule": "no chart, award or hit list, no cover or reuse, no article, and no count above its "
+                             f"cut-off: the top {1 - COUNT_POPULAR_QUANTILE:.0%} of the units it names, or a fixed "
+                             "count where the pack or POPULAR_AT sets one, whichever is lower; views and listeners "
+                             f"add up over uploads and tracks (releases: never popular at {LOW_POP_REISSUES} or fewer)",
+                     "band": LOW_BAND},
         "listed_without_data": sorted(set(facet_of) - set(signals)),
         "unmatched_mentions": unmatched,
         "ignored_mentions": dict(ignored),
         "units": scored,
     }
+
+
+TWIN_TITLE = 0.9  # opening-line likeness for a popularity twin (see `queue_twins`)
+
+
+def queue_twins(store: Store, res: dict[str, Any]) -> list[dict[str, Any]]:
+    """Queue for review the units that only loose sources list (sources whose ids do not mean distinct
+    songs, such as MusicBrainz) and that open like a unit from another lineage of the same or a near
+    year. Such a twin splits a song's popularity evidence, and a gem tag on the wrong copy shows a
+    known song as low. Pairs already decided distinct, and pairs a source keeps apart, are skipped.
+    The items are ordinary `unit_near_title` reviews (`maestro-review`); returns those newly queued."""
+    from maestro.resolve import _distinct_pairs, queue_review
+    groups = Groups(store)
+    loose_lineages = {x.get("lineage") or x["id"] for x in store.pack.data.get("sources", [])
+                      if x.get("distinct_ids") is False}
+    if not loose_lineages:
+        return []
+    scored: dict[int, Scored] = res["units"]
+    norm = Normaliser.for_store(store)
+    keys = {uid: {k for t in s.titles for k in _keys(norm, t)} for uid, s in scored.items()}
+    by_opening: dict[str, list[int]] = defaultdict(list)
+    for uid, ks in keys.items():
+        for k in {skeleton(k)[:4] for k in ks}:
+            if len(k) == 4:
+                by_opening[k].append(uid)
+    distinct = _distinct_pairs(store)
+    out = []
+    for uid, s in scored.items():
+        if not s.unit.lineages or not s.unit.lineages <= loose_lineages:
+            continue
+        best: tuple[float, int] | None = None
+        for a in keys[uid]:
+            for o in by_opening.get(skeleton(a)[:4], ()):
+                os_ = scored[o]
+                if o == uid or os_.unit.lineages <= loose_lineages:
+                    continue
+                if s.unit.year and os_.unit.year and abs(s.unit.year - os_.unit.year) > 1:
+                    continue
+                if tuple(sorted((uid, o))) in distinct or not groups.can_join(uid, o):
+                    continue
+                sim = max(title_similarity(a, b, TWIN_TITLE) for b in keys[o])
+                if sim >= TWIN_TITLE and (best is None or sim > best[0]):
+                    best = (sim, o)
+        if best is None:
+            continue
+        sim, o = best
+        item = {"labels": [s.unit.label, scored[o].unit.label], "years": [s.unit.year, scored[o].unit.year],
+                "similarity": round(sim, 3), "found_by": "maestro-score --queue-twins (popularity twin)"}
+        if queue_review(store, "unit_near_title", [uid, o], item, priority=1):
+            out.append({"units": [uid, o], **item})
+    return out
 
 
 def load_lists(pack) -> dict[str, dict[str, str]]:
@@ -473,25 +729,27 @@ def low_popularity(s: Scored, medians: dict[str, float] | None = None) -> bool:
     return True
 
 
-def count_thresholds(scored: dict[int, Scored], facet_of: dict[str, str]) -> dict[str, float]:
+def count_thresholds(scored: dict[int, Scored], facet_of: dict[str, str],
+                     popular_at: dict[str, float] | None = None, counts: set[str] | None = None) -> dict[str, float]:
     """Enduring signals that are counts, not lists, with the strength above which a unit counts as
     popular. A signal is a count when it names more than COUNT_SIGNAL_SHARE of the canon or its
     strengths take at least COUNT_MIN_DISTINCT values: a few Last.fm listeners say nothing, being in
-    the top (COUNT_POPULAR_QUANTILE) of the units it names does. An enduring signal that is neither
+    the top (COUNT_POPULAR_QUANTILE) of the units it names does, or reaching `popular_at` (YouTube
+    views, Last.fm listeners: see POPULAR_AT), whichever is lower. An enduring signal that is neither
     (an encyclopedia article) is a list: being on it is enough. Reissues (releases and catalogue
     numbers) are always a count: old film songs land on many compilations, so only the top of the
     canon is popular for it, and never a unit on LOW_POP_REISSUES releases or fewer."""
     out = {}
-    n = max(1, len(scored))
-    for sig in {x for s in scored.values() for x in s.signals}:
-        if facet_of.get(sig) != "enduring":
-            continue
+    popular_at = POPULAR_AT if popular_at is None else popular_at
+    for sig in (_count_signals(scored, facet_of) if counts is None else counts):
         vals = sorted(s.signals[sig] for s in scored.values() if sig in s.signals)
+        if not vals:
+            continue
         top = vals[min(len(vals) - 1, int(len(vals) * COUNT_POPULAR_QUANTILE))]
         if sig == "reissues":
             out[sig] = max(float(LOW_POP_REISSUES), top)
-        elif len(vals) / n > COUNT_SIGNAL_SHARE or len(set(vals)) >= COUNT_MIN_DISTINCT:
-            out[sig] = top
+        else:
+            out[sig] = min(top, float(popular_at[sig])) if sig in popular_at else top
     return out
 
 
@@ -500,7 +758,8 @@ def _voice_of(e: Evidence) -> str:
 
 
 def _expert_quality(scored: dict[int, Scored], facet_of: dict[str, str], picks: set[int],
-                    lists: dict[str, dict[str, str]]) -> tuple[dict[str, Any], dict[str, Any], dict[str, float]]:
+                    lists: dict[str, dict[str, str]],
+                    thresholds: dict[str, float] | None = None) -> tuple[dict[str, Any], dict[str, Any], dict[str, float]]:
     """Quality from expert gem lists: each unit's mentions in qualifying lists, voice by voice.
 
     Only `gem_list` lists count (see `load_lists`), and only when at least LIST_PURITY_MIN of the
@@ -512,7 +771,7 @@ def _expert_quality(scored: dict[int, Scored], facet_of: dict[str, str], picks: 
     Independent voices agreeing multiply: quality = 1 - prod(1 - word) over the voices.
     """
     n = max(1, len(scored))
-    medians = count_thresholds(scored, facet_of)
+    medians = count_thresholds(scored, facet_of) if thresholds is None else thresholds
     per_list: dict[str, dict[str, Any]] = {}
     for uid, s in scored.items():
         for e in s.evidence:
@@ -557,7 +816,7 @@ def _expert_quality(scored: dict[int, Scored], facet_of: dict[str, str], picks: 
 
 def _score_gems(scored: dict[int, Scored], maestro: int, present: list[str], container_kind: str,
                 own_roles: set[str], facet_of: dict[str, str], picks: set[int], not_gems: set[int],
-                lists: dict[str, dict[str, str]]) -> dict[str, Any]:
+                lists: dict[str, dict[str, str]], thresholds: dict[str, float] | None = None) -> dict[str, Any]:
     """A gem is a unit experts single out that few people know.
 
     Quality comes only from expert opinion (`_expert_quality`) or the user's own pick; popularity is
@@ -573,7 +832,7 @@ def _score_gems(scored: dict[int, Scored], maestro: int, present: list[str], con
       the lists span the unit's year, cover REDISCOVERY_COVERAGE of those years' units and name
       REDISCOVERY_CAPTURE of the most enduring ones).
     """
-    voices, list_report, medians = _expert_quality(scored, facet_of, picks, lists)
+    voices, list_report, medians = _expert_quality(scored, facet_of, picks, lists, thresholds)
     counting = {url for url, r in list_report.items() if r["counts"]}
     for uid, s in scored.items():
         # Low popularity is the first, hard filter: a rare gem is a good unit few people know.
@@ -676,18 +935,21 @@ def ordered_evidence(s: Scored) -> list[Evidence]:
     return out
 
 
-def unit_summary(s: Scored) -> dict[str, Any] | None:
-    """The JSON a snapshot carries for one unit (None when nothing is known)."""
+def unit_summary(s: Scored, thresholds: dict[str, float] | None = None) -> dict[str, Any] | None:
+    """The JSON a snapshot carries for one unit (None when nothing is known). With the canon's count
+    thresholds, a popular unit also says why (`popular_because`)."""
     if not s.evidence and not s.gem and not s.picked and not s.lead:
         return None
     out: dict[str, Any] = {
         "score": round(100 * s.popularity),
         "reach": round(100 * s.reach),  # popularity without expert esteem
-        "low": s.low,  # low popularity: a unit the user tags as a gem is then a rare gem
+        "low": s.low,  # low popularity (reach under 50): a unit the user tags as a gem is then a rare gem
         "facets": {f: round(100 * x) for f, x in s.facets.items() if x},
         "evidence": [{"signal": e.signal, "note": e.note, "source": e.source, **({"url": e.url} if e.url else {})}
                      for e in ordered_evidence(s)],
     }
+    if thresholds is not None and not s.low:
+        out["popular_because"] = popular_because(s, thresholds)
     if s.picked:
         out["picked"] = True
     if s.quality:
@@ -735,6 +997,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--picks-file", metavar="FILE",
                    help="record as picks the gem tags exported from the canon explorer (JSON) for this maestro")
     p.add_argument("--json", action="store_true", help="print every scored unit as JSON")
+    p.add_argument("--queue-twins", action="store_true",
+                   help="queue for review units only loose sources (MusicBrainz) list that open like another "
+                        "unit of a near year: twins split a song's popularity (decide with maestro-review)")
     p.add_argument("--include-private", action="store_true")
     args = p.parse_args(argv)
     from maestro import config
@@ -763,6 +1028,13 @@ def main(argv: list[str] | None = None) -> int:
             store.conn.commit()
             print(f"recorded {len(args.not_gem)} not-a-gem mark(s)")
         res = score_canon(store, include_private=args.include_private)
+        if args.queue_twins:
+            with store.exclusive():
+                twins = queue_twins(store, res)
+                store.conn.commit()
+            print(f"queued {len(twins)} popularity twin(s) for review (maestro-review)")
+            for t in twins[:args.top]:
+                print(f"  {t['units']}: {t['labels'][0]} ({t['years'][0]}) ~ {t['labels'][1]} ({t['years'][1]})")
         labels = {r["id"]: r["label"] for r in store.conn.execute("SELECT id, label FROM entity").fetchall()}
     finally:
         store.close()
@@ -775,10 +1047,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"no gems yet: they need {res['gems']['needs']}")
     if res["listed_without_data"]:
         print(f"listed in the pack, no data yet: {', '.join(res['listed_without_data'])}")
-    ranked = sorted(units.values(), key=lambda s: -s.popularity)
+    ranked = sorted(units.values(), key=lambda s: -s.reach)
     print(f"\nMost popular ({args.top}):")
     for s in ranked[:args.top]:
-        print(f"  {round(100 * s.popularity):3d}  {s.unit.label} ({s.unit.year})  "
+        print(f"  {round(100 * s.reach):3d}  {s.unit.label} ({s.unit.year})  "
               f"[{'; '.join(e.note for e in ordered_evidence(s)[:3])}]")
     gems = sorted((s for s in units.values() if s.gem), key=lambda s: -s.gem)
     print(f"\nGems ({len(gems)} found, top {args.top}):")

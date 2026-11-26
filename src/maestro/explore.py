@@ -303,7 +303,7 @@ def snapshot(store: Store, include_private: bool = False, draft: bool | str = Fa
         "SELECT id, label FROM entity WHERE type IN ('person', %s)", (unit_type,)).fetchall()}
     for unit in out_units:
         sc = pop["units"].get(unit["id"])
-        summary = unit_summary(sc) if sc else None
+        summary = unit_summary(sc, pop["low_rule"]["count_thresholds"]) if sc else None
         if summary:
             for k in ("gem", "lead"):
                 if k in summary:

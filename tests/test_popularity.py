@@ -369,3 +369,69 @@ def test_filmfare_names_the_award_from_the_page():
     mod = load("rafi", "filmfare")
     assert mod.award_name("https://en.wikipedia.org/wiki/Filmfare_Award_for_Best_Female_Playback_Singer") == "Best Female Playback"
     assert mod.award_name("https://en.wikipedia.org/wiki/Filmfare_Award_for_Best_Male_Playback_Singer") == "Best Male Playback"
+
+
+def test_counts_add_up_and_fixed_cutoff(store_for):
+    from maestro.popularity import popular_because
+    s = store_for("rafi")
+    hit, side, plain, f = _canon(s)
+    other = person(s, "hfgk_online", "3", "A Third Composer")
+    words = ["Ambar", "Badal", "Chanda", "Dharti", "Ganga", "Jamuna", "Kajal", "Mehfil", "Nadiya"]
+    v = {w: song(s, "hfgk_online", f"9{i}", f"Ek Geet {w} Ke Naam Ka Hai", None, other) for i, w in enumerate(words)}
+    c = ctx(s)
+    yt = lambda w, views, vid: record_mention(c, "youtube", "youtube", f"Ek Geet {w} Ke Naam Ka Hai", strength=views,
+                                              url=f"https://www.youtube.com/watch?v={vid}", note=f"{views:,} YouTube views")
+    # A song on two uploads (one read twice) has the views of both: 600,000 + 500,000.
+    yt("Ambar", 600_000, "a")
+    yt("Ambar", 500_000, "b")
+    yt("Ambar", 500_000, "b")
+    yt("Badal", 900_000, "c")
+    yt("Chanda", 50_000_000, "d")  # makes the canon's own top 10% far too high
+    for i, w in enumerate(words[3:]):
+        yt(w, 1000 * (i + 1), f"x{i}")
+    res = score_canon(s)
+    u = res["units"]
+    a, b, ch, low4 = v["Ambar"], v["Badal"], v["Chanda"], v["Dharti"]
+    assert u[a].signals["youtube"] == 1_100_000 and u[a].parts["youtube"] == 2
+    assert res["low_rule"]["count_thresholds"]["youtube"] == 1_000_000  # the fixed cut-off, lower than the top 10%
+    assert not u[a].low and u[b].low and not u[ch].low
+    assert "over 2 uploads" in popular_because(u[a], res["low_rule"]["count_thresholds"])[0]
+    # One measure: low popularity is exactly a reach under 50, and units with no evidence score 0.
+    for x in u.values():
+        assert x.low == (x.reach < 0.5)
+    assert u[plain[20]].reach == 0
+    # Within each half, more evidence ranks higher; a small count is near the bottom, not mid-canon.
+    assert u[ch].reach > u[a].reach >= 0.5 > u[b].reach > u[low4].reach
+    assert u[low4].reach < 0.15
+
+
+def test_stream_titles_match_by_film_tail_and_opening(store_for):
+    from maestro.popularity import mention_titles
+    assert mention_titles("Ye Mahalon, Ye Takton, From ''Pyaasa''", None)[0] == ("Ye Mahalon, Ye Takton", "Pyaasa")
+    assert mention_titles("Jo Baat Tujh Mein Hai -- Mohd.Rafi -- Taj Mahal", None)[0] == ("Jo Baat Tujh Mein Hai", "Taj Mahal")
+    assert mention_titles("Isharon Isharon Mein - Revival", None)[0] == ("Isharon Isharon Mein", None)
+    s = store_for("rafi")
+    hit, side, plain, f = _canon(s)
+    c = ctx(s)
+    lf = lambda title, n: record_mention(c, "lastfm", "lastfm", title, strength=n, note=f"{n} Last.fm listeners")
+    lf('Jinhen Naaz Hai Hind Par - From "Pyaasa"', 300)  # film in the title
+    lf("Hum Aapki Aankhon Mein Is Dil", 40)  # the opening line alone, no film named
+    lf("Plain Song Number Of", 5)  # opens thirty songs: no guess
+    res = score_canon(s)
+    u = res["units"]
+    assert u[hit].signals.get("lastfm") == 300 and u[side].signals.get("lastfm") == 40
+    assert [m["title"] for m in res["unmatched_mentions"]] == ["Plain Song Number Of"]
+
+
+def test_queue_twins(store_for):
+    from maestro.popularity import queue_twins
+    from maestro.resolve import open_reviews
+    s = store_for("rafi")
+    hit, side, plain, f = _canon(s)
+    twin = song(s, "musicbrainz", "mb-1", "Hum Aapki Aankhon Mein Is Dil Ko Basa Den (From Pyaasa)", None, None)
+    s.upsert_claim(twin, "year", value=1957, source_id="musicbrainz")
+    res = score_canon(s)
+    twins = queue_twins(s, res)
+    assert [sorted(t["units"]) for t in twins] == [sorted([twin, side])]
+    assert any(sorted(r["subject_ids"]) == sorted([twin, side]) for r in open_reviews(s, kind="unit_near_title"))
+    assert queue_twins(s, res) == []  # queued once
