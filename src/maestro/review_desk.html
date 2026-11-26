@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__TITLE__</title>
+<style>
+:root{--bg:#f7f6f3;--panel:#fff;--ink:#1d1d1b;--mute:#6b6a65;--line:#e3e1db;--accent:#2f5d8a;--same:#2e7d4f;--diff:#b0412e;--skip:#8a7a2f;--chip:#efede7}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17181a;--panel:#212226;--ink:#ecebe7;--mute:#a09e97;--line:#34353a;--accent:#7fb0e0;--same:#6cc08f;--diff:#e5806d;--skip:#d4c06a;--chip:#2b2c31}}
+:root[data-theme="dark"]{--bg:#17181a;--panel:#212226;--ink:#ecebe7;--mute:#a09e97;--line:#34353a;--accent:#7fb0e0;--same:#6cc08f;--diff:#e5806d;--skip:#d4c06a;--chip:#2b2c31}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 12px}
+.note{background:var(--chip);border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+button{font:inherit;color:inherit}
+.tab{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 12px;cursor:pointer}
+.tab[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.tab small{color:var(--mute);margin-left:6px}
+.bar{height:6px;background:var(--chip);border-radius:3px;overflow:hidden;margin:4px 0 16px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.status{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;color:var(--mute);font-size:13px;align-items:center}
+.q{font-size:18px;font-weight:600;margin:8px 0 2px}
+.why{color:var(--mute);font-size:13px;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.subj{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.subj h3{margin:0 0 4px;font-size:16px;overflow-wrap:anywhere}
+.meta{color:var(--mute);font-size:12px;margin-bottom:8px}
+dl{margin:0;display:grid;grid-template-columns:max-content 1fr;gap:3px 10px;font-size:13px}
+dt{color:var(--mute)}
+dd{margin:0;overflow-wrap:anywhere}
+.groups{display:flex;gap:4px;flex-wrap:wrap;margin-top:10px}
+.g{border:1px solid var(--line);background:var(--chip);border-radius:6px;min-width:34px;padding:4px 8px;cursor:pointer;font-weight:600}
+.g[aria-pressed="true"]{color:#fff;border-color:transparent}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.act{border:0;border-radius:8px;padding:10px 16px;cursor:pointer;color:#fff;font-weight:600}
+.act.save{background:var(--same)}.act.diff{background:var(--diff)}.act.skip{background:var(--skip)}
+.act.nav{background:var(--chip);color:var(--ink);font-weight:400}
+.act:disabled{opacity:.45;cursor:default}
+kbd{font:12px ui-monospace,monospace;border:1px solid currentColor;border-radius:4px;padding:0 4px;opacity:.8;margin-left:6px}
+.done{padding:4px 10px;border-radius:6px;font-size:13px;display:inline-block;margin-bottom:8px;background:var(--same);color:#fff}
+.done.skip{background:var(--skip)}
+.warn{background:var(--chip);border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+label.toggle{font-size:13px;color:var(--mute);display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.empty{padding:40px 0;text-align:center;color:var(--mute)}
+.pairs{font-size:12px;color:var(--mute);margin-top:12px}
+</style></head><body>
+<div class="wrap">
+  <h1 id="title"></h1>
+  <p class="sub" id="about"></p>
+  <div class="note">Each question shows a whole group, so answers can't chain. Give the same number to entries that are one song; entries with different numbers stay apart. Each question starts with a suggestion: similar titles together, unless one names another version (Part 2, Male, Sad, Version 2). Nothing is recorded until you save.</div>
+  <div id="warn"></div>
+  <div class="tabs" id="tabs"></div>
+  <div class="status"><span id="count"></span><label class="toggle"><input type="checkbox" id="showDone"> show answered too</label></div>
+  <div class="bar"><i id="prog"></i></div>
+  <div id="card"></div>
+</div>
+<script id="data" type="application/json">/*__DATA__*/{}</script>
+<script>
+const D=JSON.parse(document.getElementById('data').textContent);
+const NAMES={rafi:'Mohammed Rafi',lata:'Lata Mangeshkar','eddy-arnold':'Eddy Arnold','jean-wiener':'Jean Wiener'};
+const SRC={hfgk_online:'HFGK',musicbrainz:'MusicBrainz',wikidata:'Wikidata',atulsongaday:"Atul's Song A Day",hindigeetmala:'Hindi Geetmala',discogs:'Discogs',mohdrafi:'mohdrafi.com'};
+const GC=['#2f5d8a','#2e7d4f','#b0412e','#8a5a2f','#6b3fa0','#2f7f86'];
+const SETS=Object.keys(D.maestros||{}).filter(k=>D.maestros[k].length);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $=id=>document.getElementById(id);
+let set=SETS[0], pos=0, showDone=false, answers={}, draft={}, db=null, me=null;
+$('title').textContent=D.title||'Canon Review Desk'; $('about').textContent=D.about||'';
+const docId=q=>q.q.replace(/[^A-Za-z0-9_-]/g,'_');
+const queue=()=>(D.maestros[set]||[]).filter(q=>showDone||!answers[docId(q)]);
+const left=s=>D.maestros[s].filter(q=>!answers[docId(q)]).length;
+function facts(s){return `<dl>${Object.entries(s.facts||{}).map(([f,v])=>`<dt>${esc(f)}</dt><dd>${esc([].concat(v).join('; '))}</dd>`).join('')}</dl>`}
+function head(s){return `<h3>${esc(s.label||'(no title)')}</h3><div class="meta">${esc(s.type)} · ${(s.sources||[]).map(x=>SRC[x]||x).join(', ')}${s.records>1?` · ${s.records} records`:''}</div>`}
+function startGroups(q){const out={};(q.suggest||q.members.map(m=>[m.id])).forEach((ids,i)=>ids.forEach(id=>out[id]=i));return out}
+function render(){
+  if(!SETS.length){$('card').innerHTML='<div class="empty">No questions in this round.</div>';return}
+  $('tabs').innerHTML=SETS.map(s=>`<button class="tab" data-p="${esc(s)}" aria-pressed="${s===set}">${esc(NAMES[s]||s)}<small>${left(s)} left of ${D.maestros[s].length}</small></button>`).join('');
+  const total=D.maestros[set].length;$('prog').style.width=((total-left(set))/total*100)+'%';
+  const qs=queue(); if(pos>=qs.length)pos=Math.max(0,qs.length-1);
+  $('count').textContent=qs.length?`Question ${pos+1} of ${qs.length}`:'';
+  if(!qs.length){$('card').innerHTML='<div class="empty">All answered here. Say so in the thread and your answers will be applied.</div>';return}
+  const q=qs[pos], a=answers[docId(q)];
+  const g=draft[docId(q)]||(a&&a.groups?Object.fromEntries(a.groups.flatMap((ids,i)=>ids.map(id=>[id,i]))):startGroups(q));
+  draft[docId(q)]=g;
+  const n=q.members.length, lab=Object.fromEntries(q.members.map(m=>[m.id,m.label]));
+  const badge=a?`<div class="done ${a.choice==='skip'?'skip':''}">Answered: ${a.choice==='skip'?'skipped':'saved'}</div>`:'';
+  $('card').innerHTML=`${badge}<div class="q">Which of these are the same song?</div>
+   <p class="why">Give the same number to entries that are one song.</p>
+   <div class="grid">${q.members.map(m=>`<div class="subj">${head(m)}${facts(m)}<div class="groups">${Array.from({length:n},(_,i)=>`<button class="g" data-m="${m.id}" data-g="${i}" aria-pressed="${g[m.id]===i}" style="${g[m.id]===i?`background:${GC[i%GC.length]}`:''}">${i+1}</button>`).join('')}</div></div>`).join('')}</div>
+   <div class="pairs">${q.pairs.map(p=>`${esc(lab[p.a]||p.a)} / ${esc(lab[p.b]||p.b)}${p.similarity!=null?`: title likeness ${Math.round(p.similarity*100)}%`:''}`).join(' · ')}</div>
+   <div class="acts"><button class="act save" data-save="group" ${db?'':'disabled'}>Save these groups<kbd>↵</kbd></button>
+    <button class="act save" data-save="same" ${db?'':'disabled'}>All one song<kbd>S</kbd></button>
+    <button class="act diff" data-save="diff" ${db?'':'disabled'}>All different<kbd>D</kbd></button>
+    <button class="act skip" data-save="skip" ${db?'':'disabled'}>Skip<kbd>X</kbd></button>
+    <button class="act nav" data-nav="-1">Back<kbd>←</kbd></button><button class="act nav" data-nav="1">Next<kbd>→</kbd></button></div>`;
+}
+async function save(kind){
+  if(!db)return; const q=queue()[pos]; if(!q)return;
+  const id=docId(q); const doc={maestro:set,round:D.round,kind:q.kind,items:q.items,q:q.q,at:new Date().toISOString(),by:me||null};
+  if(kind==='skip')doc.choice='skip';
+  else{
+    let groups;
+    if(kind==='same')groups=[q.members.map(m=>m.id)];
+    else if(kind==='diff')groups=q.members.map(m=>[m.id]);
+    else{const gs={};for(const [m,i] of Object.entries(draft[id]))(gs[i]=gs[i]||[]).push(+m);groups=Object.values(gs)}
+    doc.choice='groups';doc.groups=groups;
+  }
+  try{await db.collection(D.round).doc(id).set(doc);answers[id]=doc;delete draft[id];if(showDone)pos++;render()}
+  catch(e){$('warn').innerHTML=`<div class="warn">Could not save (${esc(e&&e.code||'error')}). Try again.</div>`}
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-p],[data-g],[data-save],[data-nav]');if(!t)return;
+  if(t.dataset.p){set=t.dataset.p;pos=0;render()}
+  else if(t.dataset.g!==undefined){const q=queue()[pos];draft[docId(q)][t.dataset.m]=+t.dataset.g;render()}
+  else if(t.dataset.save)save(t.dataset.save);
+  else if(t.dataset.nav){pos=Math.max(0,pos+ +t.dataset.nav);render()}
+});
+document.addEventListener('keydown',e=>{
+  if(e.target.closest('input,textarea')||e.metaKey||e.ctrlKey||e.altKey)return;
+  if(!queue()[pos])return;
+  const k=e.key.toLowerCase();
+  if(e.key==='Enter'){e.preventDefault();save('group')}
+  else if(k==='s')save('same'); else if(k==='d')save('diff'); else if(k==='x')save('skip');
+  else if(e.key==='ArrowRight'){pos++;render()}
+  else if(e.key==='ArrowLeft'){pos=Math.max(0,pos-1);render()}
+});
+$('showDone').addEventListener('change',e=>{showDone=e.target.checked;pos=0;render()});
+render();
+(async()=>{
+  try{db=window.claude?await claude.use('db'):null}catch(_){db=null}
+  if(!db){$('warn').innerHTML='<div class="warn">Saving is not available in this view. Open the page signed in to claude.ai.</div>';render();return}
+  try{const u=await claude.use('user');me=u?await u.id():null}catch(_){}
+  db.collection(D.round).onSnapshot(s=>{answers={};for(const d of s.docs){const v=d.data();if(v)answers[d.id]=v}render()},
+    err=>{$('warn').innerHTML=`<div class="warn">Lost the link to saved answers (${esc(err&&err.code||'error')}). Reload the page.</div>`});
+  render();
+})();
+</script>
+</body></html>
