@@ -418,6 +418,33 @@ body.fdrag, body.fdrag * { cursor: col-resize !important; user-select: none !imp
   .dock .screen { width: 100%; }
   .rcard .disc { width: 64px; --ds: 64px; }
 }
+/* Ragas: the day strip (one column per prahar, dawn to before dawn, then ragas with no fixed hour) and a raga's songs */
+.rsum { display: flex; gap: 8px 18px; flex-wrap: wrap; align-items: baseline; margin: 4px 0 14px; font-size: 13.5px; }
+.rsum .big { font: 800 30px var(--f-display); }
+.rtools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto; }
+.rstrip { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); gap: 10px; }
+.rcol { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 10px 8px; min-width: 0; }
+.rcol.day h3 { border-top: 3px solid var(--brass); }
+.rcol.night h3 { border-top: 3px solid var(--accent); }
+.rcol h3 { font: 600 13px var(--f-body); padding-top: 6px; display: flex; justify-content: space-between; gap: 6px; }
+.rcol .when { font: 11.5px var(--f-mono); color: var(--muted); margin: 1px 0 8px; }
+.rbtn { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; width: 100%; text-align: left; border: 0; background: transparent; border-radius: 6px; padding: 4px 6px; color: var(--ink); }
+.rbtn:hover { background: var(--hover); }
+.rbtn.on { background: var(--accent-soft); outline: 1px solid var(--accent); }
+.rbtn .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rbtn .ct { font: 12px var(--f-mono); color: var(--ink-2); }
+.rbtn .b { grid-column: 1 / -1; height: 5px; background: var(--seq-3); border-radius: 0 4px 4px 0; min-width: 4px; }
+.rpanel { margin-top: 16px; }
+.rpanel .facts { display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); margin: 4px 0 10px; }
+.rst { font: 600 10.5px var(--f-body); letter-spacing: .05em; text-transform: uppercase; border-radius: 999px; padding: 0 6px; border: 1px solid currentColor; white-space: nowrap; }
+.rst.confirmed { color: var(--good); }
+.rst.sourced { color: var(--ink-2); }
+.rst.inferred { color: var(--muted); border-style: dashed; }
+.rchip { display: inline-block; font-size: 12px; border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; color: var(--ink-2); }
+.rchip.disputed { border-color: var(--warn); color: var(--warn); }
+.rnote { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+.rdet { display: grid; gap: 6px; }
+.rdet .ln { display: flex; gap: 6px; flex-wrap: wrap; align-items: baseline; }
 </style>
 
 <header class="top">
@@ -429,6 +456,7 @@ body.fdrag, body.fdrag * { cursor: col-resize !important; user-select: none !imp
       <span class="sep" id="sep1" aria-hidden="true"></span>
       <a href="#overview" id="v-overview">Overview</a>
       <a href="#browse" id="v-browse">Songs</a>
+      <a href="#ragas" id="v-ragas" hidden>Ragas</a>
       <a href="#gems" id="v-gems">Gems &amp; hits</a>
       <a href="#map" id="v-map">Map</a>
       <a href="#insights" id="v-insights">Collaborators</a>
@@ -472,9 +500,9 @@ const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 
 // ---------------------------------------------------------------- state
 const S = { index: [], registers: [], cat: [], snaps: {}, slug: null, d: null, f: blank(), view: "home", limit: 150, sel: null, group: "none", answer: null, sample: null, busy: null,
-  loading: null, qsets: {}, home: { q: "", role: "", region: "", open: null } };
-const MAESTRO_VIEWS = ["overview", "browse", "gems", "map", "insights", "coverage"];
-function blank() { return { text: "", yFrom: null, yTo: null, tiers: [], people: [], containers: [], langs: [], perf: null, minLin: null, maxLin: null, live: false, noTier: false, noYear: false, gems: false, sort: "year" }; }
+  loading: null, qsets: {}, raga: null, rgroup: lsGet("rgroup") || "time", home: { q: "", role: "", region: "", open: null } };
+const MAESTRO_VIEWS = ["overview", "browse", "ragas", "gems", "map", "insights", "coverage"];
+function blank() { return { text: "", yFrom: null, yTo: null, tiers: [], people: [], containers: [], langs: [], perf: null, minLin: null, maxLin: null, live: false, noTier: false, noYear: false, gems: false, styles: [], styleAny: false, time: null, sort: "year" }; }
 
 // ---------------------------------------------------------------- loading
 async function boot() {
@@ -513,7 +541,7 @@ async function selectMaestro(slug) {
     if (S.slug !== slug) return; // another maestro was picked while this one loaded
   }
   if (S.view === "home" || S.view === "films") location.hash = "#overview";
-  S.d = S.snaps[slug]; S.f = blank(); S.sel = null; S.answer = null; S.limit = 150;
+  S.d = S.snaps[slug]; S.f = blank(); S.sel = null; S.answer = null; S.limit = 150; S.raga = null;
   const q = document.getElementById("q"); q.value = "";
   q.placeholder = examples(S.d)[0] ? "Try: " + examples(S.d)[0] : "Search titles, people, years…";
   renderMaestros(); render();
@@ -546,6 +574,7 @@ function prep(d) {
     u._ckey = c ? squash(fold([c.title, ...(c.alt_titles || []), ...(c.personnel || [])].join(" "))) : "";
     u._perf = d.perfRole ? (u.credits[d.perfRole] || []).length : null;
     u._lin = u.lineages.length;
+    u._styles = (u.styles || []).map(e => e.n);
     u._reach = reachOf(u, d);
     u._pop = u.pop ? (u.pop.reach != null ? u.pop.reach : u.pop.score) : 0; // reach: what the map and the low label use
     if (!u.gemness && !d.gemness) u.gemness = provisionalGemness(u.pop);
@@ -592,6 +621,13 @@ function prep(d) {
   d.tierKeys = Object.keys(d.tiers);
   d.tierWords = tierWords(d.tiers, d);
   d.byId = new Map(d.units.map(u => [u.id, u]));
+  // The style taxonomy (raga): names and other names the query parser knows.
+  if (d.style && d.style.units) {
+    d.styleIdx = new Map();
+    for (const [n, e] of Object.entries(d.style.table || {})) for (const a of [n, ...(e.aliases || [])]) if (!d.styleIdx.has(fold(a))) d.styleIdx.set(fold(a), n);
+    for (const n of d.style.unknown || []) if (!d.styleIdx.has(fold(n))) d.styleIdx.set(fold(n), n);
+    d.styleWord = d.style.taxonomy || "style";
+  } else d.style = null;
   d.hasPop = d.units.some(u => u._pop > 0);
   d.low = lowRule(d);
   bindTags(d);
@@ -662,6 +698,8 @@ function parseQuery(raw, d) {
   take(/\b(?:(?:my|our|tagged)\s+)?(?:(rare|hidden|forgotten|overlooked)\s+)?(?:gems?|deep\s+cuts?|underrated|rarities|rare\s+ones?)\b/g, m => { f.gems = m[1] || /rar/.test(m[0]) ? "rare" : "all"; f.sort = "gem"; });
   take(/\b(?:most\s+popular|biggest\s+hits?|popular|hits|best\s+known|famous|well[\s-]known)\s*(?:first)?\b/g, () => { f.sort = "popular"; });
 
+  if (d.styleIdx) parseStyles(f, d, take, () => s);
+
   let toks = fold(s).split(" ").filter(Boolean);
   const rest = [];
   const tierW = d.tierWords;
@@ -701,6 +739,28 @@ function parseQuery(raw, d) {
   f.text = rest.join(" ");
   return f;
 }
+// Ragas in a question: "raga Yaman", "Yaman raga", or a raga's name alone when it is not also a common
+// title word, a person or a film ("Bahar", "Desh", "Hemant" need the cue). With the word raga, times of day
+// ("morning ragas", "monsoon") pick ragas by their traditional hour; "raga songs" alone asks for any raga.
+const TIMEWORDS = [["before dawn", ["n4"]], ["dawn", ["n4", "d1"]], ["early morning", ["d1"]], ["late morning", ["d2"]], ["morning", ["d1", "d2"]],
+  ["late afternoon", ["d4"]], ["sunset", ["d4"]], ["dusk", ["d4", "n1"]], ["afternoon", ["d3", "d4"]], ["evening", ["n1"]], ["late night", ["n3"]], ["midnight", ["n3"]],
+  ["night", ["n1", "n2", "n3"]], ["monsoon", ["monsoon"]], ["rainy season", ["monsoon"]], ["rain", ["monsoon"]], ["spring", ["spring"]]];
+const reEsc = x => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function parseStyles(f, d, take, cur) {
+  const w = "(?:raga|raag|rag)s?", add = n => { if (!f.styles.includes(n)) f.styles.push(n); };
+  const cue = new RegExp(`\\b${w}\\b`).test(cur());
+  for (const k of [...d.styleIdx.keys()].sort((a, b) => b.length - a.length)) {
+    const n = d.styleIdx.get(k), ke = reEsc(k);
+    const cued = new RegExp(`\\b(?:${w}\\s+${ke}|${ke}\\s+${w})\\b`, "g");
+    if (cued.test(cur())) { take(cued, () => add(n)); continue; }
+    const bare = new RegExp(`(?:^|\\s)${ke}(?=\\s|$)`, "g");
+    if (k.length >= 5 && !d.tokens.has(k) && !d.names.has(k) && !d.conts.has(k) && (d.titleWords[k] || 0) < 3 && bare.test(cur())) take(bare, () => add(n));
+  }
+  if (!cue) return;
+  for (const [word, codes] of TIMEWORDS) take(new RegExp(`\\b${word}\\b`, "g"), () => { f.time = [...new Set([...(f.time || []), ...codes])]; });
+  take(/\b(?:in\s+an?\s+|based\s+on\s+an?\s+|classical\s+)?(?:raga|raag|rag)s?(?:[\s-]+based)?\b/g, () => { if (!f.styles.length && !f.time) f.styleAny = true; });
+}
+function slotsOf(d, n) { const e = (d.style.table || {})[n]; if (!e) return ["unknown"]; const out = [e.time || (e.season ? null : "free"), e.season].filter(Boolean); return out.length ? out : ["free"]; }
 function matchPerson(toks, i, d, cued) {
   for (let n = Math.min(5, toks.length - i); n >= 1; n--) {
     const k = toks.slice(i, i + n).join(" ");
@@ -765,6 +825,9 @@ function applyFilter(d, f) {
     if (f.live && !u.live) continue;
     if (f.gems && !(u._tag && (f.gems !== "rare" || u._tag.rare))) continue;
     if (f.minLin != null && u._lin < f.minLin) continue;
+    if (f.styles.length && !f.styles.some(n => u._styles.includes(n))) continue;
+    if (f.styleAny && !u._styles.length) continue;
+    if (f.time && !u._styles.some(n => slotsOf(d, n).some(t => f.time.includes(t)))) continue;
     if (f.maxLin != null && u._lin > f.maxLin) continue;
     if (f.perf && u._perf != null) {
       const n = u._perf;
@@ -808,6 +871,9 @@ function chipList(f, d) {
   if (f.minLin != null) c.push(["sources", `${f.minLin}+ lineages`, g => { g.minLin = null; }]);
   if (f.live) c.push(["kind", "live", g => { g.live = false; }]);
   if (f.gems) c.push(["only", f.gems === "rare" ? "your rare gems" : "your gems", g => { g.gems = false; if (g.sort === "gem") g.sort = "year"; }]);
+  for (const n of f.styles || []) c.push([d.styleWord || "raga", n, g => { g.styles = g.styles.filter(x => x !== n); }]);
+  if (f.styleAny) c.push([d.styleWord || "raga", "any known", g => { g.styleAny = false; }]);
+  if (f.time) c.push(["time", f.time.map(t => timeLabel(d, t)).join(", "), g => { g.time = null; }]);
   if (f.noTier) c.push(["tier", "none assigned", g => { g.noTier = false; }]);
   if (f.noYear) c.push(["year", "unknown", g => { g.noYear = false; }]);
   if (f.text) c.push(["words", f.text, g => { g.text = ""; }]);
@@ -858,6 +924,8 @@ function renderMaestros() {
   document.getElementById("sep2").hidden = document.getElementById("v-films").hidden;
   const u = (S.d && S.d.unitWord) || (m && m.unit) || "song";
   document.getElementById("v-browse").textContent = cap(u) + "s";
+  const rg = document.getElementById("v-ragas");
+  if (!rg.hidden) { const st = S.d && S.d.style; rg.hidden = !st; if (st) rg.textContent = cap(st.taxonomy) + "s"; }
 }
 function setView() {
   const v = (location.hash || "#home").slice(1);
@@ -887,6 +955,7 @@ function render() {
   S.res = res;
   if (S.view === "overview") renderOverview(res);
   else if (S.view === "browse") renderBrowse(res);
+  else if (S.view === "ragas") renderRagas(res);
   else if (S.view === "gems") renderGems(res);
   else if (S.view === "map") renderMap(res);
   else if (S.view === "insights") renderInsights(res);
@@ -927,6 +996,10 @@ function renderFacets(res) {
   }
   const conts = counts(res, u => u.container != null ? [u.container] : []).slice(0, 8);
   if (conts.length) h += `<div class="facet"><h3>${esc(cap(d.contWord))}s</h3>${facetRows(conts, res.length, "cont", k => f.containers.includes(+k), k => (d.C[k] || {}).title || k)}</div>`;
+  if (d.style) {
+    const st = counts(res, u => u._styles).slice(0, 10);
+    if (st.length) h += `<div class="facet"><h3>${esc(cap(d.styleWord))}</h3>${facetRows(st, res.length, "style", k => f.styles.includes(k), k => k)}</div>`;
+  }
   const langs = counts(res, u => u._lang ? [u._lang] : []);
   if (langs.length) h += `<div class="facet"><h3>Language</h3>${facetRows(langs, res.length, "lang", k => f.langs.includes(k), k => k)}</div>`;
   const lin = counts(res, u => [u._lin >= 2 ? "2" : String(u._lin)]).sort((a, b) => a[0].localeCompare(b[0]));
@@ -940,6 +1013,7 @@ function onFacet(kind, k) {
   else if (kind === "perf") f.perf = f.perf === k ? null : k;
   else if (kind === "cont") f.containers = toggle(f.containers, +k);
   else if (kind === "lang") f.langs = toggle(f.langs, k);
+  else if (kind === "style") f.styles = toggle(f.styles, k);
   else if (kind === "lin") { if (k === "1") { f.maxLin = f.maxLin === 1 ? null : 1; f.minLin = null; } else if (k === "2") { f.minLin = f.minLin === 2 ? null : 2; f.maxLin = null; } }
   else if (kind.startsWith("p:")) {
     const role = kind.slice(2), id = +k;
@@ -954,6 +1028,7 @@ function unitMeta(u, d) {
   if (d.perfRole) { const co = (u.credits[d.perfRole] || []).filter(p => p !== me); if (co.length) bits.push(`<span class="muted">with</span> ${esc(co.slice(0, 4).map(pname).join(", "))}${co.length > 4 ? " +" + (co.length - 4) : ""}`); }
   if (!u._c) { const cat = (u.catalogue || u.matrix || [])[0]; if (cat) bits.push(`<span class="mono">${esc(cat)}</span>`); }
   if (u._lang) bits.push(esc(u._lang));
+  if (u._styles.length) bits.push(`<span class="rchip${u.style_disputed ? " disputed" : ""}" title="${esc(cap(d.styleWord || "raga"))}${u.style_disputed ? ": sources disagree" : ""}">${esc(u._styles.join(" / "))}</span>`);
   return bits.join(" · ");
 }
 function linDots(n, max = 3) { let s = ""; for (let i = 0; i < max; i++) s += `<i class="${i < n ? "on" : ""}"></i>`; return `<span class="lin" title="Seen by ${n} independent source lineage${n === 1 ? "" : "s"}">${s}</span>`; }
@@ -1037,6 +1112,88 @@ function renderBrowse(res) {
   const more = document.getElementById("more"); if (more) more.onclick = () => { S.limit += 300; render(); };
   wireMain(main);
 }
+// ---------------------------------------------------------------- ragas (the pack's style taxonomy)
+const SLOT_ORDER = ["d1", "d2", "d3", "d4", "n1", "n2", "n3", "n4", "monsoon", "spring", "free", "unknown"];
+const SLOT_EXTRA = { monsoon: ["Monsoon", "the Malhars and rain ragas"], spring: ["Spring", "Basant, Bahar and Holi ragas"],
+  free: ["No fixed hour", "light, folk-based and Carnatic-born ragas"], unknown: ["Not in the raga table yet", "as the source wrote it"] };
+const STATUS_WORD = { confirmed: "confirmed by you", sourced: "sourced", inferred: "inferred" };
+const SRC_NAME = { user: "you", unrecorded: "source not recorded", wikipedia_ragas: "Wikipedia raga list", hindigeetmala: "Hindi Geetmala", audio: "audio analysis", reuse: "the original song" };
+const srcName = s => SRC_NAME[s] || s;
+function timeLabel(d, t) { const x = (d.style && d.style.times || {})[t]; return x ? x.split(",")[0] : (SLOT_EXTRA[t] || [t])[0]; }
+function timeWhen(d, t) { const x = (d.style && d.style.times || {})[t]; return x ? x.split(", ").slice(1).join(", ") : (SLOT_EXTRA[t] || [, ""])[1]; }
+function styleFacts(d, n) {
+  const e = (d.style.table || {})[n];
+  if (!e) return `<span>Not in the raga table yet</span>`;
+  const bits = [];
+  if (e.thaat) bits.push(`<span><span class="muted">thaat</span> ${esc(e.thaat)}</span>`);
+  bits.push(`<span><span class="muted">time</span> ${e.time ? esc(d.style.times[e.time]) : "no fixed hour"}${e.season ? ` · ${esc(e.season)}` : ""}</span>`);
+  if (e.mood) bits.push(`<span><span class="muted">mood</span> ${esc(e.mood)}</span>`);
+  if (e.light) bits.push(`<span class="muted">light-classical: film songs use it loosely</span>`);
+  return bits.join("");
+}
+function styleDetail(u, d) {
+  const lines = u.styles.map(e => `<div class="ln"><b><button class="linklike" data-style="${esc(e.n)}">${esc(e.n)}</button></b><span class="rst ${e.st}">${esc(STATUS_WORD[e.st] || e.st)}</span>
+    <span class="muted">${esc(e.src.map(srcName).join(", "))}${e.as ? ` · written “${esc(e.as.join("”, “"))}”` : ""}</span></div>
+    <div class="ln" style="font-size:12.5px">${styleFacts(d, e.n)}</div>`).join("");
+  return `<div class="rdet">${lines}${u.style_disputed ? `<div class="rchip disputed">The sources disagree; both are kept until you confirm one.</div>` : ""}</div>`;
+}
+function renderRagas(res) {
+  const d = S.d, main = document.getElementById("main"), st = d.style, word = d.styleWord;
+  if (!st) { main.innerHTML = `<div class="empty">This canon has no ${esc(word || "raga")} data.</div>`; return; }
+  const by = new Map(); // raga -> units in the current results
+  let tagged = 0, disputed = 0; const bySrc = {};
+  for (const u of res) {
+    if (!u._styles.length) continue;
+    tagged++; if (u.style_disputed) disputed++;
+    for (const e of u.styles) { (by.get(e.n) || by.set(e.n, []).get(e.n)).push(u); for (const x of e.src) bySrc[x] = (bySrc[x] || 0) + 1; }
+  }
+  const max = Math.max(1, ...[...by.values()].map(x => x.length));
+  const btn = n => { const k = by.get(n).length; return `<button type="button" class="rbtn${S.raga === n ? " on" : ""}" data-raga="${esc(n)}" title="${esc(n)}: ${plural(k, d.unitWord)}"><span class="nm">${esc(n)}</span><span class="ct">${k}</span><span class="b" style="width:${(k / max * 100).toFixed(1)}%"></span></button>`; };
+  const arrange = S.rgroup || "time";
+  const cols = new Map();
+  for (const n of by.keys()) {
+    const e = st.table[n] || {};
+    const keys = arrange === "thaat" ? [e.thaat || (st.table[n] ? "No thaat" : "Not in the raga table yet")] : arrange === "count" ? ["all"] : [slotsOf(d, n)[0]];
+    for (const k of keys) (cols.get(k) || cols.set(k, []).get(k)).push(n);
+  }
+  const order = arrange === "time" ? SLOT_ORDER : [...cols.keys()].sort((a, b) => cols.get(b).reduce((s, n) => s + by.get(n).length, 0) - cols.get(a).reduce((s, n) => s + by.get(n).length, 0));
+  const strip = order.filter(k => cols.has(k)).map(k => {
+    const names = cols.get(k).sort((a, b) => by.get(b).length - by.get(a).length || a.localeCompare(b));
+    const total = new Set(names.flatMap(n => by.get(n))).size;
+    const head = arrange === "time" ? timeLabel(d, k) : arrange === "thaat" ? k : `All ${word}s`;
+    const when = arrange === "time" ? timeWhen(d, k) : arrange === "thaat" && k !== "No thaat" && !k.startsWith("Not") ? "parent scale" : "";
+    const cls = arrange === "time" ? (k[0] === "d" && k.length === 2 ? " day" : k[0] === "n" && k.length === 2 ? " night" : "") : "";
+    return `<div class="rcol${cls}"><h3><span>${esc(head)}</span><span class="mono muted">${total}</span></h3>${when ? `<div class="when">${esc(when)}</div>` : ""}${names.map(btn).join("")}</div>`;
+  }).join("");
+  // the chosen raga (or the songs whose sources disagree)
+  let panel = "";
+  if (S.raga && (S.raga === "__disputed" || by.has(S.raga))) {
+    const list = (S.raga === "__disputed" ? res.filter(u => u.style_disputed) : by.get(S.raga)).slice().sort((a, b) => (a.year || 9999) - (b.year || 9999) || a.title.localeCompare(b.title));
+    S.qsets.ragas = list;
+    const stc = {}; if (S.raga !== "__disputed") for (const u of list) { const e = u.styles.find(x => x.n === S.raga); stc[e.st] = (stc[e.st] || 0) + 1; }
+    const title = S.raga === "__disputed" ? "Sources disagree" : S.raga;
+    panel = `<section class="panel rpanel" id="rpanel"><div class="phead"><h2>${esc(title)}</h2>${playAllBtn("ragas", list)}
+      ${S.raga !== "__disputed" ? `<button class="btn" type="button" id="rsongs">Show in ${esc(cap(d.unitWord))}s</button>` : ""}</div>
+      ${S.raga !== "__disputed" ? `<div class="facts">${styleFacts(d, S.raga)}</div>` : `<div class="sub">Two sources name ${word}s that share nothing. Each ${esc(d.unitWord)} keeps both; open one to see who says what.</div>`}
+      <div class="sub">${plural(list.length, d.unitWord)}${Object.keys(stc).length ? " · " + Object.entries(stc).map(([k, v]) => `${v} ${STATUS_WORD[k]}`).join(", ") : ""}</div>
+      <div class="ledger">${list.map(u => rowHtml(u, d, "ragas")).join("")}</div></section>`;
+  }
+  const pct = res.length ? (tagged / res.length * 100) : 0;
+  main.innerHTML = `<section style="min-width:0">${answerHtml()}
+    <div class="list-head"><h2>${esc(cap(word))}s</h2>
+      <div class="rtools"><label class="muted" for="rgrp">Arrange by</label><select id="rgrp"><option value="time">time of day</option><option value="thaat">thaat</option><option value="count">most ${esc(d.unitWord)}s</option></select></div></div>
+    <div class="rsum"><span class="big mono">${tagged.toLocaleString()}</span><span>of ${plural(res.length, d.unitWord)} ${res.length === d.units.length ? "in the canon" : "matching"} have a known ${esc(word)} (${pct < 10 ? pct.toFixed(1) : Math.round(pct)}%), ${esc(plural(by.size, word))}.</span>
+      <span class="muted">Tags from ${Object.entries(bySrc).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${esc(srcName(k))} (${v})`).join(", ") || "no source yet"}.</span>
+      ${disputed ? `<button class="linklike" type="button" data-raga="__disputed">${disputed} where sources disagree</button>` : ""}</div>
+    <div class="rstrip">${strip || `<div class="empty">No ${esc(d.unitWord)} here has a known ${esc(word)}.</div>`}</div>
+    <div class="rnote">Only ${esc(word)}s a source names are shown; most ${esc(d.unitWord)}s have none yet. Times and moods are the traditional ones (Bhatkhande's prahars), a guide only: composers used any ${esc(word)} for any scene.</div>
+    ${panel}</section>`;
+  document.getElementById("rgrp").value = arrange;
+  document.getElementById("rgrp").onchange = e => { S.rgroup = e.target.value; lsSet("rgroup", S.rgroup); render(); };
+  main.querySelectorAll("[data-raga]").forEach(b => b.onclick = () => { S.raga = S.raga === b.dataset.raga ? null : b.dataset.raga; render(); const p = document.getElementById("rpanel"); if (p) p.scrollIntoView({ behavior: "smooth", block: "start" }); });
+  const rs = document.getElementById("rsongs"); if (rs) rs.onclick = () => { S.f.styles = [S.raga]; location.hash = "#browse"; };
+  wireMain(main);
+}
 function wireMain(main) {
   main.querySelectorAll(".frow").forEach(b => b.onclick = () => onFacet(b.dataset.f, b.dataset.k));
   main.querySelectorAll("[data-dec]").forEach(b => b.onclick = () => { const y = +b.dataset.dec; if (S.f.yFrom === y && S.f.yTo === y + 9) S.f.yFrom = S.f.yTo = null; else { S.f.yFrom = y; S.f.yTo = y + 9; } S.limit = 150; render(); });
@@ -1044,6 +1201,7 @@ function wireMain(main) {
   main.querySelectorAll("[data-person]").forEach(b => b.onclick = () => { const role = b.dataset.role || null; S.f = blank(); S.f.people = [{ id: +b.dataset.person, role: role === "any" ? null : role }]; S.sel = null; document.getElementById("q").value = ""; location.hash = "#browse"; render(); });
   main.querySelectorAll("[data-cont]").forEach(b => b.onclick = () => { S.f = blank(); S.f.containers = [+b.dataset.cont]; S.group = "none"; S.sel = null; document.getElementById("q").value = ""; location.hash = "#browse"; render(); });
   main.querySelectorAll("[data-unit]").forEach(b => b.onclick = () => openUnit(+b.dataset.unit));
+  main.querySelectorAll("[data-style]").forEach(b => b.onclick = () => { S.raga = b.dataset.style; S.sel = null; location.hash = "#ragas"; render(); });
   const x = document.getElementById("closedetail"); if (x) x.onclick = () => { S.sel = null; render(); };
   const fd = document.getElementById("facets"); if (fd) fd.ontoggle = () => { if (innerWidth <= 760) lsSet("facets", fd.open ? "open" : "closed"); };
   main.querySelectorAll("[data-apply]").forEach(b => b.onclick = () => { S.f = JSON.parse(b.dataset.apply); location.hash = "#browse"; render(); });
@@ -1066,6 +1224,7 @@ function detailHtml(u, d) {
   if (u._c && u._c.credits) for (const [r, ids] of Object.entries(u._c.credits)) if (!u.credits[r] && ["director", "composer", "lyricist", "producer"].includes(r)) add(cap(roleName(r)) + ` (${esc(d.contWord)})`, ids.map(p => `<button class="linklike" data-person="${p}" data-role="any">${esc(pname(p))}</button>`).join(", "));
   add("On screen", (u.on_screen || []).map(p => `<button class="linklike" data-person="${p}" data-role="on_screen">${esc(pname(p))}</button>`).join(", "));
   add("Language", esc(u._lang));
+  if (u.styles && d.style) add(cap(d.styleWord), styleDetail(u, d));
   for (const [k, lbl] of [["date", "Recorded"], ["recorded_year", "Recorded"], ["release_year", "Released"], ["catalogue", "Catalogue"], ["matrix", "Matrix"], ["label", "Label"], ["issues", "Issued on"], ["description", "Description"], ["work_type", "Form"], ["kind", "Kind"], ["category", "Category"], ["performer", "Performer"], ["artist_credit", "Credited as"], ["full_title", "Full title"]])
     if (u[k]) add(lbl, `<span class="${["catalogue", "matrix", "date"].includes(k) ? "mono" : ""}">${esc(u[k].map(x => roleName(String(x))).join(" · "))}</span>`);
   if (u._c && u._c.kind && u._c.kind.includes("session")) { add("Place", esc((u._c.place || []).join(" · "))); add("Personnel", esc((u._c.personnel || []).join(" · "))); }
