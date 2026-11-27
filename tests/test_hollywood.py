@@ -18,7 +18,7 @@ def _year_mod():
 def test_country_films_query_names_country_years_and_classes():
     q = parse_qs(urlsplit(wlf.country_films_url("Q30", 1944, 1944)).query)["query"][0]
     assert "wdt:P495 wd:Q30" in q and '"1944-01-01"' in q and '"1945-01-01"' in q
-    assert "wd:Q11424" in q and "wd:Q24862" in q and "{lang}" not in q
+    assert "wd:Q11424" in q and "wd:Q24862" in q and "{" + "classes}" not in q
 
 
 YEAR_PAGE = """<table class="wikitable"><tr><th>Title</th><th>Director</th><th>Cast</th><th>Genre</th><th>Notes</th></tr>

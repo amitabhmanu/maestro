@@ -37,21 +37,35 @@ def films_url(lang_qid: str, lang_code: str = "hi") -> str:
     return f"{ENDPOINT}?{urlencode({'format': 'json', 'query': QUERY.format(lang=lang_qid, code=lang_code)})}"
 
 
-# By country the class path (P31/P279*) times out, so the film classes are named: film, feature film, silent,
-# animated, musical, documentary, black-and-white and 3D film. Items also marked short film are left out.
-FILM_CLASSES = ("Q11424", "Q24869", "Q226730", "Q202866", "Q842256", "Q93204", "Q20667187", "Q229390")
-_COUNTRY_FILTER = """wdt:P31 ?class . VALUES ?class {{ {classes} }}
-  ?film wdt:P495 wd:{country} ; wdt:P577 ?d0 .
-  FILTER(?d0 >= "{start}-01-01"^^xsd:dateTime && ?d0 < "{after}-01-01"^^xsd:dateTime)
-  FILTER NOT EXISTS {{ ?film wdt:P31 wd:Q24862 }}"""
+# By country the class path (P31/P279*) times out, so a subquery first picks the films of the span by
+# named class (film, feature, animated, silent, musical), then the details are joined. Items that are also
+# short films are left out.
+FILM_CLASSES = ("Q11424", "Q24869", "Q202866", "Q226730", "Q842256")
+COUNTRY_QUERY = """SELECT ?film (SAMPLE(?enl) AS ?en) (SAMPLE(?t) AS ?title) (MIN(YEAR(?date)) AS ?year)
+  (SAMPLE(?imdb) AS ?imdbid) (SAMPLE(?art) AS ?enwiki)
+  (GROUP_CONCAT(DISTINCT CONCAT(STRAFTER(STR(?mus), "entity/"), "|", COALESCE(?musl, "")); separator="\\t") AS ?composers)
+  (GROUP_CONCAT(DISTINCT CONCAT(STRAFTER(STR(?dir), "entity/"), "|", COALESCE(?dirl, "")); separator="\\t") AS ?directors)
+WHERE {{
+  {{ SELECT DISTINCT ?film WHERE {{
+    {classes}
+    ?film wdt:P495 wd:{country} ; wdt:P577 ?d0 .
+    FILTER(?d0 >= "{start}-01-01"^^xsd:dateTime && ?d0 < "{after}-01-01"^^xsd:dateTime) }} }}
+  FILTER NOT EXISTS {{ ?film wdt:P31 wd:Q24862 }}
+  OPTIONAL {{ ?film wdt:P577 ?date }}
+  OPTIONAL {{ ?film rdfs:label ?enl FILTER(LANG(?enl) = "en") }}
+  OPTIONAL {{ ?film wdt:P1476 ?t }}
+  OPTIONAL {{ ?film wdt:P345 ?imdb }}
+  OPTIONAL {{ ?art schema:about ?film ; schema:isPartOf <https://en.wikipedia.org/> }}
+  OPTIONAL {{ ?film wdt:P86 ?mus . OPTIONAL {{ ?mus rdfs:label ?musl FILTER(LANG(?musl) = "en") }} }}
+  OPTIONAL {{ ?film wdt:P57 ?dir . OPTIONAL {{ ?dir rdfs:label ?dirl FILTER(LANG(?dirl) = "en") }} }}
+}} GROUP BY ?film"""
 
 
-def country_films_url(country_qid: str, start: int, end: int, lang_code: str = "en") -> str:
+def country_films_url(country_qid: str, start: int, end: int) -> str:
     """Films whose country of origin is `country_qid` with a publication date in start..end (a film dated in
     several years is listed in each span it touches; the register keeps its earliest year)."""
-    query = QUERY.format(lang="LANG", code=lang_code).replace(
-        "wdt:P364 wd:LANG ; wdt:P31/wdt:P279* wd:Q11424 .", _COUNTRY_FILTER.format(
-            country=country_qid, start=start, after=end + 1, classes=" ".join("wd:" + c for c in FILM_CLASSES)))
+    classes = " UNION ".join(f"{{ ?film wdt:P31 wd:{c} }}" for c in FILM_CLASSES)
+    query = COUNTRY_QUERY.format(classes=classes, country=country_qid, start=start, after=end + 1)
     return f"{ENDPOINT}?{urlencode({'format': 'json', 'query': query})}"
 
 
