@@ -2,6 +2,8 @@
 
 Shared lists that label every canon and register for the explorer's atlas (Places, Genres, Waves). Not a maestro pack: there is no `maestro.yaml` here.
 
+MVP1 covers Bollywood and Hollywood only (Amitabh, 27 Nov 2026): places are India, the United States and Pakistan (pre-Partition film centres). Add other countries when their canons are built.
+
 - `lexicon/places.tsv`: world > region > country > state > city, with Wikidata ids, coordinates and old or other names (Bombay, Calcutta, Madras, बंबई) used to read places out of film banners and birthplaces. Country ids are ISO 3166 alpha-3 in lower case, matching the map shapes.
 - `lexicon/genres.tsv`: three trees, music (forms and styles, including the forms of Hindi and Hollywood film song), film genres, and song themes; `maps_from` lists the source labels each node takes (explorer catalogue genres, Hindi Geetmala categories, HFGK subjects in English and Hindi).
 - `lexicon/waves.tsv`: eras (which tile an industry's timeline) and movements (which overlap) of Bollywood and Hollywood, each with a definition, a rule for which films join it, and its sources. Every wave is sourced (Amitabh, 27 Nov 2026).

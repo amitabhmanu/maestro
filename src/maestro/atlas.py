@@ -35,7 +35,7 @@ PLACE_KINDS = {"world", "region", "country", "state", "city", "historical"}
 PLACE_ROLES = {"film_centre", "music_centre", "birthplace"}
 GENRE_KINDS = {"music", "film", "theme"}
 WAVE_KINDS = {"era", "movement"}
-RULE_TERMS = {"year", "curated", "genre", "producer", "studio", "released_before", "films", "wikidata"}
+RULE_TERMS = {"year", "curated", "genre", "producer", "studio", "released_before", "release", "films", "wikidata"}
 QID = re.compile(r"^Q\d+$")
 
 
