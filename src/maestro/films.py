@@ -44,7 +44,7 @@ FILM_ROLES = ("composer", "lyricist", "director", "producer", "actor", "screenwr
 # Film facts kept as they come, for the explorer's film page (see `film_details`).
 EXTRA_FIELDS = ("banner", "distributor", "record_company", "subject", "release", "censor", "box_office", "budget",
                 "award", "based_on", "remade_as", "soundtrack", "soundtrack_article", "album_release", "language",
-                "country", "link", "alt_title")
+                "country", "link", "alt_title", "film_genre", "movement", "broadcaster")
 
 
 # ---- names ---------------------------------------------------------------------
@@ -843,7 +843,7 @@ def film_details(film: Film, by_qid: dict[str, int] | None = None) -> dict[str, 
         if crew.get(role):
             out[key] = crew[role][:15] if role == "actor" else crew[role]
     for k, key in (("banner", "banner"), ("distributor", "dist"), ("record_company", "label"), ("subject", "genre"),
-                   ("language", "lang"), ("alt_title", "aka")):
+                   ("language", "lang"), ("alt_title", "aka"), ("country", "country"), ("broadcaster", "broadcaster")):
         vals = [v for v in extra.get(k, []) if isinstance(v, str)]
         if vals:
             out[key] = vals
@@ -874,6 +874,13 @@ def film_details(film: Film, by_qid: dict[str, int] | None = None) -> dict[str, 
         awards.append({k: a[k] for k in ("award", "year", "status", "to") if a.get(k)})
     if awards:
         out["awards"] = sorted(awards, key=lambda a: (a.get("status") != "won", a.get("year") or 0, a["award"]))
+    for k, key in (("film_genre", "wd_genre"), ("movement", "movement")):
+        vals = []
+        for v in extra.get(k, []):
+            if isinstance(v, dict) and v.get("qid") and all(x["qid"] != v["qid"] for x in vals):
+                vals.append({"qid": v["qid"], "label": v.get("label")})
+        if vals:
+            out[key] = vals
     for k, key in (("based_on", "based_on"), ("remade_as", "remade_as")):
         vals = []
         for v in extra.get(k, []):

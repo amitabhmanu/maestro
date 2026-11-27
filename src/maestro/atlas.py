@@ -77,15 +77,22 @@ class Places:
         """Place ids named in a label such as 'Filmistan Limited, Bombay' or 'Bombay/Madras'.
 
         Reads the last comma part (where banners put the city), split on '/', and drops
-        bracketed notes; returns [] when nothing matches."""
-        tail = label.rsplit(",", 1)[-1] if "," in label else label
-        out: list[str] = []
-        for part in re.split(r"[/&]", tail):
-            part = re.sub(r"\(.*?\)", "", part).strip()
-            pid = self.index.get(_key(part)) if part else None
-            if pid and pid not in out:
-                out.append(pid)
-        return out
+        bracketed notes. When that part names only a country ('..., Bombay/Los Angeles, America'),
+        the part before it is read too and its cities win. Returns [] when nothing matches."""
+        parts = label.split(",")
+        tails = parts[:0:-1] or parts  # comma parts after the company name, last first
+        found: list[str] = []
+        for tail in tails[:2]:
+            out = []
+            for part in re.split(r"[/&]", tail):
+                part = re.sub(r"\(.*?\)", "", part).strip()
+                pid = self.index.get(_key(part)) if part else None
+                if pid and pid not in out:
+                    out.append(pid)
+            if any(self.rows[p]["kind"] != "country" for p in out):
+                return out
+            found = found or out
+        return found
 
     def ancestors(self, pid: str) -> list[str]:
         out, seen = [], set()
@@ -101,9 +108,22 @@ class Places:
 class Genres:
     rows: dict[str, dict[str, Any]] = field(default_factory=dict)
     index: dict[tuple[str, str], str] = field(default_factory=dict)  # (source, folded label) -> id
+    by_qid: dict[tuple[str, str], str] = field(default_factory=dict)  # (kind, Wikidata QID) -> id
 
     def lookup(self, source: str, label: str) -> str | None:
         return self.index.get((source, _key(label)))
+
+    def lookup_all(self, source: str, label: str) -> list[str]:
+        """Every node a label names; compound labels ('Social and Stunt') give one per part."""
+        hit = self.index.get((source, _key(label)))
+        if hit:
+            return [hit]
+        out = []
+        for part in re.split(r"\s+and\s+|\s*,\s*", label):
+            h = self.index.get((source, _key(part))) or self.index.get((source, _key(part + "-oriented")))
+            if h and h not in out:
+                out.append(h)
+        return out
 
 
 @dataclass
@@ -111,6 +131,20 @@ class Atlas:
     places: Places
     genres: Genres
     waves: dict[str, dict[str, Any]]
+    wave_films: list[dict[str, Any]] = field(default_factory=list)
+    _listed: dict[str, set[str]] | None = None
+
+    def listed(self) -> dict[str, set[str]]:
+        """Confirmed films of each curated wave, keyed by title|year and by Wikidata id."""
+        if self._listed is None:
+            self._listed = {}
+            for r in self.wave_films:
+                if r.get("status", "confirmed") in ("confirmed", ""):
+                    keys = self._listed.setdefault(r["wave"], set())
+                    keys.add(_title_key(r.get("title", ""), r.get("year")))
+                    if r.get("wikidata"):
+                        keys.add(r["wikidata"])
+        return self._listed
 
     def waves_for(self, industry: str, year: int | None, kind: str = "era") -> list[str]:
         """Waves whose year rule alone places a film of that industry and year (eras, by default)."""
@@ -137,12 +171,15 @@ def load(folder: Path = DEFAULT_DIR) -> Atlas:
         for m in r["maps_from"]:
             src, _, label = m.partition(":")
             genres.index.setdefault((src.strip(), _key(label)), r["id"])
+        if r.get("wikidata"):
+            genres.by_qid.setdefault((r["kind"], r["wikidata"]), r["id"])
     waves = {}
     for r in _rows(folder / "waves.tsv"):
         r["start"], r["end"] = _year(r.get("start", "")), _year(r.get("end", ""))
         r["sources"] = _split(r.get("sources", ""))
         waves[r["id"]] = r
-    return Atlas(places, genres, waves)
+    wave_films = _rows(folder / "wave_films.tsv") if (folder / "wave_films.tsv").exists() else []
+    return Atlas(places, genres, waves, wave_films)
 
 
 def parse_rule(rule: str) -> list[list[tuple[str, str]]]:
@@ -334,6 +371,141 @@ def _era_counts(atlas: Atlas, films: list[dict[str, Any]], industry: str) -> dic
     return out
 
 
+# ---- tagging films -------------------------------------------------------------
+
+STREAMING = {"netflix", "amazonprimevideo", "primevideo", "amazonstudios", "disney+", "disneyplus", "disney+hotstar",
+             "hotstar", "jiohotstar", "zee5", "jiocinema", "sonyliv", "appletv+", "appletvplus", "hbomax", "max",
+             "hulu", "paramount+", "peacock", "mxplayer", "voot", "altbalaji", "erosnow"}
+
+
+def _skey(s: str) -> str:
+    return re.sub(r"[^a-z0-9+]", "", fold(s))
+
+
+def _title_key(title: str, year: Any) -> str:
+    return f"{_key(title)}|{year or ''}"
+
+
+def _film_facts(f: dict[str, Any]) -> dict[str, Any]:
+    """What tagging reads from a register film or a canon container, whichever spelling it uses."""
+    def qids(v):
+        return {x.get("qid") for x in (v or []) if isinstance(x, dict) and x.get("qid")}
+    return {
+        "title": f.get("title") or "", "year": f.get("year"), "wikidata": f.get("wikidata"),
+        "banner": f.get("banner") or [], "subject": f.get("genre") or f.get("subject") or [],
+        "country": f.get("country") or [], "wd_genre": qids(f.get("wd_genre")), "movement": qids(f.get("movement")),
+        "channels": [*(f.get("broadcaster") or []), *(f.get("dist") or [])],
+        "prod": [*(f.get("prod") or []), *(f.get("banner") or [])], "released": f.get("released") or "",
+    }
+
+
+def tag_film(atlas: Atlas, f: dict[str, Any], industry: str) -> dict[str, Any]:
+    """Place, film genres and waves for one film, each with where it came from:
+    {"place": [{"id", "src"}], "genre": [{"id", "src"}], "wave": [{"id", "by"}]}.
+    `src` names the field read (banner, country, subject, wikidata); `by` the rule that placed the film
+    (year, a Wikidata statement, genre, release, a reviewed list). Nothing here is a guess."""
+    x = _film_facts(f)
+    places: list[dict[str, str]] = []
+    for b in x["banner"]:
+        for pid in atlas.places.find(b):
+            if all(p["id"] != pid for p in places):
+                places.append({"id": pid, "src": "banner"})
+    if not places:
+        for c in x["country"]:
+            pid = atlas.places.index.get(_key(c))
+            if pid and atlas.places.rows[pid]["kind"] == "country" and all(p["id"] != pid for p in places):
+                places.append({"id": pid, "src": "country"})
+    genres: list[dict[str, str]] = []
+    for label in x["subject"]:
+        for gid in atlas.genres.lookup_all("hfgk", label):
+            if all(g["id"] != gid for g in genres):
+                genres.append({"id": gid, "src": "subject"})
+    for q in sorted(x["wd_genre"]):
+        gid = atlas.genres.by_qid.get(("film", q))
+        if gid and all(g["id"] != gid for g in genres):
+            genres.append({"id": gid, "src": "wikidata"})
+    gids = {g["id"] for g in genres}
+    year = x["year"] if isinstance(x["year"], int) else None
+    listed = atlas.listed()
+    waves: list[dict[str, str]] = []
+    for w in atlas.waves.values():
+        if w["industry"] != industry or year is None:
+            continue
+        if not (w["start"] <= year <= (w["end"] or 9999)):
+            continue
+        by = None
+        for alt in parse_rule(w["rule"]):
+            ok, why = True, []
+            for name, value in alt:
+                base, _, prop = name.partition(":")
+                if base == "year":
+                    why.append("year")
+                elif base == "curated":
+                    have = listed.get(w["id"], set())
+                    ok = _title_key(x["title"], year) in have or bool(x["wikidata"]) and x["wikidata"] in have
+                    why.append("reviewed list")
+                elif base == "wikidata":
+                    p, _, q = value.partition("=") if not prop else (prop, "", value)
+                    have = x["movement"] if p == "P135" else x["wd_genre"] if p == "P136" else set()
+                    ok = q in have
+                    why.append(f"wikidata {p}")
+                elif base == "genre":
+                    ok = f"film-{value}" in gids
+                    why.append(f"genre {value}")
+                elif base == "release":
+                    ok = value == "streaming" and any(_skey(c) in STREAMING for c in x["channels"])
+                    why.append("released on streaming")
+                elif base == "released_before":
+                    ok = bool(x["released"]) and x["released"] < value
+                    why.append(f"released before {value}")
+                elif base in ("producer", "studio"):
+                    ok = any(_key(value) in _key(p) for p in x["prod"])
+                    why.append(f"{base} {value}")
+                elif base == "films":
+                    names = {_title_key(t.rsplit(" ", 1)[0], t.rsplit(" ", 1)[-1]) for t in value.split(",")}
+                    ok = _title_key(x["title"], year) in names
+                    why.append("named in the source")
+                else:
+                    ok = False
+                if not ok:
+                    break
+            if ok:
+                by = " + ".join(why)
+                break
+        if by:
+            waves.append({"id": w["id"], "by": by})
+    return {"place": places, "genre": genres, "wave": waves}
+
+
+def tag_register(atlas: Atlas, snap: dict[str, Any], industry: str) -> dict[str, Any]:
+    """Tag every film of a register snapshot in place (`atlas` on each film) and return counts."""
+    counts: dict[str, dict[str, int]] = {"place": {}, "genre": {}, "wave": {}}
+    untagged = {"place": 0, "genre": 0}
+    for f in snap.get("films", []):
+        t = tag_film(atlas, f, industry)
+        f["atlas"] = t
+        for k in ("place", "genre", "wave"):
+            for e in t[k]:
+                counts[k][e["id"]] = counts[k].get(e["id"], 0) + 1
+        for k in untagged:
+            untagged[k] += not t[k]
+    snap["atlas"] = {"industry": industry, "counts": counts, "untagged": untagged}
+    return snap["atlas"]
+
+
+def tag_canon(atlas: Atlas, snap: dict[str, Any], industry: str) -> dict[str, Any]:
+    """Tag a canon snapshot's containers (its films), so each song reaches place and wave through its film."""
+    counts: dict[str, dict[str, int]] = {"place": {}, "genre": {}, "wave": {}}
+    for c in (snap.get("containers") or {}).values():
+        t = tag_film(atlas, c, industry)
+        c["atlas"] = t
+        for k in counts:
+            for e in t[k]:
+                counts[k][e["id"]] = counts[k].get(e["id"], 0) + 1
+    snap["atlas"] = {"industry": industry, "counts": counts}
+    return snap["atlas"]
+
+
 def review_json(atlas: Atlas) -> dict[str, Any]:
     """Everything the R1 review page shows, as plain JSON."""
     def clean(r: dict[str, Any]) -> dict[str, Any]:
@@ -347,7 +519,8 @@ def review_json(atlas: Atlas) -> dict[str, Any]:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="maestro-atlas", description=__doc__.split("\n\n")[0])
-    ap.add_argument("command", choices=["check", "coverage", "review-json"])
+    ap.add_argument("command", choices=["check", "coverage", "review-json", "tag"])
+    ap.add_argument("--industry", default="bollywood", help="industry whose waves apply (tag)")
     ap.add_argument("--dir", type=Path, default=DEFAULT_DIR, help="folder holding places.tsv, genres.tsv, waves.tsv")
     ap.add_argument("--register", type=Path, help="a register snapshot (canon/films/<slug>.json) for coverage")
     ap.add_argument("--canon", type=Path, action="append", default=[], help="canon snapshots for coverage")
@@ -361,6 +534,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{len(atlas.places.rows)} places, {len(atlas.genres.rows)} genres, {len(atlas.waves)} waves: "
               f"{len(problems)} problems", file=sys.stderr)
         return 1 if problems else 0
+    if a.command == "tag":
+        out = {}
+        for path, fn in [*([(a.register, tag_register)] if a.register else []), *((p, tag_canon) for p in a.canon)]:
+            snap = json.loads(path.read_text(encoding="utf-8"))
+            out[str(path)] = fn(atlas, snap, a.industry)
+            path.write_text(json.dumps(snap, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        print(json.dumps(out, ensure_ascii=False, indent=1))
+        return 0
     if a.command == "coverage":
         reg = json.loads(a.register.read_text(encoding="utf-8")) if a.register else None
         canons = [json.loads(p.read_text(encoding="utf-8")) for p in a.canon]

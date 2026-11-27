@@ -43,6 +43,9 @@ def test_wikidata_details_parse_and_extract(store_for):
         _b(film=E + "Q1", prop=E + "P577", v="+1949-04-21T00:00:00Z", prec="11", placel="India"),
         _b(film=E + "Q1", prop=E + "P577", v="+1949-01-01T00:00:00Z", prec="9"),
         _b(film=E + "Q1", prop=E + "P4969", v=E + "Q2", vl="Barsaat Remake"),
+        _b(film=E + "Q1", prop=E + "P136", v=E + "Q1054574", vl="romance film"),
+        _b(film=E + "Q1", prop=E + "P135", v=E + "Q7134948", vl="parallel cinema"),
+        _b(film=E + "Q1", prop=E + "P449", v=E + "Q907311", vl="Netflix"),
         _b(film=E + "Q9", prop=E + "P57", v=E + "Q10", vl="Raj Kapoor"),  # not in the register
     ]}}
     parsed = wfd.parse(data)
@@ -56,6 +59,9 @@ def test_wikidata_details_parse_and_extract(store_for):
     assert any(a["status"] == "nominated" and a["to"] == "Shankar–Jaikishan" for a in awards)
     assert any(a["status"] == "won" and a["year"] == 1950 for a in awards)
     assert {"site": "hiwiki", "id": "बरसात (1949 फ़िल्म)"} in [v for k, v in q1["fields"] if k == "link"]
+    assert ("film_genre", {"qid": "Q1054574", "label": "romance film"}) in q1["fields"]
+    assert ("movement", {"qid": "Q7134948", "label": "parallel cinema"}) in q1["fields"]
+    assert ("broadcaster", "Netflix") in q1["fields"]
     assert "Q1" in wfd.details_url(["Q1", "Q2"]) or "wd%3AQ1" in wfd.details_url(["Q1", "Q2"])
 
     s = store_for("hindi-films")

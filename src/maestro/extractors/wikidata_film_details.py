@@ -14,6 +14,8 @@
                   remake retells; `remade_as` the other way round
   soundtrack      {qid, label}: the soundtrack album item (P406)
   language        each original language (P364); `country` each country of origin (P495)
+  film_genre      {qid, label}: each genre (P136); `movement` each film movement (P135), e.g. parallel cinema
+  broadcaster     original broadcaster or streaming service (P449), the first channel of a streaming original
   link            {site, id}: IMDb, TMDB, Letterboxd, Indiancine.ma, Rotten Tomatoes, Bollywood Hungama and the
                   Hindi Wikipedia article. IDs only: those sites are never fetched.
 
@@ -28,14 +30,15 @@ from urllib.parse import parse_qs, urlencode, urlsplit
 
 SOURCE = "wikidata"
 ENDPOINT = "https://query.wikidata.org/sparql"
-VERSION = "1"
+VERSION = "2"
 
 ITEM_ROLES = {
     "P57": "director", "P162": "producer", "P161": "actor", "P58": "screenwriter", "P86": "composer",
     "P676": "lyricist", "P344": "cinematographer", "P1040": "editor", "P1809": "choreographer",
 }
 ITEM_FIELDS = {"P272": "banner", "P750": "distributor", "P364": "language", "P495": "country",
-               "P406": "soundtrack", "P144": "based_on", "P4969": "remade_as"}
+               "P406": "soundtrack", "P144": "based_on", "P4969": "remade_as",
+               "P136": "film_genre", "P135": "movement", "P449": "broadcaster"}
 LINKS = {"P345": "imdb", "P4947": "tmdb", "P6127": "letterboxd", "P5987": "indiancine", "P1258": "rottentomatoes",
          "P8674": "bollywoodhungama"}
 QUANTITIES = {"P2142": "box_office", "P2130": "budget"}
@@ -116,9 +119,9 @@ def parse(data: dict) -> dict[str, dict]:
         seen.add(key)
         if prop in ITEM_ROLES and vq:
             rec["credits"].append((ITEM_ROLES[prop], vq, label or vq))
-        elif prop in ("P364", "P495", "P272", "P750"):
+        elif prop in ("P364", "P495", "P272", "P750", "P449"):
             rec["fields"].append((ITEM_FIELDS[prop], label or vq or val))
-        elif prop in ("P406", "P144", "P4969") and vq:
+        elif prop in ("P406", "P144", "P4969", "P136", "P135") and vq:
             field = ITEM_FIELDS[prop]
             rec["fields"].append((field, {"qid": vq, "label": label or vq}))
         elif prop in LINKS:
