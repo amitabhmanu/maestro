@@ -644,7 +644,7 @@ def _resolve_year(f: dict[str, Any], years: dict[str, int]) -> None:
     if wd is not None and wp is not None:
         if wd < wp or abs(wd - wp) == 1:
             f.update(status="resolved", value=wp,
-                     rule="Wikipedia's year list (the Indian release); Wikidata's earliest date is often a "
+                     rule="Wikipedia's year list (the home-country release); Wikidata's earliest date is often a "
                           "festival premiere or an earlier release")
         else:  # the user's rule (19 Nov 2026): Wikipedia's year wins over Wikidata's
             f.update(status="resolved", value=wp, rule="Wikipedia's year list, as you chose over Wikidata")
