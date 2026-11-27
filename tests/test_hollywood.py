@@ -46,3 +46,53 @@ def test_song_list_bullets():
             '<h2 id="Musical_numbers">Musical numbers</h2><ul><li>"The Trolley Song" – performed by Judy Garland</li></ul>'
             '<h2 id="Reception">Reception</h2>')
     assert [x["title"] for x in wfs.song_lists(page)] == ["The Trolley Song"]
+
+
+def test_song_list_dash_singers_dubbed_voice_and_section_credit():
+    s = wfs.parse_list_item('"Wait and See" – Angela Lansbury (voice: Virginia Rees)')
+    assert s["singers"] == ["Virginia Rees"] and s["on_screen"] == ["Angela Lansbury"]
+    assert not s["songwriters"]
+    s = wfs.parse_list_item('"If You Knew Susie" (DeSylva, Meyer) – Frank Sinatra & Gene Kelly')
+    assert s["songwriters"] == ["DeSylva", "Meyer"] and s["singers"] == ["Frank Sinatra", "Gene Kelly"]
+    s = wfs.parse_list_item('"Main Title" – MGM Studio and Orchestra')
+    assert s["singers"] == []
+    c = wfs.section_credit("The songs in The Harvey Girls were all written by Harry Warren (music) and "
+                           "Johnny Mercer (lyrics):")
+    assert c["composers"] == ["Harry Warren"] and c["lyricists"] == ["Johnny Mercer"]
+    c = wfs.section_credit("Songs by Jule Styne and Sammy Cahn except where noted:")
+    assert c["songwriters"] == ["Jule Styne", "Sammy Cahn"]
+    page = ('<h2 id="Songs">Songs</h2><p>Music by Harry Warren, lyrics by Mack Gordon.</p>'
+            '<ul><li>"Chattanooga Choo Choo" – Tex Beneke</li><li>"Jealousy" (Jacob Gade) – Kathryn Grayson</li></ul>')
+    songs = wfs.song_lists(page)
+    assert songs[0]["composers"] == ["Harry Warren"] and songs[0]["lyricists"] == ["Mack Gordon"]
+    assert songs[0]["singers"] == ["Tex Beneke"]
+    assert songs[1]["songwriters"] == ["Jacob Gade"] and not songs[1]["composers"]
+
+
+def test_song_list_character_singers_become_actors():
+    page = ('<h2 id="Cast">Cast</h2><ul><li>Gene Kelly as Gabey</li><li>Ann Miller as Claire Huddesen</li></ul>'
+            '<h2 id="Musical_numbers">Musical numbers</h2><ul><li>"Prehistoric Man" – Claire, Gabey and Chip</li></ul>')
+    assert wfs.song_lists(page)[0]["singers"] == ["Ann Miller", "Gene Kelly", "Chip"]
+
+
+def test_song_list_parenthesised_performers_and_sung_by_lead():
+    s = wfs.parse_list_item('"Happy Easter" (Fred Astaire)')
+    assert s["singers"] == ["Fred Astaire"] and not s["songwriters"]
+    s = wfs.parse_list_item('"I\'ll Capture Your Heart Singing" (with Fred Astaire & Virginia Dale)')
+    assert s["singers"] == ["Fred Astaire", "Virginia Dale"] and not s["songwriters"]
+    assert wfs.section_credit("All songs are sung by Bing Crosby unless stated. The track list is:")["songwriters"] == []
+
+
+def test_song_list_western_and_colon_bullets():
+    s = wfs.parse_list_item('"Be Honest With Me" (Gene Autry, Fred Rose) by Gene Autry')
+    assert s["songwriters"] == ["Gene Autry", "Fred Rose"] and s["singers"] == ["Gene Autry"]
+    s = wfs.parse_list_item('"In Old Capistrano" (Fred Stryker, Jerry Charleston) by Gene Autry and extras, '
+                            'Composed by Manuel Esperon')
+    assert s["singers"] == ["Gene Autry"] and s["composers"] == ["Manuel Esperon"]
+    assert s["songwriters"] == ["Fred Stryker", "Jerry Charleston"]
+    s = wfs.parse_list_item('"Sing While You Sell": Groucho, Harpo and Virginia O\'Brien')
+    assert s["singers"] == ["Groucho", "Harpo", "Virginia O'Brien"]
+    s = wfs.parse_list_item('"Boogie Barcarolle": A Porter number that overlays two rhythms. Astaire leads.')
+    assert s["singers"] == [] and s["songwriters"] == []
+    s = wfs.parse_list_item('"Happiness is a Thing Called Joe" (by Arlen and Harburg) – Ethel Waters')
+    assert s["songwriters"] == ["Arlen", "Harburg"] and s["singers"] == ["Ethel Waters"]

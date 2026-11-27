@@ -26,7 +26,7 @@ from urllib.parse import quote, unquote, urlsplit
 from maestro.wikitable import Table, read_tables
 
 SOURCE = "wikipedia"
-VERSION = "1"
+VERSION = "2"
 BASE = "https://en.wikipedia.org/wiki/"
 MUSIC_HEADINGS = re.compile(r"\b(soundtrack|music|songs?|track ?list(?:ing)?|album|musical numbers?)\b", re.I)
 _SPLIT = re.compile(r"\s*(?:,|;|\band\b|&|/|\n)\s*")
@@ -168,7 +168,7 @@ def parse_songs(page_html: str, whole_page: bool = False) -> list[dict]:
 _LI = re.compile(r"<li\b[^>]*>(.*?)</li>", re.S)
 _QUOTED = re.compile(r'^\s*["\u201c](.+?)["\u201d]\s*(.*)$', re.S)
 _PERFORMED = re.compile(r"\b(?:performed|sung|reprised|danced|played)\s+(?:by|with)\s+", re.I)
-_ROLE = re.compile(r"\b(words and music|music and lyrics|music|lyrics|words)\s+by\s+", re.I)
+_ROLE = re.compile(r"\b(words and music|music and lyrics|music|lyrics|words|composed)\s+by\s+", re.I)
 _YEAR = re.compile(r"\b(1[89]\d\d|20\d\d)\b")
 
 
@@ -180,7 +180,66 @@ def _upto(text: str) -> str:
 
 def _people(text: str) -> list[str]:
     """Names in a clause; descriptions ("the film's producer", "melody adapted by ...") are dropped."""
-    return [n for n in _names(_upto(text)) if n[:1].isupper() and " by " not in n and len(n.split()) <= 5]
+    return [n for n in _names(_upto(text)) if n[:1].isupper() and " by " not in n and len(n.split()) <= 5
+            and not any(w[:1].islower() and w not in _PARTICLES for w in n.split())
+            and not re.search(r"\b(?:orchestra|band|chorus|sung|instrumental|reprise|ensemble|unknown)\b", n, re.I)]
+
+
+_PARTICLES = {"de", "da", "del", "della", "di", "du", "van", "von", "der", "den", "la", "le", "y", "e", "al", "bin", "ibn"}
+
+
+_VOICE = re.compile(r"([^,;()]+?)\s*\((?:singing\s+)?(?:voice|vocals?|dubbed)(?:\s+by)?:?\s*([^)]+)\)", re.I)
+_NOT_SINGER = re.compile(r"\b(?:studio|cast|company)\b", re.I)
+_PAREN_SKIP = re.compile(r"instrumental|reprise|uncredited|traditional|\bfrom\b|\bscore\b", re.I)
+
+
+def _performers(text: str) -> tuple[list[str], list[str]]:
+    """Singers after a dash ("– Judy Garland, Virginia O'Brien"); an actor whose singing was dubbed
+    ("Angela Lansbury (voice: Virginia Rees)") counts as on screen, the voice as the singer."""
+    on_screen = []
+
+    def voice(m: re.Match) -> str:
+        on_screen.append(m.group(1).strip())
+        return m.group(2)
+    text = _VOICE.sub(voice, text)
+    text = re.sub(r"\([^)]*\)", "", text)
+    text = re.split(r"(?<!\b[A-Z])\.\s", text, maxsplit=1)[0]
+    singers = [n for n in _people(text) if not _NOT_SINGER.search(n)]
+    return singers, [n for n in on_screen if n[:1].isupper()]
+
+
+def _roles(text: str, out: dict) -> bool:
+    """Names after "music by", "lyrics by" and "words and music by" in text; True if any role was named."""
+    roles = list(_ROLE.finditer(text))
+    for rm in roles:
+        names = _people(text[rm.end():])
+        kind = rm.group(1).lower()
+        if kind in ("words and music", "music and lyrics"):
+            out["composers"] += names
+            out["lyricists"] += names
+        elif kind in ("music", "composed"):
+            out["composers"] += names
+        else:
+            out["lyricists"] += names
+    return bool(roles)
+
+
+def section_credit(lead: str) -> dict[str, list[str]]:
+    """The writers a music section names for all its songs ("The songs were all written by Harry Warren
+    (music) and Johnny Mercer (lyrics)", "Songs by Jule Styne and Sammy Cahn except where noted")."""
+    out: dict[str, list[str]] = {"composers": [], "lyricists": [], "songwriters": []}
+    lead = re.sub(r"\s+", " ", lead)
+    m = re.search(r"\bby\s+(.+?)\s*\(music\)\s*(?:,|and|&)\s*(.+?)\s*\((?:lyrics|words)\)", lead, re.I)
+    r = re.search(r"\bby\s+(.+?)\s*\((?:lyrics|words)\)\s*(?:,|and|&)\s*(.+?)\s*\(music\)", lead, re.I)
+    if m:
+        out["composers"], out["lyricists"] = _people(m.group(1)), _people(m.group(2))
+    elif r:
+        out["lyricists"], out["composers"] = _people(r.group(1)), _people(r.group(2))
+    elif not _roles(lead, out):
+        w = re.search(r"\b(?:songs?|numbers?)\b[^.:]{0,60}?\b(?:written\s+|composed\s+)?by\s+([^.:;]+)", lead, re.I)
+        if w and not re.search(r"\b(?:sung|performed|vocals?|voiced|danced|played)\b", lead[w.start():w.start(1)], re.I):
+            out["songwriters"] = _people(re.split(r"\s+except\b|,\s+unless\b", w.group(1))[0])
+    return out
 
 
 def parse_list_item(text: str) -> dict | None:
@@ -188,46 +247,90 @@ def parse_list_item(text: str) -> dict | None:
     m = _QUOTED.match(text)
     if not m or len(m.group(1)) > 120:
         return None
-    title, rest = m.group(1).strip().rstrip(","), m.group(2).strip(" ,.\u2013\u2014-:")
-    out = {"title": title, "singers": [], "lyricists": [], "composers": [], "songwriters": [],
-           "written": None, "note": rest[:300] or None}
-    if pm := _PERFORMED.search(rest):
-        out["singers"] = _people(rest[pm.end():])
-    roles = list(_ROLE.finditer(rest))
-    for rm in roles:
-        names = _people(rest[rm.end():])
-        kind = rm.group(1).lower()
-        if kind in ("words and music", "music and lyrics"):
-            out["composers"] += names
-            out["lyricists"] += names
-        elif kind == "music":
-            out["composers"] += names
-        else:
-            out["lyricists"] += names
-    if not roles:
-        head = rest[:_PERFORMED.search(rest).start()] if _PERFORMED.search(rest) else rest
+    raw = m.group(2).strip()
+    paren = None
+    if raw.startswith("("):
+        depth = 0
+        for i, ch in enumerate(raw):
+            depth += {"(": 1, ")": -1}.get(ch, 0)
+            if depth == 0:
+                paren, raw = raw[1:i], raw[i + 1:].strip()
+                break
+    dash = re.match(r"^[\u2013\u2014-]\s*(.*)$", raw, re.S)
+    if not dash and paren and (m_by := re.match(r"^by\s+(.*)$", raw, re.S | re.I)):
+        dash = m_by  # "(Gene Autry, Fred Rose) by Gene Autry": writers, then performers
+    colon = re.match(r"^:\s*([^.]*)", raw)
+    if not dash and colon and not re.search(r"\b(?!and\b|with\b)[a-z]+\b", colon.group(1)):
+        dash = colon  # "Sing While You Sell": Groucho, Harpo and Virginia O'Brien
+    title, rest = m.group(1).strip().rstrip(","), raw.strip(" ,.\u2013\u2014-:")
+    out = {"title": title, "singers": [], "on_screen": [], "lyricists": [], "composers": [], "songwriters": [],
+           "written": None, "note": (f"({paren}) " if paren else "") + rest[:300] or None}
+    performed = _PERFORMED.search(rest)
+    if performed:
+        out["singers"] = _people(rest[performed.end():])
+    roles = _roles(rest, out)
+    if dash and not performed and (not roles or dash.re.pattern.startswith("^by")):
+        out["singers"], out["on_screen"] = _performers(_ROLE.split(dash.group(1), maxsplit=1)[0])
+    elif not roles:
+        head = rest[:performed.start()] if performed else rest
         head = re.sub(r"^(?:by|written by|composed by)\s+", "", head.strip(" ,"), flags=re.I)
         if head and not re.match(r"(?:traditional|instrumental|uncredited|reprise)", head, re.I):
             out["songwriters"] = _people(head)
+    if paren and not _roles(paren, out) and not _PAREN_SKIP.search(paren):
+        # "(DeSylva, Meyer) – Frank Sinatra": writers before the dash; "(Fred Astaire)" or "(with X & Y)"
+        # with no dash after it names the performers.
+        if dash and not (out["lyricists"] or out["songwriters"]) \
+                and not re.match(r"\s*with\b", paren, re.I):
+            out["songwriters"] = _people(re.sub(r"^\s*by\s+", "", paren.replace("(", " "), flags=re.I))
+        elif not dash and not out["singers"]:
+            out["singers"], out["on_screen"] = _performers(re.sub(r"^\s*with\s+", "", paren, flags=re.I))
     if y := _YEAR.search(rest):
         out["written"] = int(y.group(1))
     return out
 
 
-def song_lists(page_html: str) -> list[dict]:
-    """Songs listed as bullets in the article's music sections (h2/h3 whose title names music or songs)."""
+def cast_roles(page_html: str) -> dict[str, str]:
+    """Character name -> actor, from the Cast section's "Gene Kelly as Gabey" bullets (full name and first word)."""
     marks = [(m.start(), m.group(2)) for m in _HEADING.finditer(page_html)]
+    out: dict[str, str] = {}
+    for i, (pos, hid) in enumerate(marks):
+        if not re.match(r"cast\b", hid, re.I):
+            continue
+        end = marks[i + 1][0] if i + 1 < len(marks) else len(page_html)
+        for li in _LI.finditer(page_html[pos:end]):
+            m = re.match(r"^\s*([^,;()]+?)\s+as\s+([^,;()]+)", _plain(li.group(1)))
+            if m:
+                actor, role = m.group(1).strip(), re.sub(r"\s*\[.*$", "", m.group(2)).strip(" .")
+                if not role or not actor[:1].isupper():
+                    continue
+                out.setdefault(role, actor)
+                out.setdefault(role.split()[0].strip('"'), actor)
+    return out
+
+
+def song_lists(page_html: str) -> list[dict]:
+    """Songs listed as bullets in the article's music sections (h2/h3 whose title names music or songs).
+    A singer named by the character played ("Gabey") becomes the actor of the Cast section."""
+    marks = [(m.start(), m.group(2)) for m in _HEADING.finditer(page_html)]
+    cast = cast_roles(page_html)
     out = []
     for i, (pos, hid) in enumerate(marks):
         if not MUSIC_HEADINGS.search(hid.replace("_", " ")):
             continue
         end = marks[i + 1][0] if i + 1 < len(marks) else len(page_html)
         section = re.sub(r"<(?:ul|ol)\b[^>]*>.*?</(?:ul|ol)>(?=\s*</li>)", "", page_html[pos:end], flags=re.S)
+        first = re.search(r"<(?:ul|ol)\b", section)
+        lead = re.sub(r"\[\d+\]|\[[a-z]\]", "", _plain(section[:first.start()].replace("</", " </"))) if first else ""
+        default = section_credit(lead)
         for li in _LI.finditer(section):
             text = re.sub(r"\[\d+\]|\[[a-z]\]", "", _plain(li.group(1)))
             song = parse_list_item(text)
             if song:
                 song["part"] = hid.replace("_", " ")
+                song["singers"] = list(dict.fromkeys(cast.get(n, n) for n in song["singers"]))
+                if not (song["composers"] or song["lyricists"] or song["songwriters"]):
+                    for k, v in default.items():
+                        song[k] = list(v)
                 out.append(song)
     return out
 
@@ -315,7 +418,7 @@ def extract(ctx) -> None:
         claim(song, "part_of", {"position": n}, ref=film)
         claim(song, "work_kind", "film_song")
         for role, key in (("singer", "singers"), ("lyricist", "lyricists"), ("composer", "composers"),
-                          ("songwriter", "songwriters")):
+                          ("songwriter", "songwriters"), ("on_screen", "on_screen")):
             for name in s.get(key, []):
                 claim(song, "credit_unlinked", {"role": role, "name": name})
         for field in ("duration", "version", "note", "written"):

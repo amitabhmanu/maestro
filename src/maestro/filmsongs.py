@@ -74,9 +74,13 @@ def load_songs(store, groups: Groups | None = None) -> dict[int, list[dict[str, 
         if f in ("title", "first_line") and s[f] is None and isinstance(v, str):
             s[f] = v
         elif f in ("credit", "credit_unlinked") and isinstance(v, dict):
-            key, name = roles.get(v.get("role")), r["person"] or v.get("name")
-            if key and name and name not in s[key]:
-                s[key].append(name)
+            name = r["person"] or v.get("name")
+            # a songwriter credit ("words and music by") is both lyricist and composer
+            keys = ("lyr", "md") if v.get("role") == "songwriter" else \
+                ("screen",) if v.get("role") == "on_screen" else (roles.get(v.get("role")),)
+            for key in keys:
+                if key and name and name not in s[key]:
+                    s[key].append(name)
         elif f == "on_screen" and r["person"] and r["person"] not in s["screen"]:
             s["screen"].append(r["person"])
         elif f == "raga" and isinstance(v, str) and v not in s["raga"]:

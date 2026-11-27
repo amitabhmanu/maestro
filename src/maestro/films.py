@@ -818,7 +818,7 @@ def report(store: Store, out: Path) -> dict[str, Any]:
             "SELECT count(*) AS n FROM review_item WHERE status = 'open' AND kind = 'film_match'").fetchone()["n"],
     }
     (out / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), "utf-8")
-    (out / "summary.md").write_text(_summary_md(summary), "utf-8")
+    (out / "summary.md").write_text(_summary_md(summary, store.pack.data["identity"]["name"]), "utf-8")
     return summary
 
 
@@ -1040,14 +1040,18 @@ def _song_out(film_id: int, x: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in out.items() if v not in (None, [], "", False)}
 
 
-def _summary_md(s: dict[str, Any]) -> str:
-    lines = ["# Hindi film register: summary", "",
-             f"- Films: {s['films']:,} ({s['films_with_wikidata']:,} with a Wikidata item, "
-             f"{s['films_with_hfgk']:,} in HFGK)",
-             f"- HFGK films matched to Wikidata: {s['hfgk_matched_to_wikidata']:,} of {s['films_with_hfgk']:,}",
-             f"- Songs (HFGK, {s['hfgk_years'][0]}-{s['hfgk_years'][1]}): {s['songs_hfgk']:,}" if s["hfgk_years"]
-             else "- Songs: none from HFGK yet",
-             f"- Open match reviews: {s['open_match_reviews']:,}", "", "## Flags", ""]
+def _summary_md(s: dict[str, Any], name: str = "Hindi film register") -> str:
+    hfgk = bool(s["films_with_hfgk"])
+    lines = [f"# {name}: summary", "",
+             f"- Films: {s['films']:,} ({s['films_with_wikidata']:,} with a Wikidata item"
+             + (f", {s['films_with_hfgk']:,} in HFGK)" if hfgk else ")")]
+    if hfgk:
+        lines += [f"- HFGK films matched to Wikidata: {s['hfgk_matched_to_wikidata']:,} of {s['films_with_hfgk']:,}",
+                  f"- Songs (HFGK, {s['hfgk_years'][0]}-{s['hfgk_years'][1]}): {s['songs_hfgk']:,}" if s["hfgk_years"]
+                  else "- Songs: none from HFGK yet"]
+    else:
+        lines.append(f"- Songs: {s['songs']:,}")
+    lines += [f"- Open match reviews: {s['open_match_reviews']:,}", "", "## Flags", ""]
     lines += [f"- {k}: {v:,}" for k, v in s["flags"].items()]
     lines += ["", "## Films by decade", ""] + [f"- {k}: {v:,}" for k, v in s["by_decade"].items()]
     return "\n".join(lines) + "\n"
