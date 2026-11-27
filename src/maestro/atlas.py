@@ -424,7 +424,8 @@ def _film_facts(f: dict[str, Any]) -> dict[str, Any]:
     return {
         "title": f.get("title") or "", "year": f.get("year"), "wikidata": f.get("wikidata"),
         "banner": f.get("banner") or [], "subject": f.get("genre") or f.get("subject") or [],
-        "country": f.get("country") or [], "wd_genre": qids(f.get("wd_genre")), "movement": qids(f.get("movement")),
+        "country": f.get("country") or [], "wd_genre": qids(f.get("wd_genre")),
+        "wd_genre_labels": {x["qid"]: x.get("label") or "" for x in f.get("wd_genre") or [] if isinstance(x, dict) and x.get("qid")}, "movement": qids(f.get("movement")),
         "channels": [*(f.get("broadcaster") or []), *(f.get("dist") or [])],
         "prod": [*(f.get("prod") or []), *(f.get("banner") or [])], "released": f.get("released") or "",
     }
@@ -459,8 +460,12 @@ def tag_film(atlas: Atlas, f: dict[str, Any], industry: str) -> dict[str, Any]:
                 genres.append({"id": gid, "src": "subject"})
     for q in sorted(x["wd_genre"]):
         gid = atlas.genres.by_qid.get(("film", q))
-        if gid and all(g["id"] != gid for g in genres):
-            genres.append({"id": gid, "src": "wikidata"})
+        # a genre item the tree does not list ("romantic comedy film", "action thriller") is read by its label
+        found = [gid] if gid else atlas.genres.lookup_all(
+            "wikipedia", re.sub(r"\s+film$", "", x["wd_genre_labels"].get(q, "")))
+        for gid in found:
+            if all(g["id"] != gid for g in genres):
+                genres.append({"id": gid, "src": "wikidata"})
     gids = {g["id"] for g in genres}
     year = x["year"] if isinstance(x["year"], int) else None
     listed = atlas.listed()
@@ -545,6 +550,73 @@ def tag_canon(atlas: Atlas, snap: dict[str, Any], industry: str) -> dict[str, An
     return snap["atlas"]
 
 
+def report(atlas: Atlas, snap: dict[str, Any], industry: str, out: Path, sample: int = 50) -> dict[str, Any]:
+    """The tagging review for a register snapshot: summary.json (by decade: films, with a city, with only a
+    country, with a genre, per wave; counts per place, genre and wave), to-review.csv (films whose tags need a
+    person: several cities, no year) and sample.csv (a fixed random sample, spread over the decades)."""
+    import random
+
+    if "atlas" not in snap:
+        tag_register(atlas, snap, industry)
+    films = snap.get("films", [])
+    by_dec: dict[str, dict[str, int]] = {}
+    review = []
+    for f in films:
+        t = f["atlas"]
+        y = f.get("year")
+        dec = f"{y // 10 * 10}s" if isinstance(y, int) else "undated"
+        d = by_dec.setdefault(dec, {"films": 0, "city": 0, "country_only": 0, "no_place": 0, "genre": 0, "wave": 0})
+        d["films"] += 1
+        kinds = {atlas.places.rows[p["id"]]["kind"] for p in t["place"]}
+        if kinds - {"country", "state", "region", "world"}:
+            d["city"] += 1
+        elif t["place"]:
+            d["country_only"] += 1
+        else:
+            d["no_place"] += 1
+        d["genre"] += bool(t["genre"])
+        d["wave"] += bool(t["wave"])
+        for w in t["wave"]:
+            d[w["id"]] = d.get(w["id"], 0) + 1
+        cities = [p["id"] for p in t["place"] if atlas.places.rows[p["id"]]["kind"] == "city"]
+        base = {"film_id": f.get("id"), "title": f.get("title"), "year": y, "wikidata": f.get("wikidata") or ""}
+        if len(cities) > 1:
+            review.append({**base, "issue": "several_cities", "detail": " | ".join(f.get("banner") or []),
+                           "proposed": cities[0]})
+        if not isinstance(y, int):
+            review.append({**base, "issue": "no_year", "detail": "no wave can be set", "proposed": ""})
+    out.mkdir(parents=True, exist_ok=True)
+    summary = {"industry": industry, "films": len(films), "by_decade": dict(sorted(by_dec.items())),
+               **snap["atlas"]}
+    (out / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1), "utf-8")
+    cols = ["film_id", "title", "year", "wikidata", "issue", "detail", "proposed"]
+    with (out / "to-review.csv").open("w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, cols)
+        w.writeheader()
+        w.writerows(review)
+    rng = random.Random(27)
+    decs = sorted(by_dec)
+    pick: list[dict[str, Any]] = []
+    pools = {d: [f for f in films if (f"{f['year'] // 10 * 10}s" if isinstance(f.get("year"), int) else "undated") == d]
+             for d in decs}
+    while len(pick) < min(sample, len(films)):
+        for d in decs:
+            if pools[d] and len(pick) < sample:
+                pick.append(pools[d].pop(rng.randrange(len(pools[d]))))
+    with (out / "sample.csv").open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["film_id", "title", "year", "banner", "subject", "place", "genre", "wave"])
+        for f in sorted(pick, key=lambda f: (f.get("year") or 0, f.get("title") or "")):
+            t = f["atlas"]
+            w.writerow([f.get("id"), f.get("title"), f.get("year"), " | ".join(f.get("banner") or []),
+                        " | ".join(f.get("genre") or []),
+                        "; ".join(f"{p['id']} ({p['src']})" for p in t["place"]),
+                        "; ".join(f"{g['id']} ({g['src']})" for g in t["genre"]),
+                        "; ".join(f"{x['id']} ({x['by']})" for x in t["wave"])])
+    summary["to_review"] = len(review)
+    return summary
+
+
 def review_json(atlas: Atlas) -> dict[str, Any]:
     """Everything the R1 review page shows, as plain JSON."""
     def clean(r: dict[str, Any]) -> dict[str, Any]:
@@ -558,7 +630,7 @@ def review_json(atlas: Atlas) -> dict[str, Any]:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="maestro-atlas", description=__doc__.split("\n\n")[0])
-    ap.add_argument("command", choices=["check", "coverage", "review-json", "tag"])
+    ap.add_argument("command", choices=["check", "coverage", "review-json", "tag", "report"])
     ap.add_argument("--industry", default="bollywood", help="industry whose waves apply (tag)")
     ap.add_argument("--dir", type=Path, default=DEFAULT_DIR, help="folder holding places.tsv, genres.tsv, waves.tsv")
     ap.add_argument("--register", type=Path, help="a register snapshot (canon/films/<slug>.json) for coverage")
@@ -580,6 +652,13 @@ def main(argv: list[str] | None = None) -> int:
             out[str(path)] = fn(atlas, snap, a.industry)
             path.write_text(json.dumps(snap, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         print(json.dumps(out, ensure_ascii=False, indent=1))
+        return 0
+    if a.command == "report":
+        if not (a.register and a.out):
+            ap.error("report needs --register FILE and --out DIR")
+        snap = json.loads(a.register.read_text(encoding="utf-8"))
+        res = report(atlas, snap, a.industry, a.out)
+        print(json.dumps({k: res[k] for k in ("films", "to_review", "untagged") if k in res}, indent=1))
         return 0
     if a.command == "coverage":
         reg = json.loads(a.register.read_text(encoding="utf-8")) if a.register else None
