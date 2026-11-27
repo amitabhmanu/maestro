@@ -1,0 +1,122 @@
+# DRAFT pack (profiled 27 Nov 2026 for MVP1, the Hollywood maestro): to be reviewed by Amitabh at gate R4a.
+version: 1
+status: draft
+identity:
+  name: Johnny Mercer
+  slug: johnny-mercer
+  ids: {wikidata: Q363698, musicbrainz: b342d50e-401c-4c77-b7e4-2b3e7beaf00a, viaf: "79167222", isni: "0000000120183877", bnf: "138974071", discogs: "164574"}
+  variants: [John Herndon Mercer, John H. Mercer, J. Mercer]
+  namesakes: ["Q20127929: British Conservative politician, born 1981"]
+  active: [1930, 1976]
+  died: 1976
+  _why:
+    reason: >-
+      First published lyric "Out of Breath (and Scared to Death of You)" in The Garrick Gaieties, 1930;
+      last new work The Good Companions (London, 1974). MusicBrainz id 95507df9 is merged into b342d50e.
+    confidence: 0.9
+    evidence: [https://en.wikipedia.org/wiki/Johnny_Mercer, https://www.georgiaencyclopedia.org/articles/arts-culture/johnny-mercer-1909-1976]
+roles:
+  primary: lyricist
+  in_scope: [lyricist, composer, singer]
+  out_of_scope: [producer, actor]  # Capitol Records co-founder and radio host: not music contributions
+  _why:
+    reason: >-
+      About 85-90% of his songs are lyrics to others' music, 5-8% words and music, ~5% music to others'
+      words (MusicBrainz work credits: lyricist 235, writer 72, composer 52). He was also a hit singer
+      (1942-49), so his recordings of songs he did not write are a separate performer tier (D), as for
+      Jean Wiener's piano-duo records. Proposed; Amitabh to confirm.
+    confidence: 0.7
+canon_model:
+  unit: work
+  version_levels: [work, recording, release]
+  container: film
+  container_has_full_listing: false
+  match_titles_across_containers: true  # most sources give songs without the film or show
+  kind_tiers: {stage_song: B, popular_song: B, unpublished: C, posthumous_completion: C, performance_recording: D}
+  _why:
+    reason: >-
+      The song (work) is the unit: hundreds of singers recorded each one. A film is the container for
+      about half his output, but no source lists a film's songs completely enough to check the canon
+      against (the Hollywood film register's song lists come from Wikipedia and are partial).
+    confidence: 0.7
+tiers:
+  A: {label: "Songs written for films (words, music or both)", target_missing: 0.05}
+  B: {label: "Songs for the stage, and songs written for neither film nor stage", target_missing: 0.05}
+  C: {label: "Unpublished lyrics and posthumous completions (e.g. Barry Manilow's settings, 1980s on)", target_missing: report_only}
+  D: {label: "His own recordings as a singer of songs others wrote (performer)", target_missing: report_only}
+registers:
+  - name: The Complete Lyrics of Johnny Mercer (Kimball, Day, Dubrow and Furia; Knopf 2009)
+    tiers: [A, B, C]
+    access: print
+    role: ground_truth
+    url: https://www.penguinrandomhouse.com/books/113333/the-complete-lyrics-of-johnny-mercer-by-johnny-mercer/
+    _why:
+      reason: The only complete list of his lyrics, published and unpublished ("more than 1,200"). Print only, so its index is a checksum and a review aid, not a crawl.
+      confidence: 0.8
+  - name: Catalog of Copyright Entries, Part 3 (US Copyright Office, 1930-1977)
+    tiers: [A, B]
+    access: unavailable
+    role: independent_check
+    url: https://archive.org/details/copyrightrecords
+    _why:
+      reason: Public-domain government register of every registered song, with authors. OCR text on archive.org, which cloud machines cannot reach; a run on the PC or saved volumes can import it.
+      confidence: 0.6
+  - name: Georgia State University Johnny Mercer song database (retired)
+    tiers: [A, B, C]
+    access: unavailable
+    role: partial
+    url: https://research.library.gsu.edu/c.php?g=115614
+  - name: Discography of American Historical Recordings (UCSB), Mercer as performer 1929-1967
+    tiers: [D]
+    access: crawlable
+    role: ground_truth
+    url: https://adp.library.ucsb.edu/names/103688
+sources:
+  - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api, api_rps: 1, url: "https://query.wikidata.org/sparql"}
+  # MusicBrainz works: ~413, of which ~337 credit him as a writer. A work only it knows is a song for neither film nor stage (B) until a film source places it.
+  - {id: musicbrainz, kind: structured, lineage: musicbrainz, reliability: 0.75, access: api, api_rps: 1, distinct_ids: false, default_tier: B, url: "https://musicbrainz.org/ws/2/", sweep: {url: "https://musicbrainz.org/ws/2/work?artist=b342d50e-401c-4c77-b7e4-2b3e7beaf00a&limit=100&offset=0&fmt=json&inc=artist-rels+work-rels", extractor: musicbrainz_works, purpose: spine}}
+  - {id: discogs, kind: structured, lineage: discogs, reliability: 0.75, access: api, api_rps: 0.4, api_auth: {env: DISCOGS_TOKEN, format: "Discogs token={token}", rps: 0.9}, distinct_ids: false, unit_mode: enrich, url: "https://api.discogs.com/", extractor: discogs, _why: {reason: "19,000+ releases credit him, mostly other singers' records of his songs: details only, never a source of units (as for Eddy Arnold and Jean Wiener)."}}
+  - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable, url: "https://en.wikipedia.org/wiki/List_of_songs_with_lyrics_by_Johnny_Mercer"}
+  # The Hollywood film register (maestros/hollywood-films) places his film songs in their films.
+  - {id: hollywood_films, kind: structured, lineage: wiki, reliability: 0.7, access: api, url: "https://query.wikidata.org/sparql"}
+  - {id: lastfm, kind: structured, lineage: lastfm, reliability: 0.6, access: api, api_rps: 2, url: "https://ws.audioscrobbler.com/2.0/", api_auth: {env: LASTFM_API_KEY, param: api_key}}
+  # Reference only: robots.txt forbids ClaudeBot and the site signals use=reference.
+  - {id: secondhandsongs, kind: structured, lineage: secondhandsongs, reliability: 0.85, access: unavailable, publishable: false, url: "https://secondhandsongs.com/artist/3153"}
+  # DAHR's firewall refuses cloud machines: Amitabh saves the "View All" page, loaded with maestro-import --extractor dahr.
+  - {id: dahr, kind: structured, lineage: label_ledgers, reliability: 0.95, access: unavailable, default_tier: D, url: "https://adp.library.ucsb.edu/names/103688"}
+collaborators:
+  composers: [Harold Arlen, Harry Warren, André Previn, Henry Mancini, Richard A. Whiting, Gene de Paul, Hoagy Carmichael, Bernie Hanighen, Jerome Kern, Rube Bloom]
+  posthumous: [Barry Manilow]
+  duet_partners: [Jo Stafford, Margaret Whiting, The Pied Pipers]
+verification:
+  method: credit
+checksums:
+  - {scope: "lyrics in The Complete Lyrics of Johnny Mercer (more than)", total: 1200, filter: {tiers: [A, B, C]}, source: "https://www.penguinrandomhouse.com/books/113333/the-complete-lyrics-of-johnny-mercer-by-johnny-mercer/"}
+  - {scope: "Academy Award nominations, Best Original Song", total: 18, breakdown: {wins: 4}, source: "https://en.wikipedia.org/wiki/Johnny_Mercer"}
+  - {scope: "recordings as performer, 1929-1967 (DAHR)", total: 312, filter: {tiers: [D]}, source: "https://adp.library.ucsb.edu/names/103688"}
+taxonomies:
+  style: american_popular_song_and_film_genre
+popularity_signals:
+  # To build: oscar (Wikipedia award tables), afi_100_songs, grammy_hall_of_fame, songwriters_hall_of_fame,
+  # jazzstandards_rank, billboard (his own hits 1942-49). Built: wikipedia_articles, reissues, lastfm, youtube.
+  contemporary: [oscar, billboard, hit_parade]
+  enduring: [wikipedia_articles, reissues, lastfm, youtube, jazzstandards_rank]
+  penetration: [covers, film_tv_use]
+  esteem: [afi_100_songs, grammy_hall_of_fame, expert_posts]
+  lists: expert_lists.tsv
+legal:
+  purpose: personal_then_foss
+  lyrics: first_line_only
+  audio: derived_features_only
+budget:
+  crawl_requests_per_round: 3000
+  per_domain_rps: 0.5
+  model_spend_usd: null
+  review_hours_per_week: null
+open_questions:
+  - "Is his singing in scope? Proposed: his recordings of songs others wrote form tier D (performer), measured but not a target."
+  - "Barry Manilow's settings of unfinished lyrics (When October Goes, 1984; ~16 in MusicBrainz): tier C, or out of the canon?"
+  - "English lyrics to foreign songs (Autumn Leaves, Summer Wind) and lyrics added to existing instrumentals (Laura, Satin Doll, Midnight Sun) count as his works, credited lyricist only. Agree?"
+  - "Can you get The Complete Lyrics (print) for its index? It is the only full register; without it Tier A and B completeness rests on MusicBrainz plus the copyright catalogue."
+  - "Stage shows (St. Louis Woman, Li'l Abner and others) have no container type of their own: kept as tier B songs without a container for MVP1."
+  - "Films: 'at least 73' (Encyclopedia.com) against '100' (Johnny Mercer Foundation): no checksum until the film register settles it."
