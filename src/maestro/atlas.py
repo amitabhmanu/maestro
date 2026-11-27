@@ -114,15 +114,21 @@ class Genres:
         return self.index.get((source, _key(label)))
 
     def lookup_all(self, source: str, label: str) -> list[str]:
-        """Every node a label names; compound labels ('Social and Stunt') give one per part."""
+        """Every node a label names; compound labels ('Social and Stunt') give one per part, and a two-word
+        label no table lists ('Crime comedy') one per word when each word is a label."""
         hit = self.index.get((source, _key(label)))
         if hit:
             return [hit]
-        out = []
+        out: list[str] = []
         for part in re.split(r"\s+and\s+|\s*,\s*", label):
             h = self.index.get((source, _key(part))) or self.index.get((source, _key(part + "-oriented")))
             if h and h not in out:
                 out.append(h)
+        words = label.split()
+        if not out and len(words) == 2:
+            hits = [self.index.get((source, _key(w))) for w in words]
+            if all(hits):
+                out = list(dict.fromkeys(hits))
         return out
 
 
@@ -132,7 +138,13 @@ class Atlas:
     genres: Genres
     waves: dict[str, dict[str, Any]]
     wave_films: list[dict[str, Any]] = field(default_factory=list)
+    studios: dict[str, dict[str, Any]] = field(default_factory=dict)
+    studio_index: dict[str, str] = field(default_factory=dict)  # folded name or alias -> studio id
     _listed: dict[str, set[str]] | None = None
+
+    def studio(self, name: str) -> str | None:
+        """The studio a production company or Notes label names ('MGM', 'Metro-Goldwyn-Mayer Pictures')."""
+        return self.studio_index.get(_key(name)) or self.studio_index.get(_key(re.sub(r"\s*\(.*?\)", "", name)))
 
     def listed(self) -> dict[str, set[str]]:
         """Confirmed films of each curated wave, keyed by title|year and by Wikidata id."""
@@ -179,7 +191,14 @@ def load(folder: Path = DEFAULT_DIR) -> Atlas:
         r["sources"] = _split(r.get("sources", ""))
         waves[r["id"]] = r
     wave_films = _rows(folder / "wave_films.tsv") if (folder / "wave_films.tsv").exists() else []
-    return Atlas(places, genres, waves, wave_films)
+    atlas = Atlas(places, genres, waves, wave_films)
+    for r in _rows(folder / "studios.tsv") if (folder / "studios.tsv").exists() else []:
+        r["aliases"] = _split(r.get("aliases", ""))
+        r["sources"] = _split(r.get("sources", ""))
+        atlas.studios[r["id"]] = r
+        for name in [r["name"], *r["aliases"]]:
+            atlas.studio_index.setdefault(_key(name), r["id"])
+    return atlas
 
 
 def parse_rule(rule: str) -> list[list[tuple[str, str]]]:
@@ -211,8 +230,20 @@ def _tree_problems(rows: dict[str, dict[str, Any]], what: str) -> list[str]:
 
 
 def check(atlas: Atlas, folder: Path = DEFAULT_DIR) -> list[str]:
-    """Every problem in the three tables; [] when they are sound."""
+    """Every problem in the tables; [] when they are sound."""
     out: list[str] = []
+    seen_alias: dict[str, str] = {}
+    for sid, r in atlas.studios.items():
+        if r.get("place") and r["place"] not in atlas.places.rows:
+            out.append(f"studio {sid}: place {r['place']} is not in places.tsv")
+        if r.get("wikidata") and not re.fullmatch(r"Q\d+", r["wikidata"]):
+            out.append(f"studio {sid}: wikidata {r['wikidata']!r} is not a QID")
+        if not any(u.startswith("https://") for u in r["sources"]):
+            out.append(f"studio {sid}: no https source")
+        for name in [r["name"], *r["aliases"]]:
+            other = seen_alias.setdefault(_key(name), sid)
+            if other != sid:
+                out.append(f"studio name {name!r} names both {other} and {sid}")
     for name in ("places", "genres", "waves"):
         ids = [r["id"] for r in _rows(folder / f"{name}.tsv")]
         dup = sorted({i for i in ids if ids.count(i) > 1})
@@ -411,13 +442,19 @@ def tag_film(atlas: Atlas, f: dict[str, Any], industry: str) -> dict[str, Any]:
             if all(p["id"] != pid for p in places):
                 places.append({"id": pid, "src": "banner"})
     if not places:
+        for name in x["prod"]:
+            sid = atlas.studio(name)
+            pid = atlas.studios[sid].get("place") if sid else None
+            if pid and all(p["id"] != pid for p in places):
+                places.append({"id": pid, "src": "studio"})
+    if not places:
         for c in x["country"]:
             pid = atlas.places.index.get(_key(c))
             if pid and atlas.places.rows[pid]["kind"] == "country" and all(p["id"] != pid for p in places):
                 places.append({"id": pid, "src": "country"})
     genres: list[dict[str, str]] = []
     for label in x["subject"]:
-        for gid in atlas.genres.lookup_all("hfgk", label):
+        for gid in atlas.genres.lookup_all("hfgk", label) or atlas.genres.lookup_all("wikipedia", label):
             if all(g["id"] != gid for g in genres):
                 genres.append({"id": gid, "src": "subject"})
     for q in sorted(x["wd_genre"]):
@@ -458,6 +495,8 @@ def tag_film(atlas: Atlas, f: dict[str, Any], industry: str) -> dict[str, Any]:
                 elif base == "released_before":
                     ok = bool(x["released"]) and x["released"] < value
                     why.append(f"released before {value}")
+                elif base == "studio" and atlas.studio(value):
+                    ok = any(atlas.studio(p) == atlas.studio(value) for p in x["prod"])
                 elif base in ("producer", "studio"):
                     ok = any(_key(value) in _key(p) for p in x["prod"])
                     why.append(f"{base} {value}")

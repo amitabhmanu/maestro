@@ -1,0 +1,20 @@
+# Film studios and the place of their lot, so a film's studio (Wikipedia's Notes column, Wikidata production
+# company P272) gives it a place on the map. place = a places.tsv id, empty for distributors without a lot.
+id	name	aliases	place	wikidata	notes	sources
+mgm	Metro-Goldwyn-Mayer	MGM|M-G-M|Metro-Goldwyn-Mayer Pictures|Loew's	culver-city	Q179200	Lot in Culver City since 1924.	https://en.wikipedia.org/wiki/Metro-Goldwyn-Mayer
+paramount	Paramount Pictures	Paramount	hollywood	Q159846	Lot on Melrose Avenue, Hollywood, since 1926.	https://en.wikipedia.org/wiki/Paramount_Pictures
+warner	Warner Bros.	Warner Bros|Warner Brothers|Warner Bros. Pictures|Warner	burbank	Q126399	Burbank lot (former First National) from 1929; Sunset Boulevard, Hollywood before.	https://en.wikipedia.org/wiki/Warner_Bros.
+first-national	First National Pictures	First National	burbank	Q1188369	Built the Burbank lot in 1926; merged into Warner Bros.	https://en.wikipedia.org/wiki/First_National_Pictures
+fox	20th Century Fox	20th Century Studios|Twentieth Century-Fox|Twentieth Century Fox|20th Century-Fox|Fox	los-angeles	Q434841	Lot in Century City, Los Angeles.	https://en.wikipedia.org/wiki/20th_Century_Studios
+fox-film	Fox Film Corporation	Fox Film|Fox Films	los-angeles	Q2644123	Studios in Hollywood and at Fox Hills (later Century City), Los Angeles; merged in 1935.	https://en.wikipedia.org/wiki/Fox_Film_Corporation
+universal	Universal Pictures	Universal|Universal Studios|Universal-International	los-angeles	Q168383	Lot in Universal City, Los Angeles County.	https://en.wikipedia.org/wiki/Universal_Pictures
+columbia	Columbia Pictures	Columbia	hollywood	Q186941	Gower Street, Hollywood, until 1972; Burbank 1972-1990; Culver City since.	https://en.wikipedia.org/wiki/Columbia_Pictures
+rko	RKO Radio Pictures	RKO|RKO Pictures|RKO Radio	hollywood	Q267282	Gower Street lot, Hollywood.	https://en.wikipedia.org/wiki/RKO_Pictures
+republic	Republic Pictures	Republic	los-angeles	Q774682	Lot in Studio City, Los Angeles.	https://en.wikipedia.org/wiki/Republic_Pictures
+monogram	Monogram Pictures	Monogram	los-angeles	Q2756484	Studio on Sunset Drive, East Hollywood, Los Angeles.	https://en.wikipedia.org/wiki/Monogram_Pictures
+prc	Producers Releasing Corporation	PRC|Producers Releasing	los-angeles	Q3406645	Poverty Row studio in Los Angeles.	https://en.wikipedia.org/wiki/Producers_Releasing_Corporation
+disney	Walt Disney Pictures	Walt Disney|Disney|Walt Disney Productions|Walt Disney Studios	burbank	Q191224	Burbank studio since 1940; Hyperion Avenue, Los Angeles before.	https://en.wikipedia.org/wiki/Walt_Disney_Pictures
+selznick	Selznick International Pictures	Selznick|Selznick International	culver-city	Q540122	Worked from the former Thomas Ince studio in Culver City.	https://en.wikipedia.org/wiki/Selznick_International_Pictures
+hal-roach	Hal Roach Studios	Hal Roach	culver-city	Q3125893	Lot in Culver City.	https://en.wikipedia.org/wiki/Hal_Roach_Studios
+goldwyn	Samuel Goldwyn Productions	Samuel Goldwyn|Goldwyn	los-angeles	Q7411497	Worked from the Goldwyn studio at Formosa Avenue, West Hollywood area.	https://en.wikipedia.org/wiki/Samuel_Goldwyn_Productions
+united-artists	United Artists	UA		Q219400	A distributor without a lot of its own: no place; the film's country stands in.	https://en.wikipedia.org/wiki/United_Artists

@@ -116,3 +116,15 @@ def test_tag_register_counts_and_untagged():
     out = atlas.tag_register(a, snap, "bollywood")
     assert out["counts"]["wave"]["bw-golden-age"] == 2 and out["untagged"] == {"place": 1, "genre": 1}
     assert snap["films"][0]["atlas"]["place"][0]["id"] == "bombay"
+
+
+def test_studio_gives_place_and_hollywood_genres():
+    a = atlas.load(LEX)
+    t = atlas.tag_film(a, {"title": "Meet Me in St. Louis", "year": 1944, "banner": ["MGM"],
+                           "genre": ["Musical"], "prod": ["Arthur Freed"]}, "hollywood")
+    assert t["place"] == [{"id": "culver-city", "src": "studio"}] and [g["id"] for g in t["genre"]] == ["film-musical"]
+    assert "hw-freed-unit" in _ids(t, "wave") and "hw-musical-golden-age" in _ids(t, "wave")
+    t = atlas.tag_film(a, {"title": "X", "year": 1944, "banner": ["United Artists"], "country": ["United States"],
+                           "genre": ["Crime comedy"]}, "hollywood")
+    assert t["place"] == [{"id": "usa", "src": "country"}]
+    assert [g["id"] for g in t["genre"]] == ["film-crime", "film-comedy"]

@@ -16,10 +16,12 @@ from maestro.pack import PackError, load_pack
 def validate_main(argv: list[str] | None = None) -> int:
     """Validate maestro packs: `maestro-validate maestros/rafi maestros/eddy-arnold`.
 
-    With no arguments, validates every folder under maestros/.
+    With no arguments, validates every folder under maestros/ that holds a pack (shared lexicon folders such
+    as maestros/atlas have none).
     """
     args = sys.argv[1:] if argv is None else argv
-    paths = [Path(a) for a in args] or sorted(p for p in Path("maestros").iterdir() if p.is_dir())
+    paths = [Path(a) for a in args] or sorted(p for p in Path("maestros").iterdir()
+                                              if p.is_dir() and (p / "maestro.yaml").exists())
     failed = 0
     for path in paths:
         try:

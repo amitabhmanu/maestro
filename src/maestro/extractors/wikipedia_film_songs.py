@@ -28,7 +28,7 @@ from maestro.wikitable import Table, read_tables
 SOURCE = "wikipedia"
 VERSION = "1"
 BASE = "https://en.wikipedia.org/wiki/"
-MUSIC_HEADINGS = re.compile(r"\b(soundtrack|music|songs?|track ?list(?:ing)?|album)\b", re.I)
+MUSIC_HEADINGS = re.compile(r"\b(soundtrack|music|songs?|track ?list(?:ing)?|album|musical numbers?)\b", re.I)
 _SPLIT = re.compile(r"\s*(?:,|;|\band\b|&|/|\n)\s*")
 _VERSION = re.compile(r"\((?:[^()]*\b)?(reprise|remix|remixed|unplugged|female|male|duet|sad|version|club mix|"
                       r"lounge|instrumental|theme|redux|reloaded|lofi|lo-fi|acoustic|recreated|revisited|"
@@ -162,6 +162,76 @@ def parse_songs(page_html: str, whole_page: bool = False) -> list[dict]:
     return songs
 
 
+# Song lists: older Hollywood articles list the musical numbers as bullets, not tables:
+#   "The Boy Next Door", Hugh Martin and Ralph Blane, 1944, performed by Judy Garland.
+#   "Over the Rainbow" – music by Harold Arlen, lyrics by E. Y. Harburg; sung by Judy Garland
+_LI = re.compile(r"<li\b[^>]*>(.*?)</li>", re.S)
+_QUOTED = re.compile(r'^\s*["\u201c](.+?)["\u201d]\s*(.*)$', re.S)
+_PERFORMED = re.compile(r"\b(?:performed|sung|reprised|danced|played)\s+(?:by|with)\s+", re.I)
+_ROLE = re.compile(r"\b(words and music|music and lyrics|music|lyrics|words)\s+by\s+", re.I)
+_YEAR = re.compile(r"\b(1[89]\d\d|20\d\d)\b")
+
+
+def _upto(text: str) -> str:
+    """Names up to where the next clause starts."""
+    return re.split(r"\s*(?:;|(?<!\b[A-Z])(?<!Bros)(?<!Jr)(?<!Sr)\.\s|\(|\bwith sections\b|\bperformed\b|\bsung\b|\bmusic by\b|\blyrics by\b|"
+                    r"\bwords by\b|\bvoices?\b|\b(?:1[89]|20)\d\d\b)", text, maxsplit=1)[0]
+
+
+def _people(text: str) -> list[str]:
+    """Names in a clause; descriptions ("the film's producer", "melody adapted by ...") are dropped."""
+    return [n for n in _names(_upto(text)) if n[:1].isupper() and " by " not in n and len(n.split()) <= 5]
+
+
+def parse_list_item(text: str) -> dict | None:
+    """One bullet of a song list, or None when the bullet does not start with a quoted title."""
+    m = _QUOTED.match(text)
+    if not m or len(m.group(1)) > 120:
+        return None
+    title, rest = m.group(1).strip().rstrip(","), m.group(2).strip(" ,.\u2013\u2014-:")
+    out = {"title": title, "singers": [], "lyricists": [], "composers": [], "songwriters": [],
+           "written": None, "note": rest[:300] or None}
+    if pm := _PERFORMED.search(rest):
+        out["singers"] = _people(rest[pm.end():])
+    roles = list(_ROLE.finditer(rest))
+    for rm in roles:
+        names = _people(rest[rm.end():])
+        kind = rm.group(1).lower()
+        if kind in ("words and music", "music and lyrics"):
+            out["composers"] += names
+            out["lyricists"] += names
+        elif kind == "music":
+            out["composers"] += names
+        else:
+            out["lyricists"] += names
+    if not roles:
+        head = rest[:_PERFORMED.search(rest).start()] if _PERFORMED.search(rest) else rest
+        head = re.sub(r"^(?:by|written by|composed by)\s+", "", head.strip(" ,"), flags=re.I)
+        if head and not re.match(r"(?:traditional|instrumental|uncredited|reprise)", head, re.I):
+            out["songwriters"] = _people(head)
+    if y := _YEAR.search(rest):
+        out["written"] = int(y.group(1))
+    return out
+
+
+def song_lists(page_html: str) -> list[dict]:
+    """Songs listed as bullets in the article's music sections (h2/h3 whose title names music or songs)."""
+    marks = [(m.start(), m.group(2)) for m in _HEADING.finditer(page_html)]
+    out = []
+    for i, (pos, hid) in enumerate(marks):
+        if not MUSIC_HEADINGS.search(hid.replace("_", " ")):
+            continue
+        end = marks[i + 1][0] if i + 1 < len(marks) else len(page_html)
+        section = re.sub(r"<(?:ul|ol)\b[^>]*>.*?</(?:ul|ol)>(?=\s*</li>)", "", page_html[pos:end], flags=re.S)
+        for li in _LI.finditer(section):
+            text = re.sub(r"\[\d+\]|\[[a-z]\]", "", _plain(li.group(1)))
+            song = parse_list_item(text)
+            if song:
+                song["part"] = hid.replace("_", " ")
+                out.append(song)
+    return out
+
+
 _MAIN = re.compile(r'(?:Main article|Main articles|Further information|See also):\s*<a[^>]*href="(?:https://en\.wikipedia\.org)?/wiki/([^"#?]+)"')
 _HEADING = re.compile(r'<h([23])[^>]*id="([^"]+)"')
 
@@ -227,6 +297,8 @@ def extract(ctx) -> None:
     for k, v in album_details(page).items() if is_soundtrack else ():
         claim(film, k, v)
     songs = parse_songs(page, whole_page=is_soundtrack)
+    if not songs and not is_soundtrack:
+        songs = [{**s, "duration": None, "version": None} for s in song_lists(page)]
     if not songs:
         return
     year = store.conn.execute(
@@ -242,11 +314,12 @@ def extract(ctx) -> None:
         claim(song, "title", s["title"])
         claim(song, "part_of", {"position": n}, ref=film)
         claim(song, "work_kind", "film_song")
-        for role, key in (("singer", "singers"), ("lyricist", "lyricists"), ("composer", "composers")):
-            for name in s[key]:
+        for role, key in (("singer", "singers"), ("lyricist", "lyricists"), ("composer", "composers"),
+                          ("songwriter", "songwriters")):
+            for name in s.get(key, []):
                 claim(song, "credit_unlinked", {"role": role, "name": name})
-        for field in ("duration", "version", "note"):
-            if s[field]:
+        for field in ("duration", "version", "note", "written"):
+            if s.get(field):
                 claim(song, field, s[field])
         if s["part"] and not MUSIC_HEADINGS.fullmatch(s["part"].strip()):
             claim(song, "album_part", s["part"])

@@ -1,0 +1,77 @@
+# A film register, not a maestro: every American feature film, with its songs where a source lists them.
+# The canon is every song of every film; films are the containers. See maestros/hollywood-films/README.md.
+version: 1
+status: draft
+identity:
+  name: American cinema
+  slug: hollywood-films
+  kind: register
+  ids: {wikidata: Q1074951}  # cinema of the United States
+  variants: [Hollywood, American films, Cinema of the United States]
+  active: [1927, 2026]
+roles:
+  primary: composer
+  in_scope: [composer, lyricist, singer]
+  out_of_scope: [actor]
+  _why:
+    reason: >-
+      Hollywood credits a song to its songwriters (composer and lyricist) and names the performer in the
+      film; a register records all three for every song of every film, not one person's.
+    confidence: 0.85
+canon_model:
+  unit: song
+  version_levels: [work, recording]
+  container: film
+  container_has_full_listing: false
+  kind_tiers: {film_song: A, unreleased_film_song: C}
+  _why:
+    reason: >-
+      No register lists every song of every American film (there is no HFGK for Hollywood), so the film is
+      the container but its song list is only as full as Wikipedia's musical numbers and soundtrack listings.
+      Coverage is reported, not targeted.
+    confidence: 0.75
+tiers:
+  A: {label: "Songs of released American films, 1927 to today", target_missing: report_only}
+  C: {label: "Songs cut from films, unreleased or undated films", target_missing: report_only}
+registers:
+  - name: Wikidata films with country of origin United States (P495 = Q30)
+    tiers: [A, C]
+    access: crawlable
+    role: independent_check
+    url: https://query.wikidata.org/
+    _why:
+      reason: CC0 items for most American feature films, with year, director, composer and English Wikipedia article; read one year at a time.
+      confidence: 0.8
+      evidence: [https://www.wikidata.org/wiki/Property:P495]
+  - name: Wikipedia lists of American films by year
+    tiers: [A]
+    access: crawlable
+    role: independent_check
+    url: https://en.wikipedia.org/wiki/Lists_of_American_films
+    _why:
+      reason: One page per year since 1890 with title, director, cast, genre and studio for each release.
+      confidence: 0.8
+      evidence: [https://en.wikipedia.org/wiki/List_of_American_films_of_1944]
+sources:
+  # Wikidata is read one year at a time (a whole-history query times out): seed
+  # maestro.extractors.wikidata_language_films.country_films_url("Q30", YEAR, YEAR) for each year (README).
+  # IMDb IDs come from Wikidata as references only: IMDb itself is never fetched (public FOSS release planned).
+  - {id: wikidata, kind: structured, lineage: wiki, reliability: 0.7, access: api, api_rps: 0.2, url: "https://query.wikidata.org/sparql"}
+  - {id: wikipedia, kind: semi, lineage: wiki, reliability: 0.6, access: crawlable, url: "https://en.wikipedia.org/wiki/Lists_of_American_films", sweep: {url: "https://en.wikipedia.org/wiki/Lists_of_American_films", extractor: wikipedia_year, purpose: spine}}
+lexicon:
+  container_aliases: lexicon/film_aliases.tsv
+verification:
+  method: credit
+legal:
+  purpose: personal_then_foss
+  lyrics: first_line_only
+  lyric_fields: [title]
+  audio: none
+budget:
+  crawl_requests_per_round: 8000
+  per_domain_rps: 0.5
+  model_spend_usd: null
+  review_hours_per_week: null
+open_questions:
+  - The size of the whole register (likely 40,000+ films); the 1940s pilot (R3a) measures it before the full crawl.
+  - Song coverage depends on Wikipedia's musical-number and soundtrack listings; MusicBrainz soundtrack releases and Academy Award song nominations are the next sources.

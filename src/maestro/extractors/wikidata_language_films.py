@@ -1,6 +1,8 @@
-"""Wikidata Query Service: every film in one original language (P364), for a film register.
+"""Wikidata Query Service: every film in one original language (P364), or of one country of origin (P495)
+in a span of years, for a film register.
 
-Seed with `films_url("Q1568")` (Hindi). Each film becomes a container keyed by its QID (xref on
+Seed with `films_url("Q1568")` (Hindi), or `country_films_url("Q30", 1940, 1949)` (American films first
+released in the 1940s; short films are left out, a register lists feature films). Each film becomes a container keyed by its QID (xref on
 source `wikidata`), with its English and native labels, first publication year (P577), IMDb ID (P345,
 kept as a reference only: IMDb itself is never fetched), English Wikipedia article, and composer
 (P86) and director (P57) credits to person entities keyed by their QIDs. Wikidata is CC0.
@@ -33,6 +35,24 @@ WHERE {{
 
 def films_url(lang_qid: str, lang_code: str = "hi") -> str:
     return f"{ENDPOINT}?{urlencode({'format': 'json', 'query': QUERY.format(lang=lang_qid, code=lang_code)})}"
+
+
+# By country the class path (P31/P279*) times out, so the film classes are named: film, feature film, silent,
+# animated, musical, documentary, black-and-white and 3D film. Items also marked short film are left out.
+FILM_CLASSES = ("Q11424", "Q24869", "Q226730", "Q202866", "Q842256", "Q93204", "Q20667187", "Q229390")
+_COUNTRY_FILTER = """wdt:P31 ?class . VALUES ?class {{ {classes} }}
+  ?film wdt:P495 wd:{country} ; wdt:P577 ?d0 .
+  FILTER(?d0 >= "{start}-01-01"^^xsd:dateTime && ?d0 < "{after}-01-01"^^xsd:dateTime)
+  FILTER NOT EXISTS {{ ?film wdt:P31 wd:Q24862 }}"""
+
+
+def country_films_url(country_qid: str, start: int, end: int, lang_code: str = "en") -> str:
+    """Films whose country of origin is `country_qid` with a publication date in start..end (a film dated in
+    several years is listed in each span it touches; the register keeps its earliest year)."""
+    query = QUERY.format(lang="LANG", code=lang_code).replace(
+        "wdt:P364 wd:LANG ; wdt:P31/wdt:P279* wd:Q11424 .", _COUNTRY_FILTER.format(
+            country=country_qid, start=start, after=end + 1, classes=" ".join("wd:" + c for c in FILM_CLASSES)))
+    return f"{ENDPOINT}?{urlencode({'format': 'json', 'query': query})}"
 
 
 def article_title(url: str | None) -> str | None:
@@ -80,8 +100,8 @@ def parse(data: dict) -> list[dict]:
 def extract(ctx) -> None:
     store = ctx.store
     query = parse_qs(urlsplit(ctx.page.url).query).get("query", [""])[0]
-    if not re.search(r"wdt:P364 wd:Q\d+", query):
-        raise ValueError(f"wikidata_language_films expects a films_url() query: {ctx.page.url}")
+    if not re.search(r"wdt:P(?:364|495) wd:Q\d+", query):
+        raise ValueError(f"wikidata_language_films expects a films_url() or country_films_url() query: {ctx.page.url}")
 
     def claim(eid, field, value=None, ref=None):
         store.upsert_claim(eid, field, value=value, ref_entity_id=ref, source_id=SOURCE,

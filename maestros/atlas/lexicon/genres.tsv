@@ -57,26 +57,34 @@ film-costume	Costume	film	film		hfgk:Costume|hfgk:वेशभूषा प्�
 film-stunt	Stunt	film	film		hfgk:Stunt	Action films of the studio era (Wadia Movietone and others).
 film-mythological	Mythological	film	film		hfgk:Mythological|hfgk:पौराणिक	
 film-devotional	Devotional	film	film		hfgk:Devotional|hfgk:भक्ति प्रधान|hfgk:Religious|hfgk:Religious-oriented	
-film-historical	Historical	film	film		hfgk:Historical|hfgk:ऐतिहासिक	
-film-fantasy	Fantasy	film	film		hfgk:Fantasy|hfgk:काल्पनिक	
-film-mystery	Mystery and suspense	film	film		hfgk:Mystery-oriented|hfgk:Spy Movie	
-film-comedy	Comedy	film	film		hfgk:Comedy|hfgk:हास्य प्रधान	
-film-crime	Crime	film	film		hfgk:Crime|hfgk:Crime-oriented|hfgk:अपराध	
-film-biographical	Biographical	film	film		hfgk:Biographical|hfgk:Biography	
+film-historical	Historical	film	film	Q17013749	hfgk:Historical|hfgk:ऐतिहासिक|wikipedia:Historical|wikipedia:Historical drama|wikipedia:Period drama|wikipedia:Epic	
+film-fantasy	Fantasy	film	film	Q157394	hfgk:Fantasy|hfgk:काल्पनिक|wikipedia:Fantasy	
+film-mystery	Mystery and suspense	film	film	Q1200678	hfgk:Mystery-oriented|hfgk:Spy Movie|wikipedia:Mystery|wikipedia:Detective|wikipedia:Whodunit	
+film-comedy	Comedy	film	film	Q157443	hfgk:Comedy|hfgk:हास्य प्रधान|wikipedia:Comedy|wikipedia:Comedy drama|wikipedia:Comedy-drama|wikipedia:Romantic comedy|wikipedia:Screwball comedy|wikipedia:Slapstick|wikipedia:Farce|wikipedia:Black comedy|wikipedia:Parody|wikipedia:Satire	
+film-crime	Crime	film	film	Q959790	hfgk:Crime|hfgk:Crime-oriented|hfgk:अपराध|wikipedia:Crime|wikipedia:Crime drama|wikipedia:Crime thriller|wikipedia:Gangster|wikipedia:Heist	
+film-biographical	Biographical	film	film	Q645928	hfgk:Biographical|hfgk:Biography|wikipedia:Biographical|wikipedia:Biopic|wikipedia:Biography	
 film-patriotic	Patriotic	film	film		hfgk:Patriotic-oriented	
 film-music-film	Classical music film	film	film		hfgk:Classical Music|hfgk:शास्त्रीय संगीत प्रधान	Films about musicians or built on classical music.
-film-documentary	Documentary	film	film		hfgk:Documentary	
-film-romance	Romance	film	film	Q1054574	hfgk:Romance	
-film-musical	Musical	film	film	Q842256	hfgk:Musical	The Hollywood genre; Hindi films are not tagged musical because nearly all have songs.
+film-documentary	Documentary	film	film	Q93204	hfgk:Documentary|wikipedia:Documentary	
+film-romance	Romance	film	film	Q1054574	hfgk:Romance|wikipedia:Romance|wikipedia:Romantic drama|wikipedia:Romantic	
+film-musical	Musical	film	film	Q842256	hfgk:Musical|wikipedia:Musical|wikipedia:Musical comedy|wikipedia:Musical drama|wikipedia:Musical romance|wikipedia:Musical revue|wikipedia:Revue|wikipedia:Operetta	The Hollywood genre; Hindi films are not tagged musical because nearly all have songs.
 film-masala	Masala	film	film	Q3028680		
-film-western	Western	film	film	Q172980		
-film-film-noir	Film noir	film	film	Q185867		
-film-animated	Animated	film	film			
+film-western	Western	film	film	Q172980	wikipedia:Western|wikipedia:Western comedy|wikipedia:Musical western|wikipedia:Singing cowboy	
+film-film-noir	Film noir	film	film	Q185867	wikipedia:Film noir|wikipedia:Noir|wikipedia:Neo-noir	
+film-animated	Animated	film	film	Q202866	wikipedia:Animated|wikipedia:Animation|wikipedia:Animated feature	
 film-narrative	Narrative	film	film		hfgk:Narrative|hfgk:आख्यात्मक	HFGK term; meaning to confirm (folk tale or legend?).
 film-educational	Educational	film	film		hfgk:Educational|hfgk:Academic|hfgk:Sexual Education-oriented|hfgk:यौन शिक्षा प्रधान	
-film-horror	Horror	film	film		hfgk:Horror	
-film-scifi	Science fiction	film	film		hfgk:Science Fiction	
-film-children	Children's film	film	film		hfgk:Children&#039;s Film|hfgk:Children's Film	
+film-horror	Horror	film	film	Q200092	hfgk:Horror|wikipedia:Horror	
+film-scifi	Science fiction	film	film	Q471839	hfgk:Science Fiction|wikipedia:Science fiction|wikipedia:Sci-fi	
+film-children	Children's film	film	film		hfgk:Children&#039;s Film|hfgk:Children's Film|wikipedia:Family|wikipedia:Children's	
+film-drama	Drama	film	film	Q130232	wikipedia:Drama|wikipedia:Melodrama	Hollywood's drama label; Hindi 'Social' films keep their own node.
+film-war	War	film	film	Q369747	wikipedia:War|wikipedia:War drama|wikipedia:War film|wikipedia:War Propaganda	
+film-adventure	Adventure	film	film	Q319221	wikipedia:Adventure|wikipedia:Swashbuckler|wikipedia:Jungle	
+film-thriller	Thriller	film	film	Q2484376	wikipedia:Thriller|wikipedia:Spy thriller|wikipedia:Spy|wikipedia:Suspense|wikipedia:Psychological thriller	
+film-action	Action	film	film	Q188473	wikipedia:Action|wikipedia:Action thriller|wikipedia:Martial arts	
+film-propaganda	Propaganda	film	film	Q1935609	wikipedia:Propaganda|wikipedia:Propaganda short	
+film-short	Short film	film	film	Q24862	wikipedia:Short|wikipedia:Animated short|wikipedia:Comedy short|wikipedia:Cartoon|wikipedia:Musical short	Kept so a register can tell shorts from features.
+film-serial	Serial	film	film		wikipedia:Serial|wikipedia:Film serial	Chapter plays of the studio era (Republic, Universal, Columbia).
 theme	Song themes		theme			Moods, occasions and subjects of songs. Not genres; shown under More.
 theme-romantic	Romantic	theme	theme		hindigeetmala:Romantic Songs	
 theme-sad	Sad	theme	theme		hindigeetmala:Sad Songs|hindigeetmala:Dard Bhare Geet	
