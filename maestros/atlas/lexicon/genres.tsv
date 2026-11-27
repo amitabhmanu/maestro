@@ -1,0 +1,103 @@
+# Genres for the atlas: a music tree (kind music), film genres (kind film) and song themes (kind theme), each a tree by parent.
+# maps_from: | separated labels this node takes, as source:label (catalogue = explorer catalogue genre, hindigeetmala = song
+# category, hfgk = HFGK film subject). Hindi Geetmala categories that are awards or status (Filmfare nominee, All Time Great,
+# Non-Filmi, Unreleased, Remix, Instrumental, Unknown) map to no genre on purpose.
+id	name	parent	kind	wikidata	maps_from	notes
+music	Music		music			
+film-music	Film music	music	music			Music made for films: songs and scores.
+film-song	Film song	film-music	music	Q93540236		
+hindi-film-song	Hindi film song	film-song	music	Q6942022	catalogue:Hindi film songs|catalogue:Hindi film music|catalogue:Hindi and Bengali film songs|catalogue:Hindi and Bengali film music|catalogue:Hindi film lyrics|catalogue:Hindi and Urdu film lyrics|catalogue:Film songs and ghazals	Every song from a Hindi film; the forms below are kinds of Hindi film song.
+filmi-ghazal	Film ghazal	hindi-film-song	music	Q281111	hindigeetmala:Ghazals	A ghazal sung in a film. Non-film ghazals sit under South Asian light classical.
+filmi-qawwali	Film qawwali	hindi-film-song	music	Q512410	hindigeetmala:Qawwalis	
+filmi-bhajan	Film bhajan and prayer	hindi-film-song	music	Q854775	hindigeetmala:Religious Songs|hindigeetmala:Prayer	Devotional songs in films, Hindu, Muslim, Sikh or Christian.
+filmi-classical	Raga-based film song	hindi-film-song	music	Q1770695	hindigeetmala:Raag Based Songs|hindigeetmala:Classical Songs	Also set when a song carries a raga (styles taxonomy).
+filmi-lori	Lori (lullaby)	hindi-film-song	music	Q193605	hindigeetmala:Lori Songs	
+filmi-mujra	Mujra	hindi-film-song	music		hindigeetmala:Mujra Songs	Courtesan dance song.
+filmi-folk	Folk-based film song	hindi-film-song	music	Q43343	hindigeetmala:Folk Songs	
+filmi-patriotic	Patriotic film song	hindi-film-song	music	Q7148059	hindigeetmala:Patriotic Songs	
+filmi-dance	Dance number	hindi-film-song	music		hindigeetmala:Dance Songs	Includes cabaret and club numbers.
+filmi-item	Item number	hindi-film-song	music	Q996838	hindigeetmala:Item Songs	
+filmi-disco	Film disco	hindi-film-song	music	Q58339	hindigeetmala:Disco Songs	
+filmi-rock	Film rock and pop	hindi-film-song	music		hindigeetmala:Rock Songs|hindigeetmala:Pop Songs	
+filmi-title	Title song	hindi-film-song	music		hindigeetmala:Title Song	
+filmi-children	Children's song	hindi-film-song	music		hindigeetmala:Songs for Kids	
+filmi-parody	Parody song	hindi-film-song	music		hindigeetmala:Parody Songs	
+hollywood-film-song	Hollywood film song	film-song	music			Every song from an American film; forms below.
+hw-musical-number	Musical number	hollywood-film-song	music	Q661651		A song performed within a film musical. Songs first written for a stage musical are marked as reused when filmed.
+hw-original-song	Original song	hollywood-film-song	music			A song written for a non-musical film (the Academy Award category).
+hw-title-song	Title and theme song	hollywood-film-song	music			
+hw-animated-song	Animated film song	hollywood-film-song	music			Songs from animated musicals (Disney and others).
+film-score	Film score	film-music	music	Q492264	catalogue:Film scores|catalogue:Greek art song, film scores|catalogue:Film scores, jazz piano	Instrumental music written for a film.
+south-asian	South Asian music	music	music			
+indian-classical	Indian classical music	south-asian	music	Q1323698		
+hindustani	Hindustani classical	indian-classical	music	Q1770695	catalogue:Hindustani classical|catalogue:Hindustani classical, sitar	
+carnatic	Carnatic	indian-classical	music	Q956883	catalogue:Carnatic	
+sa-light-classical	South Asian light classical	south-asian	music			
+ghazal	Ghazal	sa-light-classical	music	Q281111	catalogue:Ghazal|hindigeetmala:Non-Filmi Ghazals	Non-film ghazals.
+qawwali	Qawwali	sa-light-classical	music	Q512410	catalogue:Qawwali	
+sa-devotional	Devotional song	south-asian	music	Q762917	hindigeetmala:Non Filmi - Nazrul Geet	Non-film devotional songs and bhajans.
+tamil-film-song	Tamil film song	film-song	music		catalogue:Tamil film music|catalogue:Tamil and Hindi film music	
+popular-song	Popular song	music	music			
+traditional-pop	Traditional pop	popular-song	music	Q1196752	catalogue:Traditional pop	
+great-american-songbook	Great American Songbook	traditional-pop	music	Q1151397	catalogue:Great American Songbook	A repertoire of standards, many first heard in Broadway shows and Hollywood films.
+jazz	Jazz	popular-song	music	Q8341	catalogue:Jazz	
+country	Country	popular-song	music	Q83440	catalogue:Country	
+soul	Soul	popular-song	music		catalogue:Soul	
+folk-rock	Folk and rock	popular-song	music		catalogue:Folk and rock	
+chanson	Chanson	popular-song	music	Q1062400	catalogue:Chanson|catalogue:Chanson and pop	
+fado	Fado	popular-song	music		catalogue:Fado	
+latin	Latin American song	popular-song	music		catalogue:Tango|catalogue:Bossa nova|catalogue:MPB, Tropicália|catalogue:Nueva canción|catalogue:Salsa	Split into tango, bossa nova and others when those canons are built.
+arabic-song	Arabic song	popular-song	music		catalogue:Arabic classical song|catalogue:Arabic popular song	
+african-popular	African popular music	popular-song	music		catalogue:Afrobeat|catalogue:South African popular song|catalogue:Morna|catalogue:Mbalax	
+east-asian-popular	East Asian popular song	popular-song	music		catalogue:Mandopop|catalogue:Kayōkyoku, enka	
+western-classical	Western classical	music	music		catalogue:Baroque	
+film	Film		film			
+film-social	Social	film	film	Q7551110	hfgk:Social|hfgk:सामाजिक	Hindi cinema's term for contemporary family and social dramas.
+film-costume	Costume	film	film		hfgk:Costume|hfgk:वेशभूषा प्रधान|hfgk:Costume Drama	Period adventure and romance.
+film-stunt	Stunt	film	film		hfgk:Stunt	Action films of the studio era (Wadia Movietone and others).
+film-mythological	Mythological	film	film		hfgk:Mythological|hfgk:पौराणिक	
+film-devotional	Devotional	film	film		hfgk:Devotional|hfgk:भक्ति प्रधान|hfgk:Religious|hfgk:Religious-oriented	
+film-historical	Historical	film	film		hfgk:Historical|hfgk:ऐतिहासिक	
+film-fantasy	Fantasy	film	film		hfgk:Fantasy|hfgk:काल्पनिक	
+film-mystery	Mystery and suspense	film	film		hfgk:Mystery-oriented|hfgk:Spy Movie	
+film-comedy	Comedy	film	film		hfgk:Comedy|hfgk:हास्य प्रधान	
+film-crime	Crime	film	film		hfgk:Crime|hfgk:Crime-oriented|hfgk:अपराध	
+film-biographical	Biographical	film	film		hfgk:Biographical|hfgk:Biography	
+film-patriotic	Patriotic	film	film		hfgk:Patriotic-oriented	
+film-music-film	Classical music film	film	film		hfgk:Classical Music|hfgk:शास्त्रीय संगीत प्रधान	Films about musicians or built on classical music.
+film-documentary	Documentary	film	film		hfgk:Documentary	
+film-romance	Romance	film	film	Q1054574	hfgk:Romance	
+film-musical	Musical	film	film	Q842256	hfgk:Musical	The Hollywood genre; Hindi films are not tagged musical because nearly all have songs.
+film-masala	Masala	film	film	Q3028680		
+film-western	Western	film	film	Q172980		
+film-film-noir	Film noir	film	film	Q185867		
+film-animated	Animated	film	film			
+film-narrative	Narrative	film	film		hfgk:Narrative|hfgk:आख्यात्मक	HFGK term; meaning to confirm (folk tale or legend?).
+film-educational	Educational	film	film		hfgk:Educational|hfgk:Academic|hfgk:Sexual Education-oriented|hfgk:यौन शिक्षा प्रधान	
+film-horror	Horror	film	film		hfgk:Horror	
+film-scifi	Science fiction	film	film		hfgk:Science Fiction	
+film-children	Children's film	film	film		hfgk:Children&#039;s Film|hfgk:Children's Film	
+theme	Song themes		theme			Moods, occasions and subjects of songs. Not genres; shown under More.
+theme-romantic	Romantic	theme	theme		hindigeetmala:Romantic Songs	
+theme-sad	Sad	theme	theme		hindigeetmala:Sad Songs|hindigeetmala:Dard Bhare Geet	
+theme-playful	Playful	theme	theme		hindigeetmala:Masti Bhare Geet|hindigeetmala:Playful Songs	
+theme-happy	Happy	theme	theme		hindigeetmala:Happy Songs	
+theme-teasing	Teasing	theme	theme		hindigeetmala:Ched Chad Songs	
+theme-praise	Praise of the beloved	theme	theme		hindigeetmala:Tareef Songs	
+theme-sulking	Sulking and coaxing	theme	theme		hindigeetmala:Roothna Manaana	
+theme-philosophical	Philosophical	theme	theme		hindigeetmala:Philosophical Songs	
+theme-waiting	Waiting	theme	theme		hindigeetmala:Intezaar	
+theme-complaint	Complaint	theme	theme		hindigeetmala:Shikwa Shikayat Songs	
+theme-funny	Funny	theme	theme		hindigeetmala:Funny Songs	
+theme-motivational	Motivational	theme	theme		hindigeetmala:Motivational Songs	
+theme-wedding	Wedding and farewell	theme	theme		hindigeetmala:Marriage Songs|hindigeetmala:Vidai (Doli) Songs	
+theme-eyes	Eyes	theme	theme		hindigeetmala:Songs about Eyes	
+theme-party	Party	theme	theme		hindigeetmala:Party Songs	
+theme-rain	Rain and seasons	theme	theme		hindigeetmala:Rain Songs|hindigeetmala:Mausam Songs	
+theme-festivals	Festivals	theme	theme		hindigeetmala:Holi Songs|hindigeetmala:Diwali Songs|hindigeetmala:New Year Songs|hindigeetmala:Rakhi (Bhai Behan) Songs|hindigeetmala:Birthday Songs	
+theme-intoxication	Drinking	theme	theme		hindigeetmala:Sharabi Songs	
+theme-moon	Moon	theme	theme		hindigeetmala:Moon Songs	
+theme-friendship	Friendship	theme	theme		hindigeetmala:Friendship Songs	
+theme-dream	Dream	theme	theme		hindigeetmala:Dream Songs	
+theme-sensual	Sensual	theme	theme		hindigeetmala:Sensual Songs|hindigeetmala:Seductive Songs	
+theme-haunting	Haunting and suspense	theme	theme		hindigeetmala:Haunting Songs|hindigeetmala:Suspense Songs	

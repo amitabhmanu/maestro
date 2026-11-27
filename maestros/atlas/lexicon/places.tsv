@@ -1,0 +1,82 @@
+# Places for the atlas map: world > region > country > state > city, with old and other names (aliases, | separated)
+# used to read places out of film banners, studios and birthplaces. Countries use ISO 3166 alpha-3 ids (lower case) to
+# join the map shapes. valid_from/valid_to: years a historical unit existed. roles: film_centre, music_centre, birthplace.
+# Coordinates and ids from Wikidata (27 Nov 2026). The map draws India in its official boundaries (Natural Earth, India view).
+id	name	kind	parent	wikidata	lat	lon	aliases	valid_from	valid_to	roles	notes
+world	World	world		Q2							
+south-asia	South Asia	region	world	Q771405	22.0000	79.0000					
+americas	The Americas	region	world	Q828	15.0000	-80.0000					
+europe	Europe	region	world	Q46	50.0000	10.0000					
+middle-east-africa	Middle East and Africa	region	world		10.0000	20.0000					Explorer catalogue region; combines Wikidata Q7204 (Middle East) and Q15 (Africa).
+east-asia	East Asia	region	world	Q27231	33.0000	120.0000					
+ind	India	country	south-asia	Q668	22.8000	83.0000	Bharat|Hindustan				
+pak	Pakistan	country	south-asia	Q843	30.0000	71.0000					Part of British India before 15 Aug 1947.
+bgd	Bangladesh	country	south-asia	Q902	24.0200	89.8700	East Pakistan|East Bengal				
+lka	Sri Lanka	country	south-asia	Q854	7.0000	81.0000	Ceylon				
+npl	Nepal	country	south-asia	Q837	28.0000	84.0000					
+mmr	Myanmar	country	east-asia	Q836	22.0000	96.0000	Burma				Part of British India until 1937; a few early Hindi films were made in Rangoon.
+usa	United States	country	americas	Q30	39.8300	-98.5800	USA|America				
+arg	Argentina	country	americas	Q414	-34.0000	-64.0000					
+bra	Brazil	country	americas	Q155	-14.0000	-53.0000					
+cub	Cuba	country	americas	Q241	22.0000	-79.5000					
+fra	France	country	europe	Q142	47.0000	2.0000					
+gbr	United Kingdom	country	europe	Q145	54.6000	-2.0000	Britain|UK				
+bel	Belgium	country	europe	Q31	50.6400	4.6700					
+ita	Italy	country	europe	Q38	42.5000	12.5000					
+prt	Portugal	country	europe	Q45	38.7000	-9.1800					
+grc	Greece	country	europe	Q41	38.5000	23.0000					
+deu	Germany	country	europe	Q183	51.0000	10.0000					
+egy	Egypt	country	middle-east-africa	Q79	27.0000	29.0000					
+lbn	Lebanon	country	middle-east-africa	Q822	33.8300	35.7700					
+nga	Nigeria	country	middle-east-africa	Q1033	9.0000	8.0000					
+zaf	South Africa	country	middle-east-africa	Q258	-29.0000	24.0000					
+cpv	Cape Verde	country	middle-east-africa	Q1011	15.3000	-23.7000	Cabo Verde				
+sen	Senegal	country	middle-east-africa	Q1041	14.3700	-14.2800					
+twn	Taiwan	country	east-asia	Q865	24.0000	121.0000					
+jpn	Japan	country	east-asia	Q17	35.0000	136.0000					
+british-india	British India	historical	south-asia	Q129286	22.5400	88.3400	British Raj		1947		Shown on the time slider before 1947: films from Lahore and Karachi then count as Indian films.
+in-mh	Maharashtra	state	ind	Q1191	19.7500	75.7100	Bombay State|Bombay Presidency				
+in-wb	West Bengal	state	ind		22.9900	87.7500	Bengal				
+in-tn	Tamil Nadu	state	ind		11.0000	78.0000	Madras State|Madras Presidency				
+in-mp	Madhya Pradesh	state	ind	Q1188	22.9700	78.6600					
+in-gj	Gujarat	state	ind	Q1061	23.1600	71.8400					
+in-pb	Punjab (India)	state	ind		31.0000	75.5000	Panjab				
+in-ka	Karnataka	state	ind		15.0000	76.0000	Mysore State				
+in-ts	Telangana	state	ind		17.8000	79.0000	Hyderabad State				
+in-ap	Andhra Pradesh	state	ind	Q1159	16.8500	80.8700					
+in-up	Uttar Pradesh	state	ind		27.0000	80.9000	United Provinces				
+in-dl	National Capital Territory of Delhi	state	ind	Q1353	28.6700	77.2200					
+in-ga	Goa	state	ind	Q1171	15.4000	74.0400					
+in-od	Odisha	state	ind		20.5000	84.4000	Orissa				
+in-kl	Kerala	state	ind		10.5000	76.3000					
+pk-pb	Punjab (Pakistan)	state	pak		31.0000	72.0000	West Punjab				
+pk-sd	Sindh	state	pak		26.0000	68.5000	Sind				
+us-ca	California	state	usa	Q99	37.0000	-120.0000					
+us-ny	New York (state)	state	usa		43.0000	-75.5000					
+us-tn	Tennessee	state	usa		35.8600	-86.3500					
+us-ga	Georgia (U.S. state)	state	usa	Q1428	33.0000	-83.5000					
+bombay	Mumbai	city	in-mh	Q1156	19.0758	72.8775	Bombay|Bomby|बंबई|मुंबई			film_centre	Capital of Hindi cinema; banners name it on 5,103 register films.
+calcutta	Kolkata	city	in-wb	Q1348	22.5675	88.3700	Calcutta|Calcatta|Culcutta|কলকাতা			film_centre	New Theatres made Hindi and Bengali films here in the 1930s and 1940s.
+madras	Chennai	city	in-tn	Q1352	13.0825	80.2750	Madras			film_centre	Gemini, AVM and Prasad made many Hindi films from the late 1940s.
+lahore	Lahore	city	pk-pb	Q11739	31.5497	74.3436	Lahore (Panjab)			film_centre	Hindi-Urdu film centre before Partition (later Lollywood).
+poona	Pune	city	in-mh	Q1538	18.5211	73.8553	Poona|Puna|पुणे			film_centre	Prabhat Film Company.
+kolhapur	Kolhapur	city	in-mh	Q209698	16.7000	74.2333	Kolhapure			film_centre	
+hyderabad	Hyderabad	city	in-ts	Q1361	17.3617	78.4747				film_centre	
+bangalore	Bengaluru	city	in-ka	Q1355	12.9791	77.5913	Bangalore|Banglore			film_centre	
+delhi	Delhi	city	in-dl	Q1353	28.6667	77.2167	New Delhi			film_centre	
+ahmedabad	Ahmedabad	city	in-gj	Q1070	23.0219	72.5797	Ahemdabad			film_centre	
+lucknow	Lucknow	city	in-up	Q47916	26.8470	80.9470				film_centre	
+sangli	Sangli	city	in-mh	Q429215	16.8667	74.5667				film_centre	
+karachi	Karachi	city	pk-sd	Q8660	24.8600	67.0100				film_centre	
+rangoon	Yangon	city	mmr	Q37995	16.8053	96.1561	Rangoon			film_centre	
+kotla-sultan-singh	Kotla Sultan Singh	city	in-pb	Q6434100	31.7833	75.0000				birthplace	Mohammed Rafi's birthplace.
+indore	Indore	city	in-mp	Q66616	22.7186	75.8550				birthplace	Lata Mangeshkar's birthplace.
+los-angeles	Los Angeles	city	us-ca	Q65	34.0522	-118.2437	LA			film_centre	Seat of the Hollywood studios.
+hollywood	Hollywood	city	los-angeles	Q34006	34.0983	-118.3267				film_centre	District of Los Angeles; Paramount and others. Johnny Mercer died here.
+culver-city	Culver City	city	us-ca	Q493378	34.0081	-118.4014				film_centre	MGM studios.
+burbank	Burbank	city	us-ca	Q39561	34.1803	-118.3283				film_centre	Warner Bros. and Disney studios.
+new-york	New York City	city	us-ny	Q60	40.7128	-74.0061	New York|NYC|Broadway			film_centre	Broadway, where many Hollywood film songs were first heard; early sound studios (Astoria).
+savannah	Savannah	city	us-ga	Q83813	32.0508	-81.1039				birthplace	Johnny Mercer's birthplace.
+nashville	Nashville	city	us-tn	Q23197	36.1622	-86.7744				music_centre	Country music capital; Eddy Arnold's home base.
+henderson-tn	Henderson, Tennessee	city	us-tn	Q2054167	35.4431	-88.6444	Henderson			birthplace	Eddy Arnold's birthplace.
+paris	Paris	city	fra	Q90	48.8567	2.3522				music_centre	Jean Wiener's city.

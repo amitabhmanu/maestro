@@ -37,6 +37,7 @@ maestro-films = "maestro.films:main"
 maestro-gem-tags = "maestro.gemtags:main"
 maestro-words = "maestro.lyricwords:main"
 maestro-review-desk = "maestro.review_desk:main"
+maestro-atlas = "maestro.atlas:main"
 
 [build-system]
 requires = ["hatchling>=1.25"]
