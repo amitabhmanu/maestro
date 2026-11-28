@@ -1,0 +1,468 @@
+# Films of the curated waves, each named by a source and reviewed by a person. status: confirmed (counts) or candidate (waits).
+# Bollywood lists: confirmed by Amitabh on the R2 review page, 28 Nov 2026 (every source group accepted whole).
+wave	title	year	wikidata	status	source	why
+bw-angry-young-man	Bobby	1973	Q888434	confirmed	https://en.wikipedia.org/wiki/Angry_young_man_(India)#Hindi_cinema	named in the article's Hindi cinema films
+bw-angry-young-man	Zanjeer	1973	Q3417226	confirmed	https://en.wikipedia.org/wiki/Angry_young_man_(India)#Hindi_cinema	named in the article's Hindi cinema films
+bw-angry-young-man	Deewar	1975	Q787034	confirmed	https://en.wikipedia.org/wiki/Angry_young_man_(India)#Hindi_cinema	named in the article's Hindi cinema films
+bw-angry-young-man	Sholay	1975	Q949228	confirmed	https://en.wikipedia.org/wiki/Angry_young_man_(India)#Hindi_cinema	named in the article's Hindi cinema films
+bw-angry-young-man	Khoon Paseena	1977	Q6402285	confirmed	https://en.wikipedia.org/wiki/Angry_young_man_(India)#Hindi_cinema	named in the article's Hindi cinema films
+bw-angry-young-man	Don	1978	Q1238847	confirmed	https://en.wikipedia.org/wiki/Angry_young_man_(India)#Hindi_cinema	named in the article's Hindi cinema films
+bw-angry-young-man	Muqaddar Ka Sikandar	1978	Q1549137	confirmed	https://en.wikipedia.org/wiki/Angry_young_man_(India)#Hindi_cinema	named in the article's Hindi cinema films
+bw-angry-young-man	Trishool	1978	Q3999025	confirmed	https://en.wikipedia.org/wiki/Angry_young_man_(India)#Hindi_cinema	named in the article's Hindi cinema films
+bw-angry-young-man	Kala Patthar	1979	Q1719481	confirmed	https://en.wikipedia.org/wiki/Angry_young_man_(India)#Hindi_cinema	named in the article's Hindi cinema films
+bw-angry-young-man	Dostana	1980	Q5299338	confirmed	https://en.wikipedia.org/wiki/Angry_young_man_(India)#Hindi_cinema	named in the article's Hindi cinema films
+bw-angry-young-man	Shaan	1980	Q7459924	confirmed	https://en.wikipedia.org/wiki/Angry_young_man_(India)#Hindi_cinema	named in the article's Hindi cinema films
+bw-angry-young-man	Kaalia	1981	Q609943	confirmed	https://en.wikipedia.org/wiki/Angry_young_man_(India)#Hindi_cinema	named in the article's Hindi cinema films
+bw-angry-young-man	Lavaris	1981	Q3427397	confirmed	https://en.wikipedia.org/wiki/Angry_young_man_(India)#Hindi_cinema	named in the article's Hindi cinema films
+bw-angry-young-man	Shakti	1982	Q4752749	confirmed	https://en.wikipedia.org/wiki/Angry_young_man_(India)#Hindi_cinema	named in the article's Hindi cinema films
+bw-angry-young-man	Coolie	1983	Q5167481	confirmed	https://en.wikipedia.org/wiki/Angry_young_man_(India)#Hindi_cinema	named in the article's Hindi cinema films
+bw-angry-young-man	Shahenshah	1988	Q7461598	confirmed	https://en.wikipedia.org/wiki/Angry_young_man_(India)#Hindi_cinema	named in the article's Hindi cinema films
+bw-angry-young-man	Agneepath	1990	Q4692983	confirmed	https://en.wikipedia.org/wiki/Angry_young_man_(India)#Hindi_cinema	named in the article's Hindi cinema films
+bw-masala	Yadon Ki Barat	1973	Q3292224	confirmed	https://en.wikipedia.org/wiki/Masala_film	named in the Masala film article
+bw-masala	Sholay	1975	Q949228	confirmed	https://en.wikipedia.org/wiki/Masala_film	named in the Masala film article
+bw-masala	Amar Akbar Anthony	1977	Q454674	confirmed	https://en.wikipedia.org/wiki/Masala_film	named in the Masala film article
+bw-masala	Darr	1993	Q1166556	confirmed	https://en.wikipedia.org/wiki/Masala_film	named in the Masala film article
+bw-masala	Gardish	1993	Q5522558	confirmed	https://en.wikipedia.org/wiki/Masala_film	named in the Masala film article
+bw-masala	Akele Hum Akele Tum	1995	Q58619	confirmed	https://en.wikipedia.org/wiki/Masala_film	named in the Masala film article
+bw-masala	Kuch Kuch Hota Hai	1998	Q623336	confirmed	https://en.wikipedia.org/wiki/Masala_film	named in the Masala film article
+bw-masala	Chalte Chalte	2003	Q1060293	confirmed	https://en.wikipedia.org/wiki/Masala_film	named in the Masala film article
+bw-masala	Koi	2003	Q1094839	confirmed	https://en.wikipedia.org/wiki/Masala_film	named in the Masala film article
+bw-masala	Slumdog Millionaire	2008	Q125076	confirmed	https://en.wikipedia.org/wiki/Masala_film	named in the Masala film article
+bw-masala	Dabangg	2010	Q733065	confirmed	https://en.wikipedia.org/wiki/Hindi_cinema#New_Hindi_cinema_(1990s_onwards)	named as masala in Hindi cinema
+bw-masala	Singham	2011	Q905129	confirmed	https://en.wikipedia.org/wiki/Hindi_cinema#New_Hindi_cinema_(1990s_onwards)	named as masala in Hindi cinema
+bw-masala	Ek Tha Tiger	2012	Q2991452	confirmed	https://en.wikipedia.org/wiki/Hindi_cinema#New_Hindi_cinema_(1990s_onwards)	named as masala in Hindi cinema
+bw-masala	Rowdy Rathore	2012	Q7371867	confirmed	https://en.wikipedia.org/wiki/Hindi_cinema#New_Hindi_cinema_(1990s_onwards)	named as masala in Hindi cinema
+bw-masala	Son of Sardaar	2012	Q7522830	confirmed	https://en.wikipedia.org/wiki/Hindi_cinema#New_Hindi_cinema_(1990s_onwards)	named as masala in Hindi cinema
+bw-masala	Chennai Express	2013	Q2962658	confirmed	https://en.wikipedia.org/wiki/Hindi_cinema#New_Hindi_cinema_(1990s_onwards)	named as masala in Hindi cinema
+bw-masala	Happy New Year	2014	Q3127192	confirmed	https://en.wikipedia.org/wiki/Hindi_cinema#New_Hindi_cinema_(1990s_onwards)	named as masala in Hindi cinema
+bw-masala	Kick	2014	Q6404200	confirmed	https://en.wikipedia.org/wiki/Hindi_cinema#New_Hindi_cinema_(1990s_onwards)	named as masala in Hindi cinema
+bw-mumbai-noir	Satya	1998	Q7426859	confirmed	https://en.wikipedia.org/wiki/Organised_crime_in_India#Mumbai_underworld_films	Mumbai underworld film from 1998
+bw-mumbai-noir	Company	2002	Q225093	confirmed	https://en.wikipedia.org/wiki/Organised_crime_in_India#Mumbai_underworld_films	Mumbai underworld film from 1998
+bw-mumbai-noir	Black Friday	2007	Q621690	confirmed	https://en.wikipedia.org/wiki/Organised_crime_in_India#Mumbai_underworld_films	Mumbai underworld film from 1998
+bw-mumbai-noir	Shootout at Lokhandwala	2007	Q2020253	confirmed	https://en.wikipedia.org/wiki/Organised_crime_in_India#Mumbai_underworld_films	Mumbai underworld film from 1998
+bw-mumbai-noir	Slumdog Millionaire	2008	Q125076	confirmed	https://en.wikipedia.org/wiki/Organised_crime_in_India#Mumbai_underworld_films	Mumbai underworld film from 1998
+bw-mumbai-noir	Kaminey	2009	Q3031575	confirmed	https://en.wikipedia.org/wiki/Organised_crime_in_India#Mumbai_underworld_films	Mumbai underworld film from 1998
+bw-mumbai-noir	Once Upon a Time in Mumbaai	2010	Q7091871	confirmed	https://en.wikipedia.org/wiki/Organised_crime_in_India#Mumbai_underworld_films	Mumbai underworld film from 1998
+bw-mumbai-noir	Once Upon A Time In Mumbai Dobaara!	2013	Q7091872	confirmed	https://en.wikipedia.org/wiki/Organised_crime_in_India#Mumbai_underworld_films	Mumbai underworld film from 1998
+bw-mumbai-noir	Shootout at Wadala	2013	Q7501068	confirmed	https://en.wikipedia.org/wiki/Organised_crime_in_India#Mumbai_underworld_films	Mumbai underworld film from 1998
+bw-mumbai-noir	Raees	2017	Q19833751	confirmed	https://en.wikipedia.org/wiki/Organised_crime_in_India#Mumbai_underworld_films	Mumbai underworld film from 1998
+bw-mumbai-noir	Mumbai Saga	2021	Q17075453	confirmed	https://en.wikipedia.org/wiki/Organised_crime_in_India#Mumbai_underworld_films	Mumbai underworld film from 1998
+bw-mumbai-noir	Gangubai Kathiawadi	2022	Q85762670	confirmed	https://en.wikipedia.org/wiki/Organised_crime_in_India#Mumbai_underworld_films	Mumbai underworld film from 1998
+bw-nri	Dilwale Dulhania Le Jayenge	1995	Q849343	confirmed	https://www.sensesofcinema.com/2022/bollywood/the-caste-blindness-of-bollywood-nri-genre-films/	named as an NRI genre film (Senses of Cinema, 2022)
+bw-nri	Pardes	1997	Q1445622	confirmed	https://www.sensesofcinema.com/2022/bollywood/the-caste-blindness-of-bollywood-nri-genre-films/	named as an NRI genre film (Senses of Cinema, 2022)
+bw-nri	Kuch Kuch Hota Hai	1998	Q623336	confirmed	https://www.sensesofcinema.com/2022/bollywood/the-caste-blindness-of-bollywood-nri-genre-films/	named as an NRI genre film (Senses of Cinema, 2022)
+bw-nri	Sometimes Happiness Sometimes Sadness...	2001	Q466443	confirmed	https://www.sensesofcinema.com/2022/bollywood/the-caste-blindness-of-bollywood-nri-genre-films/	named as an NRI genre film (Senses of Cinema, 2022)
+bw-nri	Yaadein	2001	Q879029	confirmed	https://www.sensesofcinema.com/2022/bollywood/the-caste-blindness-of-bollywood-nri-genre-films/	named as an NRI genre film (Senses of Cinema, 2022)
+bw-nri	Mujhse Dosti Karoge!	2002	Q263006	confirmed	https://www.sensesofcinema.com/2022/bollywood/the-caste-blindness-of-bollywood-nri-genre-films/	named as an NRI genre film (Senses of Cinema, 2022)
+bw-nri	Kal Ho Naa Ho	2003	Q507490	confirmed	https://www.sensesofcinema.com/2022/bollywood/the-caste-blindness-of-bollywood-nri-genre-films/	named as an NRI genre film (Senses of Cinema, 2022)
+bw-nri	Swades	2004	Q1759650	confirmed	https://www.sensesofcinema.com/2022/bollywood/the-caste-blindness-of-bollywood-nri-genre-films/	named as an NRI genre film (Senses of Cinema, 2022)
+bw-ott	AK vs AK	2020	Q104522006	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Atkan Chatkan	2020		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Bahut Hua Samman	2020		confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Bamfaad	2020	Q96373040	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Bulbbul	2020	Q96631747	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Chhalaang	2020	Q62073359	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Chintu Ka Birthday	2020	Q96374932	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Choked: Paisa Bolta Hai	2020	Q96374956	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Class of '83	2020	Q65068618	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Comedy Couple	2020		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Coolie No. 1	2020	Q65081543	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Court Martial	2020		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Darbaan	2020	Q96375956	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Dil Bechara	2020	Q55648020	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Dolly Kitty Aur Woh Chamakte Sitare	2020	Q58411480	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Ghoomketu	2020	Q16248590	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Ghost Stories	2020	Q81202661	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Ginny Weds Sunny	2020	Q77892946	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Guilty	2020	Q85764775	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Gulabo Sitabo	2020	Q64768686	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Gunjan Saxena: The Kargil Girl	2020	Q65065630	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Kaali Khuhi	2020	Q101157418	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Khaali Peeli	2020	Q77889909	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Khuda Haafiz	2020	Q77894018	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Laxmii	2020	Q63349731	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	London Confidential	2020	Q101245144	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Lootcase	2020	Q77892513	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Ludo	2020	Q79947747	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Maska	2020	Q90346730	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Mee Raqsam	2020	Q101245087	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Mrs. Serial Killer	2020	Q94939303	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Pareeksha	2020		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Raat Akeli Hai	2020	Q97495364	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Sadak 2	2020	Q63348882	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Serious Men	2020		confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Shakuntala Devi	2020	Q84195189	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Taish	2020		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Torbaaz	2020	Q48671148	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Unpaused	2020	Q104835790	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Virgin Bhanupriya	2020	Q92845657	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Yaara	2020	Q97184307	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Yeh Ballet	2020		confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	14 Phere	2021	Q104608354	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Aafat-E-Ishq	2021		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Ajeeb Daastaans	2021	Q106362967	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Ankahi Kahaniya	2021	Q108770555	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Atrangi Re	2021	Q87196215	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Bhoot Police	2021	Q63108829	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Bhuj: The Pride of India	2021	Q65085740	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Bob Biswas	2021	Q79597361	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Cash	2021	Q114695722	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Chhorii	2021	Q104879238	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Collar Bomb	2021		confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Dhamaka	2021	Q104834950	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Dial 100	2021		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Dybbuk	2021	Q85760162	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Haseen Dillruba	2021	Q80384464	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Hello Charlie	2021	Q106237691	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Helmet	2021		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Hum Bhi Akele Tum Bhi Akele	2021	Q106691884	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Hum Do Hamare Do	2021	Q108824626	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Hungama 2	2021	Q85767755	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Kaagaz	2021	Q63563794	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Kya Meri Sonam Gupta Bewafa Hai?	2021	Q108607613	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Lahore Confidential	2021	Q101245449	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Meenakshi Sundareshwar	2021	Q108901401	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Milestone	2021	Q104855155	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Mimi	2021	Q85785582	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Murder at Teesri Manzil 302	2021		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Nail Polish	2021	Q106075475	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Pagglait	2021	Q85791783	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Raat Baaki Hai	2021		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Radhe	2021	Q71954796	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Rashmi Rocket	2021	Q75174902	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Sanak	2021	Q106623488	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Sardar Ka Grandson	2021	Q106831272	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Sardar Udham	2021	Q64152707	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Shaadisthan	2021	Q108044601	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Sherni	2021		confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Shershaah	2021	Q65065643	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Shiddat	2021	Q85800832	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Silence	2021	Q105730524	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Skater Girl	2021	Q85756534	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Squad	2021		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	State of Siege: Temple Attack	2021	Q107539711	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	The Big Bull	2021	Q74560421	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	The Girl on the Train	2021	Q85807258	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	The Power	2021	Q105616541	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	The Wife	2021		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Toofan	2021	Q85810104	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Tribhanga	2021	Q85847850	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Waah Zindagi	2021	Q39059438	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	36 Farmhouse	2022	Q110664536	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	A Thursday	2022	Q110942315	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Atithi Bhooto Bhava	2022	Q114585957	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Babli Bouncer	2022	Q111907329	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Blurr	2022	Q108084407	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Cobalt Blue	2022	Q111467967	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Cuttputlli	2022	Q113574556	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Darlings	2022	Q107584214	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Dasvi	2022	Q106311023	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Freddy	2022		confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Good Luck Jerry	2022		confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Govinda Naam Mera	2022	Q111844179	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	India Lockdown	2022	Q115561244	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Jaadugar	2022	Q107137046	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Jalsa	2022	Q109284672	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Jogi	2022	Q114065093	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Kaun Pravin Tambe?	2022		confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Looop Lapeta	2022	Q105951010	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Love Hostel	2022	Q108101639	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Maja Ma	2022	Q114696416	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Monica, O My Darling	2022	Q112274220	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Plan A Plan B	2022	Q108122170	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Qala	2022	Q115048848	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Sharmaji Namkeen	2022		confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Tadka	2022	Q25206197	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Thar	2022		confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Toolsidas Junior	2022	Q110990613	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Apurva	2023		confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Chhatriwali	2023	Q115959696	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Chor Nikal Ke Bhaga	2023	Q116980496	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Dry Day	2023	Q123910754	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Friday Night Plan	2023	Q121763738	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Gaslight	2023	Q117212122	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Gulmohar	2023	Q117019661	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Haddi	2023	Q118903224	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Kadak Singh	2023	Q123505874	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Kanjoos Makhichoos	2023	Q117322876	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Kathal	2023	Q115810667	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Kho Gaye Hum Kahan	2023	Q121755886	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Khufiya	2023	Q112030370	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Lost	2023	Q116483092	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Lust Stories 2	2023	Q119133685	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Mast Mein Rehne Ka	2023	Q123670743	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Mission Majnu	2023	Q105499772	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Mrs Undercover	2023	Q117474908	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Pippa	2023	Q123282967	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Rabia & Olivia	2023		confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Safed	2023		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Sirf Ek Bandaa Kaafi Hai	2023	Q118179871	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Suspect X	2023	Q121841702	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Tarla	2023	Q118853741	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	The Archies	2023	Q119625127	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Tiku Weds Sheru	2023	Q110224039	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	U-Turn	2023	Q117842616	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Ae Watan Mere Watan	2024	Q116689545	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Agni	2024	Q131194522	confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Amar Singh Chamkila	2024	Q124728747	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Berlin	2024	Q130214435	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Bhakshak	2024	Q124323601	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Bloody Ishq	2024	Q127566781	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	CTRL	2024		confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Do Patti	2024	Q130424855	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Kaam Chalu Hai	2024	Q125470463	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Kakuda	2024		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Lantrani	2024		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Love, Sitara	2024		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Luv Ki Arrange Marriage	2024	Q126279815	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Murder Mubarak	2024	Q124030529	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Patna Shuklla	2024		confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Phir Aayi Hasseen Dillruba	2024		confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Rautu Ka Raaz	2024	Q126617484	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Sector 36	2024	Q129183521	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Sharmajee Ki Beti	2024		confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Sikandar Ka Muqaddar	2024	Q130632329	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Silence 2: The Night Owl Bar Shootout	2024	Q125289290	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Vijay 69	2024	Q131355417	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Wild Wild Punjab	2024	Q127375342	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Woh Bhi Din The	2024		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Baramulla	2025	Q136681363	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Be Happy	2025		confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Chhorii 2	2025		confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Costao	2025		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Detective Sherdil	2025		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Dhoom Dhaam	2025	Q132407629	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Dil Dosti Aur Dogs	2025		confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Greater Kalesh	2025		confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Hisaab Barabar	2025		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Inspector Zende	2025		confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Interrogation	2025		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Jewel Thief	2025		confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Kaalidhar Laapata	2025		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Logout	2025	Q133866400	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Mrs.	2025	Q126453800	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Nadaaniyan	2025		confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Saali Mohabbat	2025	Q136954722	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Sarzameen	2025	Q135443295	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Superboys of Malegaon	2025		confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Sweet Dreams	2025	Q131872343	confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Tehran	2025		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	The Mehta Boys	2025		confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	The Storyteller	2025		confirmed	https://en.wikipedia.org/wiki/List_of_Disney+_Hotstar_original_films	Disney+ Hotstar original film
+bw-ott	Accused	2026	Q138504859	confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Babita Singh Reporting	2026		confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Don't Be Shy	2026		confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Gandhari	2026		confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Ghamasaan	2026		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Ikka	2026		confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Kartavya	2026		confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Lust Stories 3	2026		confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Maa Behen	2026		confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-ott	Pooja Meri Jaan	2026		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Satluj	2026	Q131822415	confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Subedaar	2026		confirmed	https://en.wikipedia.org/wiki/List_of_Amazon_India_originals	Amazon India original
+bw-ott	Sumo Didi	2026		confirmed	https://en.wikipedia.org/wiki/List_of_ZEE5_original_films	ZEE5 original film
+bw-ott	Toaster	2026		confirmed	https://en.wikipedia.org/wiki/List_of_Netflix_India_original_films	Netflix India original film
+bw-parallel	Dharti Ke Lal	1946	Q1022060	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema	named in the Parallel cinema article
+bw-parallel	Neecha Nagar	1946	Q427915	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema	named in the Parallel cinema article
+bw-parallel	Valmiki	1946	Q3420003	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Aaj Aur Kal	1947	Q4661279	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Saajan	1947	Q10972415	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Sindoor	1947	Q19895862	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Anjangarh	1948		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Nadiya Ke Paar	1948	Q1963348	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Sawan Aya Re	1949	Q19895670	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Afsar	1950	Q4690368	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Pehla Aadmi	1950		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Kali Ghata	1951	Q6352407	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Aandhiyaan	1952	Q10959625	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Anhonee	1952	Q3429809	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Chhatrapati Shivaji	1952		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Dahej	1952	Q19891246	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Maa	1952	Q20785314	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Do Bigha Zameen	1953	Q23089	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema	named in the Parallel cinema article
+bw-parallel	Mazi Zameen	1953		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Parinita	1953	Q959267	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Rahi	1953	Q10970719	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	तीन बत्ती चार रास्ता	1953	Q12432235	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Baap Beti	1954	Q10966080	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Biraj Bahu	1954	Q851457	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Hamlet	1954	Q3782880	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Mayur Pankh	1954	Q16251590	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Munna	1954	Q19894269	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Naukari	1954	Q10962107	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Taxi Driver	1954	Q1345807	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Adivasiyon Ka Jeevan Srot	1955		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Bihar Ke Darshaniya Sthan	1955		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Devdas	1955	Q771754	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Joru Ka Bhai	1955		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Funtoosh	1956	Q3419765	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Kismet Ka Khel	1956	Q11102142	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Anjali	1957		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Bade Sarkar	1957	Q19882202	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Begunaah	1957	Q45233788	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Journey Beyond Three Seas	1957	Q1319274	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Pyasa	1957	Q2066234	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema	named in the Parallel cinema article
+bw-parallel	Lajwanti	1958	Q3419705	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Madhumati	1958	Q3764866	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Yahudi	1958	Q3571323	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Char Dil Char Rahen	1959	Q3419734	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Kaagaz Ke Phool	1959	Q1719471	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema	named in the Parallel cinema article
+bw-parallel	Sujata	1959	Q12457804	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Dil Apna Aur Preet Parai	1960	Q11043170	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Eid Mubarak	1960		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Parakh	1960	Q10954031	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Teen Kanya: Tales of Three girls (Bengali)	1961		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Gyara Hazar Ladkian	1962	Q19891664	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Prem Patra	1962	Q7240167	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Bandini	1963	Q806318	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Ghar Basa Ke Dekho	1963	Q10955618	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Grahasti	1963	Q10955829	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Kinare Kinare	1963	Q10954795	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Ustad Alauddin Khan	1963		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Hamara Ghar	1964	Q19891672	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Haqeeqat	1964	Q10950983	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Majboor	1964		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	A Great Day	1965		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Aasman Mahal	1965	Q19881631	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Baaghi Haseena	1965		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Bharat Katha	1965		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Fear	1965	Q5439309	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Kapurush-O-Mahapurush	1965		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Poonam Ki Raat	1965	Q7228699	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Purnima	1965	Q48673917	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Aakhri Khat	1966	Q4661345	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	6.40 PM	1967		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Bambai Raat Ki Baahon Mein	1967	Q15043345	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Dharti Ki Pukar	1967		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Gautama the Buddha	1967		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Hare Kanch Ki Chooriyan	1967	Q10959483	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Jaal	1967	Q6109603	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Q25484675	1967	Q25484675	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Baazi	1968	Q4837197	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Pinjra	1968		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Sankat Mein Swasthya Aur Safai aka Health and Cleanliness in Crisis	1968		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Badi Didi	1969	Q10958405	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Bhuvan Shome	1969	Q855141	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Saat Hindustani	1969	Q1378528	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Heer Ranjha	1970	Q12460628	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Pushpanjali	1970	Q19895316	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Uski Roti	1970	Q7902021	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema	named in the Parallel cinema article
+bw-parallel	Anubhav	1971	Q3427421	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Ashadh Ka Ek Din	1971	Q20649249	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Do Boond Panee	1971	Q19571465	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Bharat Darshan	1972		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Ek Adhoori Kahani	1972	Q5350167	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Maya Darpan	1972	Q6796678	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema	named in the Parallel cinema article
+bw-parallel	Piya Ka Ghar	1972	Q947762	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema	named in the Parallel cinema article
+bw-parallel	Q1199558	1972	Q1199558	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Duvidha	1973	Q5317629	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema	named in the Parallel cinema article
+bw-parallel	Hanste Zakhm	1973	Q5651276	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Hindustan Ki Qasam	1973	Q5766817	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Ankur	1974	Q1546398	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema	named in the Parallel cinema article
+bw-parallel	Avishkar	1974	Q4828981	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Dhuen Ki Lakeer	1974	Q16960584	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Fasla	1974	Q5436819	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Rajni Gandha	1974	Q3418011	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema	named in the Parallel cinema article
+bw-parallel	Charandas Chor	1975	Q5073923	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Dakoo	1975		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Hero	1975		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Nishant	1975	Q3136560	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Sangat	1975		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Tumhara Kalloo	1975		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Vandana	1975		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Jan-E-Man	1976	Q15647807	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Manthan	1976	Q3286621	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Mrigayaa	1976	Q6929575	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Aaina	1977	Q4661277	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Bhoomika	1977	Q2900709	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Saheb Bahadur	1977	Q7399560	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Tabbaliyu Neenade Magane	1977	Q3109762	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	The Chess Players	1977	Q76582	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Arvind Desai Ki Ajeeb Dastan	1978	Q4802475	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Dr. Iqbal	1978		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Junoon	1978	Q6314288	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Kondura	1978	Q6429052	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Madhu Malti	1978	Q6727416	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Griha Pravesh	1979	Q5609137	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Solva Sawan	1979	Q7558988	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Akrosh	1980	Q2680157	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Albert Pinto Ko Gussa Kyoon Aata Hai	1980	Q4711017	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Arising from the Surface	1980	Q4790908	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Naxalites, The	1980		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Prem Aur Vasana	1980		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Satah Se Uthata Aadmi	1980		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	The Naxalites	1980	Q7753321	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	द नक्सेलाइटस	1980	Q11004371	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	भवनी भवाई	1980	Q11019331	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Kahan Kahan Se Guzar Gaya	1981		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Kalyug	1981	Q6355050	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Kudrat	1981	Q11750763	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Prem Rahasya	1981		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Qafan	1981		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Sadgati	1981	Q717380	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Andher Nagaree	1982		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Aparoopa	1982		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Arohan	1982	Q4795482	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Subah	1982	Q141136621	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Umbartha	1982		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema	named in the Parallel cinema article
+bw-parallel	Vijeta	1982	Q7929334	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Ardh Satya	1983	Q639269	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Mandee	1983	Q6748044	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Sadma	1983	Q7398009	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Andhee Galee	1984	Q4754336	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Hip Hip Hurray	1984	Q5767863	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Holee	1984	Q5880282	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Khandhar	1984	Q1276819	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Mister X	1984		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Mohan Joshee Hazir Ho	1984	Q1942797	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Musafir	1984		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Paroma	1984		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Party	1984	Q7140882	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Utsav	1984	Q3417220	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	परोमा	1984	Q11022108	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Aghat	1985	Q4692328	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Ankahee	1985	Q4765948	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Ba Ki Yaad Mein	1985		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Damul	1985	Q5212990	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Matee Manas	1985		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Parama	1985		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Rao Saheb	1985	Q18164270	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Trikal	1985	Q7841943	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Anaadi Anant	1986		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Ek Pal	1986	Q107719427	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Ek Ruka Hua Faisla	1986	Q5350236	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema	named in the Parallel cinema article
+bw-parallel	Genesis	1986	Q3100549	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Hathon Kee Lakeeren	1986	Q5636574	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Kudiattam	1986	Q16250563	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Musafir	1986		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Panchavati	1986		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Parampara	1986		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	एक पल	1986	Q11106998	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Bandhani	1987		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Ek Aur Itihas	1987		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Jhanjhaar	1987	Q19892203	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Mirch Masala	1987	Q3411185	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Mr. India	1987	Q4296485	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Mr. X	1987	Q27959227	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Susman	1987	Q7649130	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Abhishapt	1988		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Ek Aadmi	1988	Q5350165	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Om-Dar-Ba-Dar	1988	Q7089319	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Pehla Kadam	1988		confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Pestonjee	1988	Q1415663	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Salaam Bombay!	1988	Q1637390	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Tamas	1988	Q7680928	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Ek Din Achanak	1989	Q5350188	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Gawaahi	1989	Q5528405	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Hero Hiralal	1989	Q1613757	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Khayal Gatha	1989	Q16250342	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Parinati	1989	Q7137126	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Q13115098	1989	Q13115098	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Salim Langde Pe Mat Ro	1989	Q7404567	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Siddheshwari	1989	Q20649201	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	पिकनिक	1989	Q11043041	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Drishti	1990	Q5307809	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Ek Ghar	1990	Q5350192	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Shiva	1990	Q7499225	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
+bw-parallel	Thodasa Roomani Ho Jaayen	1990	Q7786612	confirmed	https://en.wikipedia.org/wiki/Parallel_cinema#Directors	director listed in the Parallel cinema article
