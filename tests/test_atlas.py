@@ -78,6 +78,7 @@ def test_tag_film_place_genre_and_era():
 
 def test_tag_film_wave_rules():
     a = atlas.load(LEX)
+    a.wave_films, a._listed = [], None  # rules alone; the reviewed lists are set below
     parallel = {"title": "Ankur", "year": 1974, "movement": [{"qid": "Q7134948", "label": "parallel cinema"}]}
     assert {"id": "bw-parallel", "by": "wikidata P135"} in atlas.tag_film(a, parallel, "bollywood")["wave"]
     # a curated wave needs the film on its reviewed list
