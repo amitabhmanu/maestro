@@ -5,6 +5,8 @@
   box-office tables are skipped). Each film is keyed `<year>:<article>` when its title links to an
   article (the article name is what matches it to Wikidata), else `<year>:<title>`.
 
+Lists from about 1960 on have Production company (or Company credits) and Cast and crew columns instead: the
+directors are the names marked "(director...)", and each company is a `banner` claim.
 Each row gives the title, directors (`credit_unlinked`), the Genre column's labels as `subject` claims
 ("Musical comedy", "Western"; the atlas folds them into its genre tree) and the studio, the Notes column's
 first part ("MGM; Oscar for Bergman" -> MGM), as a `banner` claim. Short films and serials keep their genre
@@ -19,7 +21,7 @@ from urllib.parse import unquote
 from maestro.wikitable import read_tables, wiki_title
 
 SOURCE = "wikipedia"
-VERSION = "1"
+VERSION = "2"
 YEAR_LIST = re.compile(r"https://en\.wikipedia\.org/wiki/List_of_American_films_of_(\d{4})\b")
 _SPLIT = re.compile(r"\s*(?:,|;|\band\b|&|/)\s*")
 _STUDIO_END = re.compile(r"\s*(?:;|\.\s|\(|$)")
@@ -46,12 +48,24 @@ def studio(notes: str) -> str | None:
     return first if first and len(first) <= 40 and not re.search(r"\d|\b(based|remake|oscar|academy)\b", first, re.I) else None
 
 
+def crew_directors(text: str) -> list[str]:
+    """'Chris Warfield (director/screenplay); George Buck Flower (screenplay); cast' -> ['Chris Warfield']."""
+    out = []
+    for part in re.split(r"\s*;\s*", text or ""):
+        m = re.match(r"^(.*?)\s*\(([^)]*)\)", part)
+        if m and re.search(r"\bdirector", m.group(2), re.I):
+            out += [n.strip() for n in _SPLIT.split(m.group(1)) if n.strip()]
+    return out
+
+
 def parse_year_page(page_html: str) -> list[dict]:
     films = []
     for t in read_tables(page_html):
         headers = t.header_texts()
         ti, di = _col(headers, "title", "film"), _col(headers, "director", "director(s)", "directors")
-        if ti is None or di is None:
+        ci = _col(headers, "cast and crew")  # lists from about 1960 on: "Jake Johnson (director/screenplay); ..."
+        pi = _col(headers, "production company", "company credits", "production companies")
+        if ti is None or (di is None and ci is None):
             continue
         gi = _col(headers, "genre", "genres")
         ni = next((i for i, h in enumerate(headers) if h.lower().startswith(("notes", "studio", "distributor"))), None)
@@ -67,13 +81,19 @@ def parse_year_page(page_html: str) -> list[dict]:
                 if article:
                     article = unquote(article).replace("_", " ")
                     break
-            directors = [n.strip() for n in _SPLIT.split(row[di].text) if n.strip()] if di < len(row) else []
+            if di is not None:
+                directors = [n.strip() for n in _SPLIT.split(row[di].text) if n.strip()] if di < len(row) else []
+            else:
+                directors = crew_directors(row[ci].text) if ci < len(row) else []
             genres = [g.strip() for g in re.split(r"\s*[,/;]\s*", row[gi].text) if g.strip()] \
                 if gi is not None and gi < len(row) else []
             st = studio(row[ni].text) if ni is not None and ni < len(row) else None
+            companies = [c.strip() for c in re.split(r"\s*/\s*|\s*;\s*", row[pi].text) if c.strip()] \
+                if pi is not None and pi < len(row) else []
             title, _, aka = cell.text.strip().partition(" a.k.a. ")
             films.append({"title": title.strip(), "aka": aka.strip() or None, "article": article,
-                          "directors": directors, "genres": genres, "studio": st})
+                          "directors": directors, "genres": genres, "studio": st or (companies[0] if companies else None),
+                          "companies": companies})
     return films
 
 
@@ -108,5 +128,5 @@ def extract(ctx) -> None:
             claim(fid, "credit_unlinked", {"role": "director", "name": d})
         for g in f["genres"]:
             claim(fid, "subject", g)
-        if f["studio"]:
-            claim(fid, "banner", f["studio"])
+        for b in dict.fromkeys(([f["studio"]] if f["studio"] else []) + f.get("companies", [])):
+            claim(fid, "banner", b)

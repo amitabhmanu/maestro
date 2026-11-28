@@ -103,7 +103,7 @@ def _song(sid, film, title, md=(), lyr=(), basis=None):
             "sing": [], "basis": basis, "note": None, "part": None, "ver": None}
 
 
-def test_reused_song_takes_earlier_credits_and_writer_inference():
+def test_reused_song_takes_earlier_credits():
     from maestro import filmsongs
     road = _song(1, 10, "Moonlight Becomes You", ["Jimmy Van Heusen"], ["Johnny Burke"], "song")
     waves = _song(2, 20, "Moonlight Becomes You", ["Harold Arlen"], ["Johnny Mercer"], "section")
@@ -113,10 +113,6 @@ def test_reused_song_takes_earlier_credits_and_writer_inference():
     filmsongs.mark_reuse(by_film, {10: 1942, 20: 1944, 30: 1950}, {10: "Road to Morocco", 20: "Here Come the Waves"})
     assert waves["reuse"]["kind"] == "reused" and waves["md"] == ["Jimmy Van Heusen"] and waves["basis"] == "earlier film"
     assert not own.get("reuse") and not other.get("reuse")
-    inn = [_song(5, 40, "White Christmas"), _song(6, 40, "Happy Holiday")]
-    mixed = [_song(7, 50, "A"), _song(8, 50, "B", ["X"], [], "song")]
-    n = filmsongs.infer_writers({40: inn, 50: mixed}, {40: ["Irving Berlin"], 50: ["Y"]})
-    assert n == 2 and inn[0]["md"] == ["Irving Berlin"] and inn[0]["basis"] == "inferred" and mixed[0]["md"] == []
 
 
 def test_article_films_url_and_short_flag():
@@ -127,3 +123,16 @@ def test_article_films_url_and_short_flag():
     data = {"results": {"bindings": [{"film": {"value": "http://www.wikidata.org/entity/Q1"}, "en": {"value": "Bad Luck Blackie"},
                                       "short": {"value": "true"}, "year": {"value": "1949"}}]}}
     assert wlf.parse(data)[0]["short"] is True
+
+
+def test_modern_year_list_cast_and_crew():
+    from importlib import util
+    spec = util.spec_from_file_location("wy", "maestros/hollywood-films/extractors/wikipedia_year.py")
+    wy = util.module_from_spec(spec); spec.loader.exec_module(wy)
+    assert wy.crew_directors("Jake Johnson (director/screenplay); Jake Johnson, Anna Kendrick") == ["Jake Johnson"]
+    assert wy.crew_directors("Joel Coen, Ethan Coen (directors/screenplay); Frances McDormand") == ["Joel Coen", "Ethan Coen"]
+    page = ('<table class="wikitable"><tr><th colspan="2">Opening</th><th>Title</th><th>Production company</th>'
+            '<th>Cast and crew</th></tr><tr><td>JANUARY</td><td>3</td><td><a href="/wiki/Self_Reliance_(film)">Self Reliance</a></td>'
+            '<td>Neon / Hulu</td><td>Jake Johnson (director/screenplay); Anna Kendrick</td></tr></table>')
+    f = wy.parse_year_page(page)[0]
+    assert f["title"] == "Self Reliance" and f["directors"] == ["Jake Johnson"] and f["companies"] == ["Neon", "Hulu"]

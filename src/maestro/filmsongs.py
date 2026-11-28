@@ -179,22 +179,5 @@ def mark_reuse(by_film: dict[int, list[dict[str, Any]]], years: dict[int, int | 
     return marked
 
 
-def infer_writers(by_film: dict[int, list[dict[str, Any]]], film_composers: dict[int, list[str]]) -> int:
-    """A film whose listed songs name no writer at all, and which credits one composer, gives that composer
-    to each of its songs, marked `basis: inferred` (Amitabh, 28 Nov 2026: Holiday Inn's songs are Irving
-    Berlin's). Reused songs keep the earlier film's credits. HFGK songs always carry their own. Returns how many."""
-    n = 0
-    for film, songs in by_film.items():
-        people = [p for p in film_composers.get(film, []) if p]
-        listed = [s for s in songs if s["src"] != "hfgk_online"]
-        if len(people) != 1 or not listed or any(s["lyr"] or s["md"] for s in listed):
-            continue
-        for s in listed:
-            if not s.get("reuse") and (s.get("ver") or "").lower() != "instrumental":
-                s["md"], s["basis"] = list(people), "inferred"
-                n += 1
-    return n
-
-
 def is_new_composition(s: dict[str, Any]) -> bool:
     return not s.get("reuse") and (s.get("ver") or "").lower() not in SAME_COMPOSITION

@@ -937,8 +937,8 @@ def _add_details_and_songs(store: Store, films: list[Film], rows: list[dict[str,
     years = {r["film_id"]: r["year"] for r in rows}
     titles = {r["film_id"]: r["title"] for r in rows}
     filmsongs.mark_reuse(songs, years, titles)
-    # filmsongs.infer_writers is not applied: in the 1940s pilot a film's credited composer was mostly its
-    # score composer or music director (Victor Young for Road to Morocco), not its songwriter (28 Nov 2026).
+    # A song no source credits keeps no writer: a film's credited composer is mostly its score composer or
+    # music director, not its songwriter (1940s pilot; Amitabh, 28 Nov 2026).
     out = []
     for fid, fs in songs.items():
         r = by_id.get(fid)
