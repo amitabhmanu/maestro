@@ -36,7 +36,7 @@ from typing import Any, Iterable
 from maestro import config
 from maestro.pack import load_pack
 from maestro.resolve import Groups, Normaliser, _distinct_pairs, _squash_container, fold, queue_review, skeleton  # noqa: F401  (skeleton is re-exported)
-from maestro.store import Store
+from maestro.store import Store, StoreError
 
 ANCHOR_SOURCES = ("wikidata", "wikipedia")  # sources other records are matched to, best first
 FILM_ROLES = ("composer", "lyricist", "director", "producer", "actor", "screenwriter", "cinematographer", "editor",
@@ -1232,13 +1232,26 @@ PLANS: dict[str, tuple[str, int, Any]] = {
 
 
 def plan(store: Store, what: str, batch: int | None = None) -> dict[str, Any]:
+    """Queue an enrichment's jobs. A URL this store already fetched with that extractor is skipped, and
+    planning stops at the pack's per-round crawl budget, so plan and crawl can alternate until done."""
     extractor, default, urls = PLANS[what]
-    queued = 0
+    done = {r["url"] for r in store.conn.execute(
+        "SELECT url FROM job WHERE extractor = %s AND status = 'done'", (extractor,)).fetchall()}
+    queued = left = 0
     with store.conn.transaction():
         for url in urls(store, batch or default):
-            job = store.enqueue_crawl(url, extractor, "enrich", priority=5 if what == "wikipedia_songs" else 10)
+            if url in done:
+                continue
+            if left:
+                left += 1
+                continue
+            try:
+                job = store.enqueue_crawl(url, extractor, "enrich", priority=5 if what == "wikipedia_songs" else 10)
+            except StoreError:  # the round's budget is full: the rest waits for the next plan
+                left = 1
+                continue
             queued += 0 if job.get("already_queued") else 1
-    return {"what": what, "extractor": extractor, "queued": queued}
+    return {"what": what, "extractor": extractor, "queued": queued, "left_for_next_round": left}
 
 
 # ---- command line ---------------------------------------------------------------------
