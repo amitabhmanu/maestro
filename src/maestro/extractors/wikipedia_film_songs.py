@@ -26,7 +26,7 @@ from urllib.parse import quote, unquote, urlsplit
 from maestro.wikitable import Table, read_tables
 
 SOURCE = "wikipedia"
-VERSION = "2"
+VERSION = "3"
 BASE = "https://en.wikipedia.org/wiki/"
 MUSIC_HEADINGS = re.compile(r"\b(soundtrack|music|songs?|track ?list(?:ing)?|album|musical numbers?)\b", re.I)
 _SPLIT = re.compile(r"\s*(?:,|;|\band\b|&|/|\n)\s*")
@@ -328,9 +328,10 @@ def song_lists(page_html: str) -> list[dict]:
             if song:
                 song["part"] = hid.replace("_", " ")
                 song["singers"] = list(dict.fromkeys(cast.get(n, n) for n in song["singers"]))
-                if not (song["composers"] or song["lyricists"] or song["songwriters"]):
+                if not (song["composers"] or song["lyricists"] or song["songwriters"]) and any(default.values()):
                     for k, v in default.items():
                         song[k] = list(v)
+                    song["credit_scope"] = "section"
                 out.append(song)
     return out
 
@@ -419,8 +420,9 @@ def extract(ctx) -> None:
         claim(song, "work_kind", "film_song")
         for role, key in (("singer", "singers"), ("lyricist", "lyricists"), ("composer", "composers"),
                           ("songwriter", "songwriters"), ("on_screen", "on_screen")):
+            scope = {"scope": "section"} if s.get("credit_scope") and role != "singer" and role != "on_screen" else {}
             for name in s.get(key, []):
-                claim(song, "credit_unlinked", {"role": role, "name": name})
+                claim(song, "credit_unlinked", {"role": role, "name": name, **scope})
         for field in ("duration", "version", "note", "written"):
             if s.get(field):
                 claim(song, field, s[field])

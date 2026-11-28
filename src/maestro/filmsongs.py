@@ -5,6 +5,9 @@ musical offerings.
 from its publishable `first_line`), grouped by the film's group root. `mark_reuse(songs, years)` marks
 songs that repeat an earlier film's song:
 
+  - for listed (non-HFGK) songs, the same title as an earlier film's listed song is that film's song
+    (`reused`), unless the song's own credits name other writers; it takes the earlier film's credits.
+
   - `reused`: the same song in a later film, as HFGK lists it: the same opening words (consonants of the
     first four words), the same music director and a singer in common. The earliest film keeps it.
   - `recreated`: a later film's new recording of an older composition: the title marks it
@@ -56,7 +59,8 @@ def load_songs(store, groups: Groups | None = None) -> dict[int, list[dict[str, 
         songs[r["song"]] = {"id": r["song"], "film_record": r["film"], "film": groups.find(r["film"]),
                             "n": int(r["pos"]) if (r["pos"] or "").isdigit() else None, "src": r["source_id"],
                             "title": None, "first_line": None, "sing": [], "lyr": [], "md": [], "screen": [],
-                            "raga": [], "dur": None, "ver": None, "note": None, "part": None}
+                            "raga": [], "dur": None, "ver": None, "note": None, "part": None,
+                            "sec_lyr": [], "sec_md": [], "basis": None}
     rows = store.conn.execute(
         """SELECT c.entity_id, c.field, c.value, p.label AS person FROM claim c
            JOIN entity e ON e.id = c.entity_id AND e.type = 'song'
@@ -78,6 +82,8 @@ def load_songs(store, groups: Groups | None = None) -> dict[int, list[dict[str, 
             # a songwriter credit ("words and music by") is both lyricist and composer
             keys = ("lyr", "md") if v.get("role") == "songwriter" else \
                 ("screen",) if v.get("role") == "on_screen" else (roles.get(v.get("role")),)
+            if v.get("scope") == "section":  # named once for the whole song list: used only if nothing closer
+                keys = tuple("sec_" + k for k in keys if k in ("lyr", "md"))
             for key in keys:
                 if key and name and name not in s[key]:
                     s[key].append(name)
@@ -95,6 +101,10 @@ def load_songs(store, groups: Groups | None = None) -> dict[int, list[dict[str, 
             s["part"] = v
     out: dict[int, list[dict[str, Any]]] = defaultdict(list)
     for s in songs.values():
+        if s["lyr"] or s["md"]:
+            s["basis"] = "song"
+        elif s["sec_lyr"] or s["sec_md"]:
+            s["lyr"], s["md"], s["basis"] = list(s["sec_lyr"]), list(s["sec_md"]), "section"
         s["title"] = s["title"] or s["first_line"]
         if s["title"]:
             out[s["film"]].append(s)
@@ -141,6 +151,14 @@ def mark_reuse(by_film: dict[int, list[dict[str, Any]]], years: dict[int, int | 
                 earlier.append(o)
             earlier.sort(key=lambda o: years[o["film"]])
             for o in earlier:
+                # A listed song already in an earlier film is that film's song: its credits win, and a credit
+                # the later article gives its whole song list never applies to it (Amitabh, 28 Nov 2026).
+                if s["src"] != "hfgk_online" and o["src"] != "hfgk_online" and title_key(s["title"], 9) == \
+                        title_key(o["title"], 9) and (s["basis"] != "song" or _names_overlap(s["md"], o["md"])):
+                    s["reuse"] = {"kind": "reused", "film": o["film"], "title": titles.get(o["film"]),
+                                  "year": years[o["film"]], "rule": "an earlier film's song: its credits win"}
+                    s["lyr"], s["md"], s["basis"] = list(o["lyr"]), list(o["md"]), "earlier film"
+                    break
                 same_md = _names_overlap(s["md"], o["md"])
                 if s["src"] == o["src"] == "hfgk_online" and same_md and _names_overlap(s["sing"], o["sing"]):
                     s["reuse"] = {"kind": "reused", "film": o["film"], "title": titles.get(o["film"]),
@@ -159,6 +177,23 @@ def mark_reuse(by_film: dict[int, list[dict[str, Any]]], years: dict[int, int | 
             if s.get("reuse"):
                 marked += 1
     return marked
+
+
+def infer_writers(by_film: dict[int, list[dict[str, Any]]], film_composers: dict[int, list[str]]) -> int:
+    """A film whose listed songs name no writer at all, and which credits one composer, gives that composer
+    to each of its songs, marked `basis: inferred` (Amitabh, 28 Nov 2026: Holiday Inn's songs are Irving
+    Berlin's). Reused songs keep the earlier film's credits. HFGK songs always carry their own. Returns how many."""
+    n = 0
+    for film, songs in by_film.items():
+        people = [p for p in film_composers.get(film, []) if p]
+        listed = [s for s in songs if s["src"] != "hfgk_online"]
+        if len(people) != 1 or not listed or any(s["lyr"] or s["md"] for s in listed):
+            continue
+        for s in listed:
+            if not s.get("reuse") and (s.get("ver") or "").lower() != "instrumental":
+                s["md"], s["basis"] = list(people), "inferred"
+                n += 1
+    return n
 
 
 def is_new_composition(s: dict[str, Any]) -> bool:

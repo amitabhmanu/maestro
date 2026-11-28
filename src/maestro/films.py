@@ -44,7 +44,7 @@ FILM_ROLES = ("composer", "lyricist", "director", "producer", "actor", "screenwr
 # Film facts kept as they come, for the explorer's film page (see `film_details`).
 EXTRA_FIELDS = ("banner", "distributor", "record_company", "subject", "release", "censor", "box_office", "budget",
                 "award", "based_on", "remade_as", "soundtrack", "soundtrack_article", "album_release", "language",
-                "country", "link", "alt_title", "film_genre", "movement", "broadcaster")
+                "country", "link", "alt_title", "film_genre", "movement", "broadcaster", "work_kind")
 
 
 # ---- names ---------------------------------------------------------------------
@@ -780,6 +780,13 @@ def report(store: Store, out: Path) -> dict[str, Any]:
                            "severity": f.get("severity", ""), "detail": f["detail"], "status": f["status"],
                            "rule": f["rule"], "value": _cell(f.get("value"))})
     song_rows = _add_details_and_songs(store, films, rows)
+    # Short films stay only when they have songs (Amitabh, 28 Nov 2026): a register lists feature films.
+    shorts = {f.id for f in films if any("short_film" in m.extra.get("work_kind", []) for m in f.members)}
+    left_out = [r for r in rows if r["film_id"] in shorts and not int(r["song_count"] or 0)]
+    if left_out:
+        gone = {r["film_id"] for r in left_out}
+        rows = [r for r in rows if r["film_id"] not in gone]
+        review = [r for r in review if r["film_id"] not in gone]
     rows.sort(key=lambda r: (r["year"] or 9999, (r["title"] or "").casefold()))
     review.sort(key=lambda r: (r["flag"], r["year"] or 9999, (r["title"] or "").casefold()))
     _write_csv(out / "films.csv", rows)
@@ -794,7 +801,8 @@ def report(store: Store, out: Path) -> dict[str, Any]:
     songs = sum(int(r["song_count"] or 0) for r in rows)
     hfgk_films = sum(1 for f in films if f.by_source("hfgk_online"))
     summary = {
-        "films": len(films),
+        "films": len(rows),
+        "shorts_left_out": len(left_out),
         "films_with_wikidata": sum(1 for f in films if f.by_source("wikidata")),
         "films_with_hfgk": hfgk_films,
         "hfgk_matched_to_wikidata": sum(1 for f in films if f.by_source("hfgk_online") and f.by_source("wikidata")),
@@ -929,6 +937,8 @@ def _add_details_and_songs(store: Store, films: list[Film], rows: list[dict[str,
     years = {r["film_id"]: r["year"] for r in rows}
     titles = {r["film_id"]: r["title"] for r in rows}
     filmsongs.mark_reuse(songs, years, titles)
+    # filmsongs.infer_writers is not applied: in the 1940s pilot a film's credited composer was mostly its
+    # score composer or music director (Victor Young for Road to Morocco), not its songwriter (28 Nov 2026).
     out = []
     for fid, fs in songs.items():
         r = by_id.get(fid)
@@ -950,7 +960,7 @@ def _add_details_and_songs(store: Store, films: list[Film], rows: list[dict[str,
                                                                                  and role["kind"] != "chorus" else ""),
                         "version": x["ver"] or "", "duration": x["dur"] or "",
                         "reuse": u.get("kind", ""), "reuse_of": f"{u.get('title') or ''} ({u.get('year') or ''})"
-                        if u.get("title") else "", "source": x["src"]})
+                        if u.get("title") else "", "source": x["src"], "credit_basis": x.get("basis") or ""})
     out.sort(key=lambda r: (r["year"] or 9999, r["film"] or "", r["n"] or 0))
     return out
 
@@ -1022,6 +1032,8 @@ def films_snapshot(store: Store, with_songs: bool = True) -> dict[str, Any]:
         f["song_file"] = decade
         for x in fs:
             by_decade[decade].append(_song_out(f["id"], x))
+    shorts = {f.id for f in films if any("short_film" in m.extra.get("work_kind", []) for m in f.members)}
+    out = [f for f in out if f["id"] not in shorts or f.get("songs")]  # shorts only with songs
     out.sort(key=lambda r: (r["year"] or 9999, (r["title"] or "").casefold()))
     d = store.pack.data["identity"]
     return {"format": 2, "register": {"slug": d["slug"], "name": d["name"]},
@@ -1036,7 +1048,8 @@ def _song_out(film_id: int, x: dict[str, Any]) -> dict[str, Any]:
     # "id" is the song's entity id in the register store: gem tags on register songs key on it.
     out = {"id": x["id"], "f": film_id, "n": x["n"], "t": x["title"], "s": x["sing"], "l": x["lyr"], "m": x["md"],
            "sc": x["screen"], "r": x["raga"], "d": x["dur"], "v": x["ver"], "k": r["kind"],
-           "ch": r["chorus"], "u": x.get("reuse"), "p": x["part"], "src": x["src"]}
+           "ch": r["chorus"], "u": x.get("reuse"), "p": x["part"], "src": x["src"],
+           "b": x.get("basis") if x.get("basis") not in (None, "song") else None}
     return {k: v for k, v in out.items() if v not in (None, [], "", False)}
 
 
@@ -1201,7 +1214,18 @@ def _song_pages(store: Store, size: int) -> list[str]:
     return out
 
 
+def _article_batches(store: Store, size: int) -> list[str]:
+    """Films the register knows only from Wikipedia: ask Wikidata for the item of each one's article, so the
+    next `match` joins them by article (Amitabh, 28 Nov 2026: Wikidata often lacks their country of origin)."""
+    from maestro.extractors.wikidata_language_films import article_films_url
+
+    articles = sorted({a for f in films_in_groups(store) if not f.by_source("wikidata")
+                       for a in [f.pick("article", ("wikipedia",))] if a})
+    return [article_films_url(articles[i:i + size]) for i in range(0, len(articles), size)]
+
+
 PLANS: dict[str, tuple[str, int, Any]] = {
+    "wikidata_ids": ("wikidata_language_films", 50, _article_batches),
     "wikidata": ("wikidata_film_details", 80, _wikidata_batches),
     "wikipedia_songs": ("wikipedia_film_songs", 1, _song_pages),
 }
@@ -1212,7 +1236,7 @@ def plan(store: Store, what: str, batch: int | None = None) -> dict[str, Any]:
     queued = 0
     with store.conn.transaction():
         for url in urls(store, batch or default):
-            job = store.enqueue_crawl(url, extractor, "enrich", priority=10 if what == "wikidata" else 5)
+            job = store.enqueue_crawl(url, extractor, "enrich", priority=5 if what == "wikipedia_songs" else 10)
             queued += 0 if job.get("already_queued") else 1
     return {"what": what, "extractor": extractor, "queued": queued}
 

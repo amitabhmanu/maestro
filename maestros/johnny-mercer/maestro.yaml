@@ -24,8 +24,9 @@ roles:
       About 85-90% of his songs are lyrics to others' music, 5-8% words and music, ~5% music to others'
       words (MusicBrainz work credits: lyricist 235, writer 72, composer 52). He was also a hit singer
       (1942-49), so his recordings of songs he did not write are a separate performer tier (D), as for
-      Jean Wiener's piano-duo records. Proposed; Amitabh to confirm.
-    confidence: 0.7
+      Jean Wiener's piano-duo records (Amitabh, 28 Nov 2026). English lyrics to foreign songs and lyrics
+      added to existing instrumentals count as his songs, credited as lyricist only (Amitabh, 28 Nov 2026).
+    confidence: 0.8
 canon_model:
   unit: work
   version_levels: [work, recording, release]
@@ -42,7 +43,7 @@ canon_model:
 tiers:
   A: {label: "Songs written for films (words, music or both)", target_missing: 0.05}
   B: {label: "Songs for the stage, and songs written for neither film nor stage", target_missing: 0.05}
-  C: {label: "Unpublished lyrics and posthumous completions (e.g. Barry Manilow's settings, 1980s on)", target_missing: report_only}
+  C: {label: "Unpublished lyrics and posthumous completions (e.g. Barry Manilow's settings, 1980s on)", target_missing: report_only, _why: {reason: "Manilow's settings of unfinished lyrics are in the canon, in this tier (Amitabh, 28 Nov 2026).", confidence: 0.9}}
   D: {label: "His own recordings as a singer of songs others wrote (performer)", target_missing: report_only}
 registers:
   - name: The Complete Lyrics of Johnny Mercer (Kimball, Day, Dubrow and Furia; Knopf 2009)
@@ -51,7 +52,10 @@ registers:
     role: ground_truth
     url: https://www.penguinrandomhouse.com/books/113333/the-complete-lyrics-of-johnny-mercer-by-johnny-mercer/
     _why:
-      reason: The only complete list of his lyrics, published and unpublished ("more than 1,200"). Print only, so its index is a checksum and a review aid, not a crawl.
+      reason: >-
+        The only complete list of his lyrics, published and unpublished ("more than 1,200"). Print only, and
+        the canon goes without it (Amitabh, 28 Nov 2026): its count stays a checksum, and completeness rests
+        on MusicBrainz, Wikipedia, the film register and the copyright catalogue.
       confidence: 0.8
   - name: Catalog of Copyright Entries, Part 3 (US Copyright Office, 1930-1977)
     tiers: [A, B]
@@ -114,9 +118,6 @@ budget:
   model_spend_usd: null
   review_hours_per_week: null
 open_questions:
-  - "Is his singing in scope? Proposed: his recordings of songs others wrote form tier D (performer), measured but not a target."
-  - "Barry Manilow's settings of unfinished lyrics (When October Goes, 1984; ~16 in MusicBrainz): tier C, or out of the canon?"
-  - "English lyrics to foreign songs (Autumn Leaves, Summer Wind) and lyrics added to existing instrumentals (Laura, Satin Doll, Midnight Sun) count as his works, credited lyricist only. Agree?"
-  - "Can you get The Complete Lyrics (print) for its index? It is the only full register; without it Tier A and B completeness rests on MusicBrainz plus the copyright catalogue."
-  - "Stage shows (St. Louis Woman, Li'l Abner and others) have no container type of their own: kept as tier B songs without a container for MVP1."
-  - "Films: 'at least 73' (Encyclopedia.com) against '100' (Johnny Mercer Foundation): no checksum until the film register settles it."
+  - "Stage shows have no container type: their songs are tier B without a container for MVP1 (Amitabh, 28 Nov 2026); add a show container later."
+  - "Films: 'at least 73' (Encyclopedia.com) against '100' (Johnny Mercer Foundation): settle from the Hollywood film register once its full crawl is done."
+  - "Catalog of Copyright Entries: its archive.org volumes are not reachable from the cloud; a run on the PC could import them."

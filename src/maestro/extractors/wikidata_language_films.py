@@ -2,7 +2,9 @@
 in a span of years, for a film register.
 
 Seed with `films_url("Q1568")` (Hindi), or `country_films_url("Q30", 1940, 1949)` (American films first
-released in the 1940s; short films are left out, a register lists feature films). Each film becomes a container keyed by its QID (xref on
+released in the 1940s; short films are left out, a register lists feature films). `article_films_url(articles)`
+finds the items of films a register knows only from a Wikipedia list (by their English article); these may be
+short films, which get `work_kind: short_film`. Each film becomes a container keyed by its QID (xref on
 source `wikidata`), with its English and native labels, first publication year (P577), IMDb ID (P345,
 kept as a reference only: IMDb itself is never fetched), English Wikipedia article, and composer
 (P86) and director (P57) credits to person entities keyed by their QIDs. Wikidata is CC0.
@@ -69,6 +71,31 @@ def country_films_url(country_qid: str, start: int, end: int) -> str:
     return f"{ENDPOINT}?{urlencode({'format': 'json', 'query': query})}"
 
 
+ARTICLE_QUERY = """SELECT ?film (SAMPLE(?enl) AS ?en) (SAMPLE(?t) AS ?title) (MIN(YEAR(?date)) AS ?year)
+  (SAMPLE(?imdb) AS ?imdbid) (SAMPLE(?art) AS ?enwiki) (MAX(?isShort) AS ?short)
+  (GROUP_CONCAT(DISTINCT CONCAT(STRAFTER(STR(?mus), "entity/"), "|", COALESCE(?musl, "")); separator="\\t") AS ?composers)
+  (GROUP_CONCAT(DISTINCT CONCAT(STRAFTER(STR(?dir), "entity/"), "|", COALESCE(?dirl, "")); separator="\\t") AS ?directors)
+WHERE {{
+  VALUES ?art {{ {articles} }}
+  ?art schema:about ?film ; schema:isPartOf <https://en.wikipedia.org/> .
+  BIND(EXISTS {{ ?film wdt:P31 wd:Q24862 }} AS ?isShort)
+  OPTIONAL {{ ?film wdt:P577 ?date }}
+  OPTIONAL {{ ?film rdfs:label ?enl FILTER(LANG(?enl) = "en") }}
+  OPTIONAL {{ ?film wdt:P1476 ?t }}
+  OPTIONAL {{ ?film wdt:P345 ?imdb }}
+  OPTIONAL {{ ?film wdt:P86 ?mus . OPTIONAL {{ ?mus rdfs:label ?musl FILTER(LANG(?musl) = "en") }} }}
+  OPTIONAL {{ ?film wdt:P57 ?dir . OPTIONAL {{ ?dir rdfs:label ?dirl FILTER(LANG(?dirl) = "en") }} }}
+}} GROUP BY ?film"""
+
+
+def article_films_url(articles: list[str]) -> str:
+    """The Wikidata items of these English Wikipedia articles ('Intrigue (1947 film)'), up to ~50 a request."""
+    from urllib.parse import quote
+    iris = " ".join(f"<https://en.wikipedia.org/wiki/{quote(a.replace(' ', '_'), safe='()_,!:-.' + chr(39))}>"
+                    for a in articles)
+    return f"{ENDPOINT}?{urlencode({'format': 'json', 'query': ARTICLE_QUERY.format(articles=iris)})}"
+
+
 def article_title(url: str | None) -> str | None:
     """'https://en.wikipedia.org/wiki/Pinjar_(2003_film)' -> 'Pinjar (2003 film)'."""
     if not url or "/wiki/" not in url:
@@ -91,7 +118,8 @@ def parse(data: dict) -> list[dict]:
         v = {k: x["value"] for k, x in b.items()}
         qid = v["film"].rsplit("/", 1)[-1]
         f = films.setdefault(qid, {"qid": qid, "title": None, "title_native": None, "year": None, "imdb": None,
-                                   "wikipedia": None, "composers": [], "directors": []})
+                                   "wikipedia": None, "composers": [], "directors": [], "short": False})
+        f["short"] = f["short"] or v.get("short") in ("true", "1")
         f["title"] = f["title"] or v.get("en") or (v.get("title") if v.get("title", "").isascii() else None)
         f["title_native"] = f["title_native"] or v.get("native")
         if v.get("year"):
@@ -114,8 +142,9 @@ def parse(data: dict) -> list[dict]:
 def extract(ctx) -> None:
     store = ctx.store
     query = parse_qs(urlsplit(ctx.page.url).query).get("query", [""])[0]
-    if not re.search(r"wdt:P(?:364|495) wd:Q\d+", query):
-        raise ValueError(f"wikidata_language_films expects a films_url() or country_films_url() query: {ctx.page.url}")
+    if not re.search(r"wdt:P(?:364|495) wd:Q\d+|VALUES \?art ", query):
+        raise ValueError("wikidata_language_films expects a films_url(), country_films_url() or "
+                         f"article_films_url() query: {ctx.page.url}")
 
     def claim(eid, field, value=None, ref=None):
         store.upsert_claim(eid, field, value=value, ref_entity_id=ref, source_id=SOURCE,
@@ -133,6 +162,8 @@ def extract(ctx) -> None:
             claim(fid, "imdb", f["imdb"])
         if f["wikipedia"]:
             claim(fid, "wikipedia", f["wikipedia"])
+        if f["short"]:
+            claim(fid, "work_kind", "short_film")
         for key, role in (("composers", "composer"), ("directors", "director")):
             for qid, label in f[key]:
                 pid = store.find_or_create_by_xref("person", SOURCE, qid, label)

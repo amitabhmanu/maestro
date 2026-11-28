@@ -106,11 +106,15 @@ The four Oscar wins: "On the Atchison, Topeka and the Santa Fe" (1946, Warren), 
 
 Unlike a singer's canon, a songwriter's popularity is per song across all performers: Last.fm and YouTube must be searched by title and filtered by writer, not read from his artist page.
 
+## Decisions (Amitabh, 28 Nov 2026, review R4a)
+
+- His singing is in scope: his recordings of others' songs are tier D, measured but not a target.
+- Barry Manilow's posthumous settings are in the canon, in tier C.
+- English lyrics to foreign songs and lyrics added to instrumentals count as his songs, credited as lyricist only.
+- The canon goes without The Complete Lyrics: its count stays a checksum only.
+- Stage songs have no container for MVP1 (tier B).
+
 ## Open questions
 
-- Is his singing in scope? Proposed: his recordings of others' songs are tier D, measured but not a target.
-- Barry Manilow's posthumous settings: tier C, or out of the canon?
-- English lyrics to foreign songs and lyrics added to instrumentals count as his works (lyricist credit only). Agree?
-- Can Amitabh get The Complete Lyrics for its index?
-- Stage shows have no container type; tier B songs without a container for MVP1.
-- Film count: 73 or 100? Settle from the Hollywood film register once its 1930s-70s crawl is done.
+- Film count: 73 or 100? Settle from the Hollywood film register once its full crawl is done.
+- The Catalog of Copyright Entries could be imported on the PC.

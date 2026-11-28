@@ -96,3 +96,34 @@ def test_song_list_western_and_colon_bullets():
     assert s["singers"] == [] and s["songwriters"] == []
     s = wfs.parse_list_item('"Happiness is a Thing Called Joe" (by Arlen and Harburg) – Ethel Waters')
     assert s["songwriters"] == ["Arlen", "Harburg"] and s["singers"] == ["Ethel Waters"]
+
+
+def _song(sid, film, title, md=(), lyr=(), basis=None):
+    return {"id": sid, "film": film, "src": "wikipedia", "title": title, "md": list(md), "lyr": list(lyr),
+            "sing": [], "basis": basis, "note": None, "part": None, "ver": None}
+
+
+def test_reused_song_takes_earlier_credits_and_writer_inference():
+    from maestro import filmsongs
+    road = _song(1, 10, "Moonlight Becomes You", ["Jimmy Van Heusen"], ["Johnny Burke"], "song")
+    waves = _song(2, 20, "Moonlight Becomes You", ["Harold Arlen"], ["Johnny Mercer"], "section")
+    own = _song(3, 20, "Accentuate the Positive", ["Harold Arlen"], ["Johnny Mercer"], "section")
+    other = _song(4, 30, "Moonlight Becomes You", ["Someone Else"], [], "song")  # its own writers: not the same
+    by_film = {10: [road], 20: [waves, own], 30: [other]}
+    filmsongs.mark_reuse(by_film, {10: 1942, 20: 1944, 30: 1950}, {10: "Road to Morocco", 20: "Here Come the Waves"})
+    assert waves["reuse"]["kind"] == "reused" and waves["md"] == ["Jimmy Van Heusen"] and waves["basis"] == "earlier film"
+    assert not own.get("reuse") and not other.get("reuse")
+    inn = [_song(5, 40, "White Christmas"), _song(6, 40, "Happy Holiday")]
+    mixed = [_song(7, 50, "A"), _song(8, 50, "B", ["X"], [], "song")]
+    n = filmsongs.infer_writers({40: inn, 50: mixed}, {40: ["Irving Berlin"], 50: ["Y"]})
+    assert n == 2 and inn[0]["md"] == ["Irving Berlin"] and inn[0]["basis"] == "inferred" and mixed[0]["md"] == []
+
+
+def test_article_films_url_and_short_flag():
+    from maestro.extractors import wikidata_language_films as wlf
+    url = wlf.article_films_url(["Intrigue (1947 film)", "Bad Luck Blackie"])
+    assert "Intrigue_(1947_film)" in __import__("urllib.parse").parse.unquote(url) and "Q24862" in \
+        __import__("urllib.parse").parse.unquote(url)
+    data = {"results": {"bindings": [{"film": {"value": "http://www.wikidata.org/entity/Q1"}, "en": {"value": "Bad Luck Blackie"},
+                                      "short": {"value": "true"}, "year": {"value": "1949"}}]}}
+    assert wlf.parse(data)[0]["short"] is True
